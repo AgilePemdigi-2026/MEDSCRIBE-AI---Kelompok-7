@@ -70,38 +70,10 @@ class DashboardController extends Controller
     }
 
     /**
-     * Dashboard Pemeriksaan Awal & TTV Nurse Station (Sesuai SRS Gambar 3.1).
+     * Dashboard Pemeriksaan Awal & TTV Nurse Station (Sesuai SRS Gambar 3.1 & Mockup Halaman 2).
      */
     public function perawatDashboard(Request $request): View
     {
-        $user = Auth::user();
-
-        $antreanQuery = Antrean::with('pasien')->orderBy('id_antrean', 'asc');
-
-        if ($search = $request->query('cari')) {
-            $antreanQuery->whereHas('pasien', function ($q) use ($search) {
-                $q->where('nama_pasien', 'like', "%{$search}%")
-                  ->orWhere('no_rekam_medis', 'like', "%{$search}%");
-            });
-        }
-
-        $daftarAntrean = $antreanQuery->get();
-        $pasienTerpilih = $daftarAntrean->first();
-
-        // Mengambil data pemeriksaan awal jika sudah ada
-        $pemeriksaanAwal = null;
-        if ($pasienTerpilih) {
-            $kunjungan = Kunjungan::where('id_pasien', $pasienTerpilih->id_pasien)->first();
-            if ($kunjungan) {
-                $pemeriksaanAwal = PemeriksaanAwal::where('id_kunjungan', $kunjungan->id_kunjungan)->first();
-            }
-        }
-
-        return view('dashboard.perawat', compact(
-            'user',
-            'daftarAntrean',
-            'pasienTerpilih',
-            'pemeriksaanAwal'
-        ));
+        return app(PemeriksaanAwalController::class)->index($request);
     }
 }

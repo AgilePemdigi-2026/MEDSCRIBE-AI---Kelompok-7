@@ -16,6 +16,9 @@ class PemeriksaanAwal extends Model
         'tekanan_darah',
         'suhu_tubuh',
         'nadi',
+        'laju_pernapasan',
+        'berat_badan',
+        'tinggi_badan',
         'catatan',
     ];
 

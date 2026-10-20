@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\PemeriksaanAwalController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -42,8 +43,9 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
         Route::get('/dokter/dashboard', [DashboardController::class, 'dokterDashboard'])->name('dokter.dashboard');
     });
 
-    // Area Khusus Perawat Nurse Station (Otorisasi: role perawat)
+    // Area Khusus Perawat Nurse Station (Otorisasi: role perawat - SRS Bab 4.1)
     Route::middleware('role:perawat')->group(function () {
-        Route::get('/perawat/dashboard', [DashboardController::class, 'perawatDashboard'])->name('perawat.dashboard');
+        Route::get('/perawat/dashboard', [PemeriksaanAwalController::class, 'index'])->name('perawat.dashboard');
+        Route::post('/perawat/pemeriksaan-awal', [PemeriksaanAwalController::class, 'store'])->name('perawat.pemeriksaan.store');
     });
 });
