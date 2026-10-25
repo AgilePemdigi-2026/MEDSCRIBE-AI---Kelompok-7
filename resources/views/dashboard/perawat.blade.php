@@ -348,7 +348,7 @@
                                         placeholder="18"
                                         min="5"
                                         max="60"
-                                        value="{{ old('laju_pernapasan', $pemeriksaanAwal->laju_pernapasan ?? 18) }}"
+                                        value="{{ old('laju_pernapasan', $pemeriksaanAwal->laju_pernapasan ?? '') }}"
                                         required
                                         class="w-full pl-3.5 pr-16 py-2.5 bg-white border @error('laju_pernapasan') border-rose-400 ring-1 ring-rose-400 @else border-slate-300 @enderror rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500"
                                     >
@@ -375,7 +375,7 @@
                                         placeholder="68"
                                         min="1"
                                         max="300"
-                                        value="{{ old('berat_badan', $pemeriksaanAwal->berat_badan ?? 68) }}"
+                                        value="{{ old('berat_badan', $pemeriksaanAwal->berat_badan ?? '') }}"
                                         required
                                         class="w-full pl-3.5 pr-12 py-2.5 bg-white border @error('berat_badan') border-rose-400 ring-1 ring-rose-400 @else border-slate-300 @enderror rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500"
                                     >
@@ -402,7 +402,7 @@
                                         placeholder="170"
                                         min="30"
                                         max="250"
-                                        value="{{ old('tinggi_badan', $pemeriksaanAwal->tinggi_badan ?? 170) }}"
+                                        value="{{ old('tinggi_badan', $pemeriksaanAwal->tinggi_badan ?? '') }}"
                                         required
                                         class="w-full pl-3.5 pr-12 py-2.5 bg-white border @error('tinggi_badan') border-rose-400 ring-1 ring-rose-400 @else border-slate-300 @enderror rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500"
                                     >

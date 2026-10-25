@@ -176,6 +176,12 @@ class PemeriksaanAwalController extends Controller
                 ]
             );
 
+            // Perubahan TTV membuat verifikasi sebelumnya perlu ditinjau ulang.
+            \App\Models\Finalisasi::where('id_kunjungan', $kunjungan->id_kunjungan)->update([
+                'status' => 'Perlu Ditinjau',
+                'FINAL' => false,
+            ]);
+
             DB::commit();
 
             // 6. Redirect dengan umpan balik sukses (REQ-9)

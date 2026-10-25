@@ -43,6 +43,11 @@ class Kunjungan extends Model
         return $this->hasOne(RekamanAudio::class, 'id_kunjungan', 'id_kunjungan');
     }
 
+    public function wawancara()
+    {
+        return $this->hasOne(Wawancara::class, 'id_kunjungan', 'id_kunjungan');
+    }
+
     public function drafSoap()
     {
         return $this->hasOne(DrafSoap::class, 'id_kunjungan', 'id_kunjungan');

@@ -18,6 +18,14 @@ class DrafSoap extends Model
         'assessment_text',
         'plan_text',
         'kode_icd10',
+        'source_transcript_hash',
+        'source_ttv_snapshot',
+        'needs_review',
+        'source_type',
+    ];
+
+    protected $casts = [
+        'needs_review' => 'boolean',
     ];
 
     public function kunjungan()

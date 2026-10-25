@@ -3,6 +3,8 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PemeriksaanAwalController;
+use App\Http\Controllers\InterviewController;
+use App\Http\Controllers\SoapReviewController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -41,6 +43,13 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
     // Area Khusus Dokter Poliklinik (Otorisasi: role dokter)
     Route::middleware('role:dokter')->group(function () {
         Route::get('/dokter/dashboard', [DashboardController::class, 'dokterDashboard'])->name('dokter.dashboard');
+        Route::get('/dokter/kunjungan/{kunjungan}/wawancara', [InterviewController::class, 'show'])->name('dokter.interview.show');
+        Route::post('/dokter/kunjungan/{kunjungan}/wawancara/mulai', [InterviewController::class, 'start'])->name('dokter.interview.start');
+        Route::put('/dokter/kunjungan/{kunjungan}/wawancara/catatan', [InterviewController::class, 'save'])->name('dokter.interview.save');
+        Route::post('/dokter/kunjungan/{kunjungan}/wawancara/selesai', [InterviewController::class, 'finish'])->name('dokter.interview.finish');
+        Route::get('/dokter/kunjungan/{kunjungan}/soap', [SoapReviewController::class, 'edit'])->name('dokter.soap.edit');
+        Route::put('/dokter/kunjungan/{kunjungan}/soap', [SoapReviewController::class, 'save'])->name('dokter.soap.save');
+        Route::post('/dokter/kunjungan/{kunjungan}/soap/verifikasi', [SoapReviewController::class, 'verify'])->name('dokter.soap.verify');
     });
 
     // Area Khusus Perawat Nurse Station (Otorisasi: role perawat - SRS Bab 4.1)

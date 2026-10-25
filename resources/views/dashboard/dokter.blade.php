@@ -146,13 +146,13 @@
                             </td>
                             <td class="py-3.5 px-5 text-right">
                                 @if ($antrean->status === 'Siap Periksa')
-                                    <button
-                                        type="button"
+                                    @php($kunjungan = \App\Models\Kunjungan::where('id_antrean', $antrean->id_antrean)->first())
+                                    <a
+                                        href="{{ $kunjungan ? route('dokter.interview.show', $kunjungan) : '#' }}"
                                         class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs shadow-xs transition cursor-pointer"
-                                        onclick="alert('Fitur Pemeriksaan Klinis (SOAP AI) akan diaktifkan pada Sprint berikutnya.');"
                                     >
-                                        <span>→ Buka Rekam Medis</span>
-                                    </button>
+                                        <span>→ Mulai Wawancara</span>
+                                    </a>
                                 @elseif ($antrean->status === 'Menunggu TTV')
                                     <button
                                         type="button"
