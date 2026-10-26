@@ -103,7 +103,7 @@
                     </svg>
                 </div>
                 <div>
-                    <h2 class="text-base font-bold text-[#122056]">TTV & Catatan Perawat</h2>
+                    <h2 class="text-base font-bold text-[#122056]">TTV &amp; Catatan Perawat</h2>
                     <p class="text-xs text-[#69718B]">Pemeriksaan tanda-tanda vital awal dan observasi klinis Nurse Station</p>
                 </div>
             </div>

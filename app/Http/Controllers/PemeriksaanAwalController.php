@@ -401,13 +401,17 @@ class PemeriksaanAwalController extends Controller
         $pasien = Pasien::findOrFail($id);
 
         // Validasi perlindungan data rekam medis:
-        // Jika pasien sudah memiliki kunjungan yang berstatus 'Selesai' (telah diperiksa dokter),
-        // registrasi tidak boleh dibatalkan.
+        // Pasien yang belum ada input TTV (pemeriksaan awal) selalu dapat dihapus / dibatalkan.
+        // Pembatalan hanya diblokir jika pasien sudah memiliki input TTV dan riwayat pemeriksaan dokter telah selesai.
+        $hasTtv = PemeriksaanAwal::whereHas('kunjungan', function ($q) use ($pasien) {
+            $q->where('id_pasien', $pasien->id_pasien);
+        })->exists();
+
         $hasCompletedVisit = Kunjungan::where('id_pasien', $pasien->id_pasien)
             ->where('status', 'Selesai')
             ->exists();
 
-        if ($hasCompletedVisit) {
+        if ($hasTtv && $hasCompletedVisit) {
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
@@ -431,15 +435,21 @@ class PemeriksaanAwalController extends Controller
             $pasien->cancellation_reason = $alasan;
             $pasien->save();
 
-            // 2. Batalkan antrean aktif pasien
+            // 2. Batalkan antrean pasien
             Antrean::where('id_pasien', $pasien->id_pasien)
                 ->where('status', '!=', 'Selesai')
                 ->update(['status' => 'Dibatalkan']);
 
-            // 3. Batalkan kunjungan yang belum selesai
+            // 3. Batalkan kunjungan pasien yang belum selesai
             Kunjungan::where('id_pasien', $pasien->id_pasien)
                 ->where('status', '!=', 'Selesai')
                 ->update(['status' => 'Dibatalkan']);
+
+            // Jika pasien belum ada input TTV, batalkan seluruh antrean dan kunjungan terkait
+            if (!$hasTtv) {
+                Antrean::where('id_pasien', $pasien->id_pasien)->update(['status' => 'Dibatalkan']);
+                Kunjungan::where('id_pasien', $pasien->id_pasien)->update(['status' => 'Dibatalkan']);
+            }
 
             // 4. Soft delete pasien (tidak dihapus fisik dari database)
             // Seluruh foreign key, riwayat TTV, dan audit tetap terjaga utuh

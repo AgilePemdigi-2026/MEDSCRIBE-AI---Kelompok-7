@@ -8,12 +8,14 @@ use App\Models\Kunjungan;
 use App\Models\Pasien;
 use App\Models\PemeriksaanAwal;
 use App\Models\Pengguna;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
 
 class PemeriksaanAwalTest extends TestCase
 {
+    use DatabaseTransactions;
+
     protected Pengguna $perawat;
     protected Pengguna $dokter;
     protected Pasien $pasien;
@@ -189,7 +191,7 @@ class PemeriksaanAwalTest extends TestCase
     public function test_perawat_dapat_membatalkan_registrasi_pasien_yang_memenuhi_syarat(): void
     {
         $pasien = Pasien::create([
-            'no_rekam_medis' => '20261026-901',
+            'no_rekam_medis' => 'TEST-' . uniqid(),
             'nama_pasien'    => 'Pasien Uji Pembatalan',
             'umur'           => 30,
             'jenis_kelamin'  => 'Laki-laki',
@@ -225,7 +227,7 @@ class PemeriksaanAwalTest extends TestCase
     public function test_perawat_dapat_membatalkan_pasien_via_json_request(): void
     {
         $pasien = Pasien::create([
-            'no_rekam_medis' => '20261026-902',
+            'no_rekam_medis' => 'TEST-' . uniqid(),
             'nama_pasien'    => 'Pasien Uji JSON',
             'umur'           => 25,
             'jenis_kelamin'  => 'Perempuan',
@@ -249,7 +251,7 @@ class PemeriksaanAwalTest extends TestCase
     public function test_dokter_tidak_dapat_membatalkan_registrasi_pasien(): void
     {
         $pasien = Pasien::create([
-            'no_rekam_medis' => '20261026-903',
+            'no_rekam_medis' => 'TEST-' . uniqid(),
             'nama_pasien'    => 'Pasien Proteksi Dokter',
             'umur'           => 45,
             'jenis_kelamin'  => 'Laki-laki',
@@ -273,7 +275,7 @@ class PemeriksaanAwalTest extends TestCase
     public function test_tamu_tidak_terautentikasi_tidak_dapat_membatalkan_registrasi_pasien(): void
     {
         $pasien = Pasien::create([
-            'no_rekam_medis' => '20261026-904',
+            'no_rekam_medis' => 'TEST-' . uniqid(),
             'nama_pasien'    => 'Pasien Proteksi Tamu',
             'umur'           => 50,
             'jenis_kelamin'  => 'Perempuan',
@@ -291,12 +293,12 @@ class PemeriksaanAwalTest extends TestCase
     }
 
     /**
-     * Business Rule Test 5: Registrasi pasien tidak dapat dibatalkan jika riwayat pemeriksaan dokter telah selesai.
+     * Business Rule Test 5: Registrasi pasien tidak dapat dibatalkan jika sudah ada input TTV dan pemeriksaan dokter telah selesai.
      */
     public function test_registrasi_pasien_tidak_dapat_dibatalkan_jika_pemeriksaan_selesai(): void
     {
         $pasien = Pasien::create([
-            'no_rekam_medis' => '20261026-905',
+            'no_rekam_medis' => 'TEST-' . uniqid(),
             'nama_pasien'    => 'Pasien Sudah Diperiksa',
             'umur'           => 60,
             'jenis_kelamin'  => 'Laki-laki',
@@ -309,6 +311,14 @@ class PemeriksaanAwalTest extends TestCase
             'status'    => 'Selesai',
         ]);
 
+        PemeriksaanAwal::create([
+            'id_kunjungan' => $kunjungan->id_kunjungan,
+            'id_perawat'   => $this->perawat->id_pengguna,
+            'tekanan_darah'=> '120/80',
+            'suhu_tubuh'   => 36.5,
+            'nadi'         => 80,
+        ]);
+
         $response = $this->actingAs($this->perawat)->delete('/perawat/pasien/' . $pasien->id_pasien);
 
         $response->assertSessionHasErrors(['error']);
@@ -318,5 +328,38 @@ class PemeriksaanAwalTest extends TestCase
             'id_pasien'  => $pasien->id_pasien,
             'deleted_at' => null,
         ]);
+    }
+
+    /**
+     * Business Rule Test 6: Pasien yang belum ada input TTV dapat dihapus/dibatalkan registrasinya oleh perawat.
+     */
+    public function test_pasien_yang_belum_ada_input_ttv_dapat_dihapus_registrasinya(): void
+    {
+        $pasien = Pasien::create([
+            'no_rekam_medis' => 'TEST-' . uniqid(),
+            'nama_pasien'    => 'Pasien Belum Ada TTV',
+            'umur'           => 35,
+            'jenis_kelamin'  => 'Laki-laki',
+        ]);
+
+        $antrean = Antrean::create([
+            'id_pasien'         => $pasien->id_pasien,
+            'tanggal_kunjungan' => '2026-10-26',
+            'status'            => 'Menunggu TTV',
+        ]);
+
+        $response = $this->actingAs($this->perawat)->delete('/perawat/pasien/' . $pasien->id_pasien, [
+            'alasan' => 'Pasien membatalkan antrean sebelum TTV',
+        ]);
+
+        $response->assertRedirect('/perawat/dashboard?tab=pasien');
+        $response->assertSessionHas('status');
+
+        $this->assertSoftDeleted('pasien', [
+            'id_pasien' => $pasien->id_pasien,
+            'cancelled_by' => $this->perawat->id_pengguna,
+        ]);
+
+        $this->assertEquals('Dibatalkan', $antrean->fresh()->status);
     }
 }

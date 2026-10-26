@@ -37,8 +37,8 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        // Mengambil antrean hari ini dan pasien terkait
-        $antreanQuery = Antrean::with('pasien')->orderBy('id_antrean', 'asc');
+        // Mengambil antrean hari ini dan pasien terkait (diurutkan dari nomor antrean terbesar ke terkecil)
+        $antreanQuery = Antrean::with('pasien')->orderBy('id_antrean', 'desc');
 
         if ($statusFilter = $request->query('status')) {
             $antreanQuery->where('status', $statusFilter);

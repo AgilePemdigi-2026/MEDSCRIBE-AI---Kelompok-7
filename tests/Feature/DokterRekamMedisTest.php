@@ -8,12 +8,15 @@ use App\Models\Pasien;
 use App\Models\PemeriksaanAwal;
 use App\Models\Pengguna;
 use App\Models\RekamanAudio;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class DokterRekamMedisTest extends TestCase
 {
+    use DatabaseTransactions;
+
     protected Pengguna $dokter;
     protected Pengguna $perawat;
     protected Pasien $pasien;
@@ -41,7 +44,7 @@ class DokterRekamMedisTest extends TestCase
             ]
         );
 
-        $this->pasien = Pasien::firstOrCreate(
+        $this->pasien = Pasien::withTrashed()->firstOrCreate(
             ['no_rekam_medis' => '00-12-999'],
             [
                 'nama_pasien' => 'Tes Pasien Dokter',
@@ -50,6 +53,9 @@ class DokterRekamMedisTest extends TestCase
                 'umur' => 36,
             ]
         );
+        if ($this->pasien->trashed()) {
+            $this->pasien->restore();
+        }
 
         $this->antrean = Antrean::firstOrCreate(
             ['id_pasien' => $this->pasien->id_pasien],
@@ -182,5 +188,36 @@ class DokterRekamMedisTest extends TestCase
         );
 
         $response->assertStatus(404);
+    }
+
+    /**
+     * 7. Dashboard antrean dokter mengurutkan nomor antrean dari terbesar ke terkecil (descending).
+     */
+    public function test_dashboard_dokter_mengurutkan_antrean_dari_terbesar_ke_terkecil(): void
+    {
+        $pasien2 = Pasien::create([
+            'no_rekam_medis' => 'TEST-' . uniqid(),
+            'nama_pasien' => 'Pasien Antrean Baru',
+            'umur' => 28,
+            'jenis_kelamin' => 'Perempuan',
+        ]);
+
+        $antreanLebihBesar = Antrean::create([
+            'id_pasien' => $pasien2->id_pasien,
+            'tanggal_kunjungan' => date('Y-m-d'),
+            'status' => 'Siap Periksa',
+        ]);
+
+        $response = $this->actingAs($this->dokter)->get('/dokter/dashboard');
+
+        $response->assertStatus(200);
+        $daftarAntrean = $response->viewData('daftarAntrean');
+        $this->assertNotEmpty($daftarAntrean);
+
+        // Pastikan nomor antrean terurut menurun (terbesar ke terkecil)
+        $ids = $daftarAntrean->pluck('id_antrean')->toArray();
+        $sortedIds = $ids;
+        rsort($sortedIds);
+        $this->assertEquals($sortedIds, $ids);
     }
 }

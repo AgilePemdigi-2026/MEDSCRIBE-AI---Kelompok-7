@@ -87,21 +87,18 @@
 
                 <div class="h-5 w-px bg-[#E4E7F4]"></div>
 
-                <!-- Tombol Logout -->
-                <form method="POST" action="{{ route('logout') }}" id="logoutForm" class="inline">
-                    @csrf
-                    <button
-                        type="submit"
-                        title="Keluar dari Sistem"
-                        class="px-3 py-1.5 rounded-[14px] text-[#69718B] hover:text-[#DC2626] bg-[#FFFFFF] hover:bg-[#FEF2F2] border border-[#E4E7F4] hover:border-[#FECACA] text-xs font-medium flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
-                        onclick="return confirm('Apakah Anda yakin ingin keluar dari sistem MedScribe AI?');"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                        <span class="hidden sm:inline">Keluar</span>
-                    </button>
-                </form>
+                <!-- Tombol Logout (Memicu Modal Konfirmasi) -->
+                <button
+                    type="button"
+                    onclick="openModalLogout()"
+                    title="Keluar dari Sistem"
+                    class="px-3 py-1.5 rounded-[14px] text-[#69718B] hover:text-[#DC2626] bg-[#FFFFFF] hover:bg-[#FEF2F2] border border-[#E4E7F4] hover:border-[#FECACA] text-xs font-medium flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span class="hidden sm:inline">Keluar</span>
+                </button>
             </div>
             @endauth
         </div>
@@ -165,6 +162,92 @@
             </div>
         </div>
     </footer>
+
+    @auth
+    <!-- Modal Konfirmasi Logout (Struktur Klasik MedScribe AI) -->
+    <div id="modalLogout" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="modalLogoutTitle">
+        <!-- Backdrop -->
+        <div class="fixed inset-0 bg-[#122056]/40 backdrop-blur-xs transition-opacity" onclick="closeModalLogout()"></div>
+
+        <!-- Centered Dialog Container -->
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div class="relative w-full max-w-md bg-[#FFFFFF] rounded-[20px] border border-[#E4E7F4] shadow-[0_14px_40px_rgba(18,32,86,0.12)] overflow-hidden">
+                
+                <!-- Modal Header -->
+                <div class="flex items-center justify-between px-6 py-4 border-b border-[#E4E7F4] bg-[#FFFFFF]">
+                    <h3 id="modalLogoutTitle" class="text-sm sm:text-base font-bold text-[#122056]">
+                        Konfirmasi
+                    </h3>
+                    <button
+                        type="button"
+                        onclick="closeModalLogout()"
+                        class="w-7 h-7 rounded-[10px] text-[#69718B] hover:text-[#122056] hover:bg-[#FAFAFD] flex items-center justify-center transition-colors cursor-pointer text-sm font-semibold"
+                        aria-label="Tutup"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                <!-- Modal Body -->
+                <div class="px-6 py-6 text-sm text-[#20294A] bg-[#FFFFFF] leading-relaxed">
+                    Apakah Anda yakin ingin keluar dari sistem MedScribe AI?
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="flex items-center justify-end gap-2.5 px-6 py-4 border-t border-[#E4E7F4] bg-[#FAFAFD]">
+                    <form method="POST" action="{{ route('logout') }}" id="logoutForm" class="inline m-0">
+                        @csrf
+                        <button
+                            type="submit"
+                            id="btnKonfirmasiLogout"
+                            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-[14px] bg-[#DC2626] hover:bg-[#B91C1C] active:bg-[#991B1B] text-[#FFFFFF] font-medium text-xs sm:text-sm transition-all cursor-pointer shadow-xs"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            <span>Keluar</span>
+                        </button>
+                    </form>
+                    <button
+                        type="button"
+                        onclick="closeModalLogout()"
+                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-[14px] bg-[#FFFFFF] hover:bg-[#FAFAFD] text-[#69718B] hover:text-[#122056] border border-[#E4E7F4] hover:border-[#CBD1EA] font-medium text-xs sm:text-sm transition-all cursor-pointer shadow-xs"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-[#69718B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        <span>Batal</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Kontrol Modal Logout -->
+    <script>
+        function openModalLogout() {
+            const modal = document.getElementById('modalLogout');
+            if (modal) {
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeModalLogout() {
+            const modal = document.getElementById('modalLogout');
+            if (modal) {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModalLogout();
+            }
+        });
+    </script>
+    @endauth
 
     @yield('scripts')
 </body>
