@@ -104,7 +104,7 @@
                         </span>
                         <span class="text-xs font-semibold text-[#122056]">Dokter</span>
                     </div>
-                    <span class="text-[11px] text-[#69718B] leading-tight">Wawancara klinis, AI SOAP & e-resep</span>
+                    <span class="text-[11px] text-[#69718B] leading-tight">Wawancara klinis & rekam medis pasien</span>
                 </label>
 
                 <!-- Opsi Perawat -->

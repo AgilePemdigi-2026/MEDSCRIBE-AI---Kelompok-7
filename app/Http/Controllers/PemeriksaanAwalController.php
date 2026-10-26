@@ -9,6 +9,7 @@ use App\Models\Kunjungan;
 use App\Models\Pasien;
 use App\Models\PemeriksaanAwal;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -384,10 +385,16 @@ class PemeriksaanAwalController extends Controller
      * Membatalkan / menghapus registrasi pasien secara aman (Soft Delete).
      * Mempertahankan integritas riwayat medis & rekam audit sesuai SOP.
      */
-    public function destroyPasien(Request $request, int $id): RedirectResponse
+    public function destroyPasien(Request $request, int $id): RedirectResponse|JsonResponse
     {
         $user = Auth::user();
-        if (!$user || $user->peran !== 'perawat') {
+        if (!$user || !$user->isPerawat()) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak. Hanya perawat yang berhak membatalkan registrasi pasien.',
+                ], 403);
+            }
             abort(403, 'Akses ditolak. Hanya perawat yang berhak membatalkan registrasi pasien.');
         }
 
@@ -401,6 +408,12 @@ class PemeriksaanAwalController extends Controller
             ->exists();
 
         if ($hasCompletedVisit) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Registrasi pasien tidak dapat dibatalkan karena riwayat pemeriksaan dokter telah selesai.',
+                ], 422);
+            }
             return back()->withErrors([
                 'error' => 'Registrasi pasien tidak dapat dibatalkan karena riwayat pemeriksaan dokter telah selesai.',
             ]);
@@ -434,12 +447,26 @@ class PemeriksaanAwalController extends Controller
 
             DB::commit();
 
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Registrasi pasien {$namaPasien} ({$noRekamMedis}) berhasil dibatalkan.",
+                ]);
+            }
+
             return redirect()
                 ->route('perawat.dashboard', ['tab' => 'pasien'])
                 ->with('status', "Registrasi pasien {$namaPasien} ({$noRekamMedis}) berhasil dibatalkan.");
 
         } catch (\Throwable $e) {
             DB::rollBack();
+
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal membatalkan registrasi pasien: ' . $e->getMessage(),
+                ], 500);
+            }
 
             return back()->withErrors([
                 'error' => 'Gagal membatalkan registrasi pasien: ' . $e->getMessage(),

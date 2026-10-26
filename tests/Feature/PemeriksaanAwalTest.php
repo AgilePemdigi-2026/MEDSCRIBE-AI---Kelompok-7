@@ -182,4 +182,141 @@ class PemeriksaanAwalTest extends TestCase
             'catatan',
         ]);
     }
+
+    /**
+     * RBAC Test 1: Perawat yang terautentikasi dapat membatalkan registrasi pasien yang memenuhi syarat.
+     */
+    public function test_perawat_dapat_membatalkan_registrasi_pasien_yang_memenuhi_syarat(): void
+    {
+        $pasien = Pasien::create([
+            'no_rekam_medis' => '20261026-901',
+            'nama_pasien'    => 'Pasien Uji Pembatalan',
+            'umur'           => 30,
+            'jenis_kelamin'  => 'Laki-laki',
+        ]);
+
+        $antrean = Antrean::create([
+            'id_pasien'         => $pasien->id_pasien,
+            'tanggal_kunjungan' => '2026-10-26',
+            'status'            => 'Siap Periksa',
+        ]);
+
+        $response = $this->actingAs($this->perawat)->delete('/perawat/pasien/' . $pasien->id_pasien, [
+            'alasan' => 'Pasien tidak hadir sesuai jadwal',
+        ]);
+
+        $response->assertRedirect('/perawat/dashboard?tab=pasien');
+        $response->assertSessionHas('status');
+
+        // Pastikan pasien di-soft-delete dan audit pembatalan tersimpan
+        $this->assertSoftDeleted('pasien', [
+            'id_pasien' => $pasien->id_pasien,
+            'cancelled_by' => $this->perawat->id_pengguna,
+            'cancellation_reason' => 'Pasien tidak hadir sesuai jadwal',
+        ]);
+
+        // Antrean diubah menjadi 'Dibatalkan'
+        $this->assertEquals('Dibatalkan', $antrean->fresh()->status);
+    }
+
+    /**
+     * RBAC Test 2: Perawat dapat membatalkan registrasi pasien via AJAX/JSON request.
+     */
+    public function test_perawat_dapat_membatalkan_pasien_via_json_request(): void
+    {
+        $pasien = Pasien::create([
+            'no_rekam_medis' => '20261026-902',
+            'nama_pasien'    => 'Pasien Uji JSON',
+            'umur'           => 25,
+            'jenis_kelamin'  => 'Perempuan',
+        ]);
+
+        $response = $this->actingAs($this->perawat)->deleteJson('/perawat/pasien/' . $pasien->id_pasien);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'success' => true,
+        ]);
+
+        $this->assertSoftDeleted('pasien', [
+            'id_pasien' => $pasien->id_pasien,
+        ]);
+    }
+
+    /**
+     * RBAC Test 3: Dokter tidak diizinkan membatalkan registrasi pasien (403 Forbidden).
+     */
+    public function test_dokter_tidak_dapat_membatalkan_registrasi_pasien(): void
+    {
+        $pasien = Pasien::create([
+            'no_rekam_medis' => '20261026-903',
+            'nama_pasien'    => 'Pasien Proteksi Dokter',
+            'umur'           => 45,
+            'jenis_kelamin'  => 'Laki-laki',
+        ]);
+
+        $response = $this->actingAs($this->dokter)->delete('/perawat/pasien/' . $pasien->id_pasien);
+
+        // Akses mutasi oleh peran lain harus menghasilkan 403 Forbidden
+        $response->assertStatus(403);
+
+        // Pasien tidak boleh terhapus
+        $this->assertDatabaseHas('pasien', [
+            'id_pasien'  => $pasien->id_pasien,
+            'deleted_at' => null,
+        ]);
+    }
+
+    /**
+     * RBAC Test 4: Tamu yang tidak terautentikasi ditolak dan diarahkan ke login.
+     */
+    public function test_tamu_tidak_terautentikasi_tidak_dapat_membatalkan_registrasi_pasien(): void
+    {
+        $pasien = Pasien::create([
+            'no_rekam_medis' => '20261026-904',
+            'nama_pasien'    => 'Pasien Proteksi Tamu',
+            'umur'           => 50,
+            'jenis_kelamin'  => 'Perempuan',
+        ]);
+
+        $response = $this->delete('/perawat/pasien/' . $pasien->id_pasien);
+
+        $response->assertRedirect('/login');
+
+        // Pasien tidak boleh terhapus
+        $this->assertDatabaseHas('pasien', [
+            'id_pasien'  => $pasien->id_pasien,
+            'deleted_at' => null,
+        ]);
+    }
+
+    /**
+     * Business Rule Test 5: Registrasi pasien tidak dapat dibatalkan jika riwayat pemeriksaan dokter telah selesai.
+     */
+    public function test_registrasi_pasien_tidak_dapat_dibatalkan_jika_pemeriksaan_selesai(): void
+    {
+        $pasien = Pasien::create([
+            'no_rekam_medis' => '20261026-905',
+            'nama_pasien'    => 'Pasien Sudah Diperiksa',
+            'umur'           => 60,
+            'jenis_kelamin'  => 'Laki-laki',
+        ]);
+
+        $kunjungan = Kunjungan::create([
+            'id_pasien' => $pasien->id_pasien,
+            'id_dokter' => $this->dokter->id_pengguna,
+            'tanggal'   => '2026-10-26',
+            'status'    => 'Selesai',
+        ]);
+
+        $response = $this->actingAs($this->perawat)->delete('/perawat/pasien/' . $pasien->id_pasien);
+
+        $response->assertSessionHasErrors(['error']);
+
+        // Data pasien tetap terjaga dan tidak di-soft-delete
+        $this->assertDatabaseHas('pasien', [
+            'id_pasien'  => $pasien->id_pasien,
+            'deleted_at' => null,
+        ]);
+    }
 }

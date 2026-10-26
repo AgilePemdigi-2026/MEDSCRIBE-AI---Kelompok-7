@@ -20,4 +20,9 @@ class Antrean extends Model
     {
         return $this->belongsTo(Pasien::class, 'id_pasien', 'id_pasien');
     }
+
+    public function kunjungan()
+    {
+        return $this->hasOne(Kunjungan::class, 'id_antrean', 'id_antrean');
+    }
 }

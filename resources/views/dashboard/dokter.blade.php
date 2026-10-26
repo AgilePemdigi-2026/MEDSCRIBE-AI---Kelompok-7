@@ -161,6 +161,11 @@
                                         <span class="w-1.5 h-1.5 rounded-full bg-[#10B981]"></span>
                                         Siap Periksa
                                     </span>
+                                @elseif ($antrean->status === 'Sedang Diperiksa' || $antrean->status === 'Draf SOAP Tersedia')
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#EEEEFD] text-[#5865DC] border border-[#CBD1EA]">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-[#5865DC] animate-pulse"></span>
+                                        {{ $antrean->status }}
+                                    </span>
                                 @elseif ($antrean->status === 'Menunggu TTV')
                                     <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]">
                                         <span class="w-1.5 h-1.5 rounded-full bg-[#F59E0B]"></span>
@@ -169,22 +174,21 @@
                                 @else
                                     <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FAFAFD] text-[#69718B] border border-[#CBD1EA]">
                                         <span class="w-1.5 h-1.5 rounded-full bg-[#69718B]"></span>
-                                        Selesai
+                                        {{ $antrean->status }}
                                     </span>
                                 @endif
                             </td>
                             <td class="py-4 px-5 text-right">
-                                @if ($antrean->status === 'Siap Periksa')
-                                    <button
-                                        type="button"
+                                @if (in_array($antrean->status, ['Siap Periksa', 'Sedang Diperiksa', 'Draf SOAP Tersedia', 'SOAP Terverifikasi']))
+                                    <a
+                                        href="{{ route('dokter.rekam-medis', $antrean->id_antrean) }}"
                                         class="inline-flex items-center gap-1.5 px-4 py-2 rounded-[14px] bg-[#5865DC] hover:bg-[#4854C9] active:bg-[#3D47B0] text-[#FFFFFF] font-medium text-xs transition-all cursor-pointer shadow-[0_2px_10px_rgba(88,101,220,0.24)] hover:shadow-[0_4px_16px_rgba(88,101,220,0.32)]"
-                                        onclick="alert('Fitur Pemeriksaan Klinis (SOAP AI) akan diaktifkan pada Sprint berikutnya.');"
                                     >
                                         <span>Buka Rekam Medis</span>
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                                         </svg>
-                                    </button>
+                                    </a>
                                 @elseif ($antrean->status === 'Menunggu TTV')
                                     <button
                                         type="button"
@@ -198,16 +202,16 @@
                                         <span>Menunggu TTV</span>
                                     </button>
                                 @else
-                                    <button
-                                        type="button"
+                                    <a
+                                        href="{{ route('dokter.rekam-medis', $antrean->id_antrean) }}"
                                         class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-[14px] bg-[#FFFFFF] hover:bg-[#FAFAFD] text-[#122056] border border-[#E4E7F4] hover:border-[#CBD1EA] font-medium text-xs transition-all cursor-pointer shadow-xs"
-                                        onclick="alert('Rekam medis pasien ini telah selesai dan terkunci.');"
+                                        title="Lihat berkas rekam medis yang telah selesai"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-[#5865DC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                                         </svg>
                                         <span>Lihat Berkas</span>
-                                    </button>
+                                    </a>
                                 @endif
                             </td>
                         </tr>
