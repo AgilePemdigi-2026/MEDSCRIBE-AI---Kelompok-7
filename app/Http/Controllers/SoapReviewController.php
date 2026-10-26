@@ -11,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Throwable;
 
 class SoapReviewController extends Controller
 {
@@ -26,16 +27,31 @@ class SoapReviewController extends Controller
         $sourceHash = hash('sha256', $transcript);
         $ttvSnapshot = $this->draftService->vitalsSnapshot($kunjungan->pemeriksaanAwal);
         $draf = $kunjungan->drafSoap;
+        $generationError = null;
+        $requiresTranscriptReview = $kunjungan->wawancara?->transcript_segments
+            && ! $kunjungan->wawancara?->transcript_reviewed_at;
 
         if (! $draf) {
-            $generated = $this->soapGenerationService->generate($kunjungan, $transcript);
-            $draf = DrafSoap::create(array_merge($generated, [
-                'id_kunjungan' => $kunjungan->id_kunjungan,
-                'id_pengguna' => $kunjungan->id_dokter,
-                'source_transcript_hash' => $sourceHash,
-                'source_ttv_snapshot' => $ttvSnapshot,
-                'needs_review' => false,
-            ]));
+            try {
+                if ($requiresTranscriptReview) {
+                    throw new \RuntimeException('Tinjau dan simpan koreksi transkrip serta label speaker sebelum membuat draf SOAP.');
+                }
+                $generated = $this->soapGenerationService->generate($kunjungan, $transcript);
+                $draf = DrafSoap::create(array_merge($generated, [
+                    'id_kunjungan' => $kunjungan->id_kunjungan,
+                    'id_pengguna' => $kunjungan->id_dokter,
+                    'source_transcript_hash' => $sourceHash,
+                    'source_ttv_snapshot' => $ttvSnapshot,
+                    'needs_review' => false,
+                ]));
+            } catch (Throwable $exception) {
+                report($exception);
+                $generationError = $exception->getMessage();
+                $draf = new DrafSoap([
+                    'subjective_text' => '', 'objective_text' => '', 'assessment_text' => '', 'plan_text' => '',
+                    'needs_review' => true, 'icd10_suggestions' => [], 'missing_information' => [], 'review_warnings' => [],
+                ]);
+            }
         } else {
             $needsReview = $draf->source_transcript_hash !== $sourceHash
                 || $draf->source_ttv_snapshot !== $ttvSnapshot;
@@ -49,6 +65,7 @@ class SoapReviewController extends Controller
             'draf' => $draf,
             'transcript' => $transcript,
             'icd10Options' => ['J02.9' => 'Faringitis akut, tidak spesifik (simulasi)', 'R07.0' => 'Nyeri tenggorokan (simulasi)'],
+            'generationError' => $generationError,
         ]);
     }
 
@@ -72,6 +89,33 @@ class SoapReviewController extends Controller
         });
 
         return back()->with('status', 'Perubahan draf SOAP berhasil disimpan.');
+    }
+
+    public function generate(Kunjungan $kunjungan): RedirectResponse
+    {
+        $kunjungan->load(['pemeriksaanAwal', 'wawancara']);
+        $transcript = $kunjungan->wawancara?->transkrip ?: MockSoapDraftService::TRANSCRIPT;
+
+        if ($kunjungan->wawancara?->transcript_segments && ! $kunjungan->wawancara?->transcript_reviewed_at) {
+            return back()->with('warning', 'Tinjau dan simpan transkrip serta label speaker sebelum membuat draf SOAP.');
+        }
+
+        try {
+            $generated = $this->soapGenerationService->generate($kunjungan, $transcript);
+            DrafSoap::updateOrCreate(
+                ['id_kunjungan' => $kunjungan->id_kunjungan],
+                array_merge($generated, [
+                    'id_pengguna' => $kunjungan->id_dokter,
+                    ...$this->sourceMetadata($kunjungan),
+                ])
+            );
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return back()->with('warning', $exception->getMessage());
+        }
+
+        return back()->with('status', 'Draf SOAP berhasil dibuat ulang menggunakan Nemotron melalui OpenRouter.');
     }
 
     public function verify(Request $request, Kunjungan $kunjungan): RedirectResponse

@@ -18,6 +18,9 @@ class DrafSoap extends Model
         'assessment_text',
         'plan_text',
         'kode_icd10',
+        'icd10_suggestions',
+        'missing_information',
+        'review_warnings',
         'source_transcript_hash',
         'source_ttv_snapshot',
         'needs_review',
@@ -26,6 +29,9 @@ class DrafSoap extends Model
 
     protected $casts = [
         'needs_review' => 'boolean',
+        'icd10_suggestions' => 'array',
+        'missing_information' => 'array',
+        'review_warnings' => 'array',
     ];
 
     public function kunjungan()

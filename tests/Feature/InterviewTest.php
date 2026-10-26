@@ -8,6 +8,9 @@ use App\Models\Pasien;
 use App\Models\PemeriksaanAwal;
 use App\Models\Pengguna;
 use App\Models\Wawancara;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
+use App\Jobs\ProcessInterviewAudio;
 use Tests\TestCase;
 
 class InterviewTest extends TestCase
@@ -90,5 +93,88 @@ class InterviewTest extends TestCase
             'needs_review' => 0,
         ]);
         $this->assertStringContainsString('Nyeri saat menelan', DrafSoap::where('id_kunjungan', $this->kunjungan->id_kunjungan)->first()->subjective_text);
+    }
+
+    public function test_upload_audio_mengantrikan_pemrosesan_lokal(): void
+    {
+        Queue::fake();
+        $this->actingAs($this->dokter)->post(route('dokter.interview.start', $this->kunjungan));
+
+        $response = $this->actingAs($this->dokter)->postJson(
+            route('dokter.interview.audio.upload', $this->kunjungan),
+            ['audio' => UploadedFile::fake()->create('interview.webm', 100, 'audio/webm')]
+        );
+
+        $response->assertStatus(202)->assertJson(['status' => 'queued']);
+        Queue::assertPushed(ProcessInterviewAudio::class);
+        $this->assertDatabaseHas('rekaman_audio', ['id_kunjungan' => $this->kunjungan->id_kunjungan, 'status' => 'queued']);
+    }
+
+    public function test_koreksi_transkrip_menyimpan_role_speaker_dan_teks(): void
+    {
+        $interview = Wawancara::create([
+            'id_kunjungan' => $this->kunjungan->id_kunjungan,
+            'status' => 'Wawancara Berlangsung',
+            'processing_status' => 'completed',
+            'transcript_segments' => [],
+        ]);
+
+        $response = $this->actingAs($this->dokter)->putJson(route('dokter.interview.transcript.update', $this->kunjungan), [
+            'segments' => [[
+                'id' => 'segment_0', 'startTime' => 0, 'endTime' => 2.5,
+                'text' => 'Saya merasa pusing sejak kemarin.', 'speakerId' => 'speaker_0',
+                'speakerRole' => 'patient', 'reviewStatus' => 'confirmed',
+            ]],
+            'speakerMap' => ['speaker_0' => 'patient'],
+        ]);
+
+        $response->assertOk()->assertJson(['status' => 'saved']);
+        $this->assertSame('Saya merasa pusing sejak kemarin.', $interview->fresh()->transkrip);
+        $this->assertSame('patient', $interview->fresh()->speaker_map['speaker_0']);
+    }
+
+    public function test_upload_audio_mengklaim_kunjungan_yang_belum_ditugaskan(): void
+    {
+        Queue::fake();
+        $this->kunjungan->update(['id_dokter' => null]);
+        Wawancara::create([
+            'id_kunjungan' => $this->kunjungan->id_kunjungan,
+            'status' => 'Wawancara Berlangsung',
+        ]);
+
+        $response = $this->actingAs($this->dokter)->postJson(
+            route('dokter.interview.audio.upload', $this->kunjungan),
+            ['audio' => UploadedFile::fake()->create('interview.webm', 100, 'audio/webm')]
+        );
+
+        $response->assertStatus(202);
+        $this->assertDatabaseHas('kunjungan', [
+            'id_kunjungan' => $this->kunjungan->id_kunjungan,
+            'id_dokter' => $this->dokter->id_pengguna,
+        ]);
+    }
+
+    public function test_dokter_tidak_dapat_upload_audio_ke_kunjungan_dokter_lain(): void
+    {
+        Queue::fake();
+        $otherDoctor = Pengguna::create([
+            'email' => 'other-doctor-'.uniqid().'@medscribe.id',
+            'nama_lengkap' => 'Dokter Lain',
+            'role' => 'dokter',
+            'password' => bcrypt('password123'),
+        ]);
+        $this->kunjungan->update(['id_dokter' => $otherDoctor->id_pengguna]);
+        Wawancara::create([
+            'id_kunjungan' => $this->kunjungan->id_kunjungan,
+            'status' => 'Wawancara Berlangsung',
+        ]);
+
+        $response = $this->actingAs($this->dokter)->postJson(
+            route('dokter.interview.audio.upload', $this->kunjungan),
+            ['audio' => UploadedFile::fake()->create('interview.webm', 100, 'audio/webm')]
+        );
+
+        $response->assertForbidden();
+        Queue::assertNothingPushed();
     }
 }

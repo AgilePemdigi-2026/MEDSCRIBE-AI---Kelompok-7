@@ -1,58 +1,76 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# MedScribe AI
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+MedScribe adalah aplikasi Laravel untuk alur pemeriksaan awal, wawancara medis, transkripsi lokal, review speaker, dan draf SOAP yang tetap harus diverifikasi dokter.
 
-## About Laravel
+## Arsitektur audio dan privasi
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Browser merekam dengan `MediaRecorder` dan mengunggah file multipart ke Laravel lokal.
+- Laravel menjalankan job queue `ProcessInterviewAudio` yang memanggil `services/audio_processor/process_audio.py`.
+- `faster-whisper` dan `pyannote.audio` berjalan lokal. Audio tidak dikirim ke OpenRouter atau layanan inference cloud.
+- Segmen disimpan dengan timestamp, `speakerId`, `speakerRole`, dan status review. Identitas dokter/pasien harus dipetakan manual.
+- File audio disimpan sementara pada disk lokal dan kebijakan retensi dikonfigurasi dengan `MEDSCRIBE_AUDIO_RETENTION_HOURS`. Penghapusan terjadwal perlu dijalankan sesuai kebijakan deployment.
+- Jangan gunakan data pasien sungguhan pada pengembangan awal. Transkrip dan konteks klinis yang dikirim ke OpenRouter meninggalkan komputer lokal dan memerlukan persetujuan/kebijakan yang sesuai.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Prasyarat
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP 8.3+, Composer, Node.js/npm, dan SQLite atau database Laravel yang dikonfigurasi.
+- Python 3.10+ dan FFmpeg pada `PATH`.
+- Ruang disk dan RAM yang cukup untuk model Whisper/pyannote. CPU didukung tetapi lebih lambat; gunakan `MEDSCRIBE_WHISPER_DEVICE=cuda` dan compute type yang sesuai jika GPU NVIDIA tersedia.
 
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Instalasi
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer install
+copy .env.example .env
+php artisan key:generate
+php artisan migrate
+npm install
+npm run build
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r services/audio_processor/requirements.txt
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Linux/macOS memakai `.venv/bin/activate`. FFmpeg harus tersedia melalui `ffmpeg -version`.
 
-## Contributing
+Model faster-whisper diunduh dan dicache oleh library saat pertama kali dipakai. Pilih ukuran melalui `MEDSCRIBE_WHISPER_MODEL` (`tiny`, `base`, `small`, atau ukuran lain yang didukung). Pyannote `speaker-diarization-3.1` memerlukan akun Hugging Face, token `HF_TOKEN`, dan persetujuan syarat model. Token hanya dipakai untuk akses model lokal, bukan pengiriman audio inference.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Menjalankan
 
-## Code of Conduct
+Jalankan worker Laravel terpisah dari server web:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+php artisan serve --host=127.0.0.1
+php artisan queue:work --queue=default
+npm run dev
+```
 
-## Security Vulnerabilities
+Jaga server tetap bind ke `127.0.0.1` bila deployment hanya untuk komputer lokal. Status transkripsi dipantau frontend melalui polling.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Jalankan `php artisan medscribe:purge-audio` melalui Task Scheduler/cron sesuai kebijakan retensi untuk menghapus file audio kedaluwarsa.
 
-## License
+## Generasi SOAP OpenRouter
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Untuk mengaktifkan generasi berbasis teks:
+
+```dotenv
+MEDSCRIBE_SOAP_DRIVER=openrouter
+OPENROUTER_API_KEY=...
+OPENROUTER_MODEL=nvidia/nemotron-3-ultra-550b-a55b:free
+```
+
+Key hanya boleh berada di environment backend dan tidak boleh masuk bundle frontend atau Git. Aplikasi tidak berpindah diam-diam ke model berbayar. Jika key, model gratis, jaringan, atau kuota tidak tersedia, error ditampilkan dan draf sebelumnya tidak ditimpa. Audio tidak pernah dikirim ke OpenRouter.
+
+## Test dan troubleshooting
+
+```bash
+php artisan test
+npm run build
+```
+
+- `faster-whisper belum terpasang`: aktifkan virtualenv dan install requirements.
+- `FFmpeg` error: pastikan executable `ffmpeg` ada di `PATH`.
+- `HF_TOKEN diperlukan`: buat token Hugging Face, set environment variable, dan terima model card pyannote.
+- Job tetap `queued`: jalankan `php artisan queue:work`.
+- Audio kosong/rusak: rekam ulang dengan mikrofon yang tersedia dan format browser yang didukung.
+- Rate limit OpenRouter: tunggu kuota pulih atau tinjau SOAP manual; aplikasi tidak memilih model berbayar.

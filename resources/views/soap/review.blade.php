@@ -9,8 +9,16 @@
             <a href="{{ route('dokter.dashboard') }}" class="text-xs font-semibold text-sky-600 hover:text-sky-700">← Kembali ke antrean</a>
             <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 mt-2">Review &amp; Edit Draf SOAP</h1>
             <p class="text-sm text-slate-500 mt-1">Tinjau kembali data pasien dan draf simulasi sebelum verifikasi dokter.</p>
-            @if ($kunjungan->wawancara)<a href="{{ route('dokter.interview.show', $kunjungan) }}" class="inline-block text-xs font-semibold text-sky-600 hover:underline mt-2">← Kembali ke wawancara</a>@endif
+    @if ($kunjungan->wawancara)<a href="{{ route('dokter.interview.show', $kunjungan) }}" class="inline-block text-xs font-semibold text-sky-600 hover:underline mt-2">← Kembali ke wawancara</a>@endif
+            @if ($generationError)<div class="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{{ $generationError }}</div>@endif
+            @if (session('warning'))<div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{{ session('warning') }}</div>@endif
         </div>
+        @if (config('medscribe.soap_driver') === 'openrouter')
+            <form method="POST" action="{{ route('dokter.soap.generate', $kunjungan) }}" onsubmit="return confirm('Buat ulang draf SOAP dengan Nemotron? Draf SOAP saat ini akan diganti.')">
+                @csrf
+                <button type="submit" class="rounded-xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-xs font-bold text-violet-700 hover:bg-violet-100">Buat ulang dengan Nemotron</button>
+            </form>
+        @endif
         @php($isVerified = $kunjungan->finalisasi?->FINAL === true)
         <span class="inline-flex items-center gap-2 self-start px-3 py-2 rounded-xl text-xs font-bold border {{ $isVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200' }}">
             <span class="w-2 h-2 rounded-full {{ $isVerified ? 'bg-emerald-500' : 'bg-amber-500' }}"></span>
@@ -55,7 +63,8 @@
                 <p class="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2.5 mt-3">TTV adalah data input aplikasi, bukan hasil verifikasi klinis otomatis.</p>
             </section>
 
-            <details class="bg-white rounded-2xl border border-slate-200 shadow-xs group" open><summary class="cursor-pointer list-none p-5 flex justify-between items-center"><span><span class="text-[11px] font-bold tracking-widest text-violet-600 uppercase">Transkrip simulasi</span><strong class="block text-lg text-slate-900 mt-1">Wawancara selesai</strong></span><span class="text-slate-400 group-open:rotate-180 transition">⌄</span></summary><div class="border-t border-slate-100 p-5 text-sm leading-6 text-slate-600">{{ $transcript }}</div></details>
+            <details class="bg-white rounded-2xl border border-slate-200 shadow-xs group" open><summary class="cursor-pointer list-none p-5 flex justify-between items-center"><span><span class="text-[11px] font-bold tracking-widest text-violet-600 uppercase">Transkrip ditinjau</span><strong class="block text-lg text-slate-900 mt-1">Sumber lokal</strong></span><span class="text-slate-400 group-open:rotate-180 transition">⌄</span></summary><div class="border-t border-slate-100 p-5 text-sm leading-6 text-slate-600 whitespace-pre-line">{{ $transcript }}</div></details>
+            @if ($draf->missing_information)<section class="bg-amber-50 rounded-2xl border border-amber-200 p-5"><h2 class="font-bold text-amber-900">Informasi belum tersedia</h2><ul class="list-disc list-inside text-sm text-amber-800 mt-2">@foreach ($draf->missing_information as $item)<li>{{ is_array($item) ? json_encode($item, JSON_UNESCAPED_UNICODE) : $item }}</li>@endforeach</ul></section>@endif
         </aside>
 
         <form id="soap-form" method="POST" action="{{ route('dokter.soap.save', $kunjungan) }}" class="xl:col-span-8 space-y-5">
@@ -65,7 +74,8 @@
             </div></section>
             <section class="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 sm:p-6"><div class="flex items-center justify-between"><div><h2 class="font-bold text-slate-900">Rekomendasi kode</h2><p class="text-xs text-slate-500 mt-1">Data simulasi, belum divalidasi terhadap sumber kode resmi.</p></div><span class="text-[11px] rounded-lg bg-violet-50 text-violet-700 border border-violet-100 px-2 py-1">ICD-10</span></div><select name="kode_icd10" class="mt-4 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-sky-500"><option value="">Belum ada rekomendasi</option>@foreach ($icd10Options as $code => $description)<option value="{{ $code }}" @selected(old('kode_icd10', $draf->kode_icd10) === $code)>{{ $code }} — {{ $description }}</option>@endforeach</select><div class="mt-4 rounded-xl border border-dashed border-slate-200 p-3 text-xs text-slate-400">LOINC: Belum tersedia. Tidak ada hasil pemeriksaan yang ditambahkan.</div></section>
             <div class="flex flex-col sm:flex-row sm:justify-end gap-3"><button type="submit" class="rounded-xl bg-sky-600 hover:bg-sky-700 px-5 py-3 text-sm font-bold text-white shadow-md shadow-sky-600/20">Simpan Perubahan</button><button type="button" id="verify-button" class="rounded-xl bg-emerald-600 hover:bg-emerald-700 px-5 py-3 text-sm font-bold text-white">Verifikasi Draf</button></div>
-            <p class="text-right text-xs text-slate-400">Verifikasi adalah tindakan dokter di aplikasi, bukan validasi klinis otomatis.</p>
+             <p class="text-right text-xs text-slate-400">Verifikasi adalah tindakan dokter di aplikasi, bukan validasi klinis otomatis.</p>
+             <p class="text-right text-xs text-amber-700">Jika OpenRouter digunakan, hanya transkrip dan TTV minimum yang dikirim ke layanan eksternal. Audio tetap lokal.</p>
         </form>
     </div>
 </div>

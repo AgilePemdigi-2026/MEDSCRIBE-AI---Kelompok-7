@@ -42,6 +42,14 @@ class InterviewController extends Controller
 
     public function start(Kunjungan $kunjungan): RedirectResponse
     {
+        $userId = (int) auth()->user()->id_pengguna;
+        if ($kunjungan->id_dokter !== null && (int) $kunjungan->id_dokter !== $userId) {
+            abort(403, 'Kunjungan ini ditugaskan kepada dokter lain.');
+        }
+        if ($kunjungan->id_dokter === null) {
+            $kunjungan->update(['id_dokter' => $userId]);
+        }
+
         $wawancara = Wawancara::firstOrCreate(
             ['id_kunjungan' => $kunjungan->id_kunjungan],
             ['status' => 'Belum Dimulai', 'jawaban' => []]
@@ -80,14 +88,16 @@ class InterviewController extends Controller
         }
 
         $answers = $this->validateAnswers($request);
-        $transcript = $this->transcriptionService->transcribe($answers);
+        $transcript = $wawancara->transcript_segments
+            ? collect($wawancara->transcript_segments)->pluck('text')->implode("\n")
+            : $this->transcriptionService->transcribe($answers);
 
         DB::transaction(function () use ($wawancara, $answers, $transcript) {
             $wawancara->update([
                 'status' => 'Wawancara Selesai',
                 'jawaban' => $answers,
                 'transkrip' => $transcript,
-                'sumber_transkrip' => 'manual_simulation',
+                'sumber_transkrip' => $wawancara->transcript_segments ? ($wawancara->sumber_transkrip ?: 'local_reviewed') : 'manual_simulation',
                 'waktu_selesai' => now(),
             ]);
         });
