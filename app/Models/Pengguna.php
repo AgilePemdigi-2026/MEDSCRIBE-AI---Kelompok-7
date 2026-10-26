@@ -70,6 +70,14 @@ class Pengguna extends Authenticatable
     }
 
     /**
+     * Accessor alias untuk properti peran agar kompatibel dengan penamaan peran/role dalam bahasa Indonesia.
+     */
+    public function getPeranAttribute(): ?string
+    {
+        return $this->role;
+    }
+
+    /**
      * Relasi ke kunjungan pasien di mana pengguna bertindak sebagai dokter.
      */
     public function kunjunganDokter(): HasMany

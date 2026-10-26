@@ -29,7 +29,20 @@ class EnsureUserRole
         $allowedRoles = array_map('strtolower', $roles);
 
         if (!in_array($userRole, $allowedRoles, true)) {
-            // Jika pengguna mencoba mengakses dashboard peran lain, arahkan ke dashboard perannya sendiri
+            // Jika request berupa AJAX/JSON, tolak dengan response 403
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak. Anda tidak memiliki wewenang untuk mengakses sumber daya ini.',
+                ], 403);
+            }
+
+            // Untuk aksi mutasi data (POST, PUT, PATCH, DELETE) oleh peran lain, tolak dengan status 403
+            if (!$request->isMethodSafe()) {
+                abort(403, 'Akses ditolak. Anda tidak memiliki wewenang untuk melakukan tindakan ini.');
+            }
+
+            // Jika pengguna mencoba mengakses dashboard peran lain (navigasi GET), arahkan ke dashboard perannya sendiri
             if ($userRole === 'dokter') {
                 return redirect()->route('dokter.dashboard')->with('warning', 'Akses ditolak: Anda tidak memiliki akses ke halaman Nurse Station/Perawat.');
             }
