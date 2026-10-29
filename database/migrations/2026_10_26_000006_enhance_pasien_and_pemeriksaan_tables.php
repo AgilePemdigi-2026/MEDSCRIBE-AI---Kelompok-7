@@ -16,12 +16,12 @@ return new class extends Migration
     {
         Schema::table('pasien', function (Blueprint $table) {
             // Kolom umur (integer tahun) — alternatif tanggal_lahir untuk input cepat
-            if (!Schema::hasColumn('pasien', 'umur')) {
+            if (! Schema::hasColumn('pasien', 'umur')) {
                 $table->unsignedTinyInteger('umur')->nullable()->after('nama_pasien');
             }
 
             // Timestamps untuk registrasi dan tracking
-            if (!Schema::hasColumn('pasien', 'created_at')) {
+            if (! Schema::hasColumn('pasien', 'created_at')) {
                 $table->timestamps();
             }
         });
@@ -32,22 +32,30 @@ return new class extends Migration
             'updated_at' => now(),
         ]);
 
-        // Tambahkan unique index secara terpisah agar safe jika sudah ada
-        if (!$this->hasIndex('pasien', 'pasien_no_rekam_medis_unique')) {
+        // Existing development data may contain duplicate placeholders. Do not rewrite or delete them.
+        $hasDuplicateMedicalRecords = DB::table('pasien')
+            ->whereNotNull('no_rekam_medis')
+            ->select('no_rekam_medis')
+            ->groupBy('no_rekam_medis')
+            ->havingRaw('COUNT(*) > 1')
+            ->exists();
+
+        // Add uniqueness only when legacy data already satisfies the constraint.
+        if (! $hasDuplicateMedicalRecords && ! $this->hasIndex('pasien', 'pasien_no_rekam_medis_unique')) {
             Schema::table('pasien', function (Blueprint $table) {
                 $table->unique('no_rekam_medis', 'pasien_no_rekam_medis_unique');
             });
         }
 
         // Indeks pencarian pada nama_pasien
-        if (!$this->hasIndex('pasien', 'pasien_nama_pasien_index')) {
+        if (! $this->hasIndex('pasien', 'pasien_nama_pasien_index')) {
             Schema::table('pasien', function (Blueprint $table) {
                 $table->index('nama_pasien', 'pasien_nama_pasien_index');
             });
         }
 
         // Indeks filter tanggal pada created_at
-        if (!$this->hasIndex('pasien', 'pasien_created_at_index')) {
+        if (! $this->hasIndex('pasien', 'pasien_created_at_index')) {
             Schema::table('pasien', function (Blueprint $table) {
                 $table->index('created_at', 'pasien_created_at_index');
             });
@@ -55,20 +63,20 @@ return new class extends Migration
 
         Schema::table('pemeriksaan_awal', function (Blueprint $table) {
             // Saturasi Oksigen (SpO2) — standar TTV klinis
-            if (!Schema::hasColumn('pemeriksaan_awal', 'saturasi_oksigen')) {
+            if (! Schema::hasColumn('pemeriksaan_awal', 'saturasi_oksigen')) {
                 $table->integer('saturasi_oksigen')->nullable()->after('suhu_tubuh');
             }
 
             // Tekanan darah terpisah (sistolik/diastolik) untuk pencarian dan validasi lebih baik
-            if (!Schema::hasColumn('pemeriksaan_awal', 'tekanan_darah_sistolik')) {
+            if (! Schema::hasColumn('pemeriksaan_awal', 'tekanan_darah_sistolik')) {
                 $table->unsignedSmallInteger('tekanan_darah_sistolik')->nullable()->after('tekanan_darah');
             }
-            if (!Schema::hasColumn('pemeriksaan_awal', 'tekanan_darah_diastolik')) {
+            if (! Schema::hasColumn('pemeriksaan_awal', 'tekanan_darah_diastolik')) {
                 $table->unsignedSmallInteger('tekanan_darah_diastolik')->nullable()->after('tekanan_darah_sistolik');
             }
 
             // Timestamps untuk tracking waktu pemeriksaan
-            if (!Schema::hasColumn('pemeriksaan_awal', 'created_at')) {
+            if (! Schema::hasColumn('pemeriksaan_awal', 'created_at')) {
                 $table->timestamps();
             }
         });
@@ -80,7 +88,7 @@ return new class extends Migration
         ]);
 
         // Indeks pada waktu pemeriksaan
-        if (!$this->hasIndex('pemeriksaan_awal', 'pemeriksaan_awal_created_at_index')) {
+        if (! $this->hasIndex('pemeriksaan_awal', 'pemeriksaan_awal_created_at_index')) {
             Schema::table('pemeriksaan_awal', function (Blueprint $table) {
                 $table->index('created_at', 'pemeriksaan_awal_created_at_index');
             });
@@ -113,7 +121,7 @@ return new class extends Migration
                 $columns[] = 'created_at';
                 $columns[] = 'updated_at';
             }
-            if (!empty($columns)) {
+            if (! empty($columns)) {
                 $table->dropColumn($columns);
             }
         });
@@ -145,7 +153,7 @@ return new class extends Migration
                 $columns[] = 'created_at';
                 $columns[] = 'updated_at';
             }
-            if (!empty($columns)) {
+            if (! empty($columns)) {
                 $table->dropColumn($columns);
             }
         });
@@ -158,11 +166,12 @@ return new class extends Migration
     {
         try {
             return Schema::hasIndex($table, $indexName);
-        } catch (\Throwable) {
+        } catch (Throwable) {
             try {
                 $indexes = DB::select("SHOW INDEXES FROM `{$table}` WHERE Key_name = ?", [$indexName]);
-                return !empty($indexes);
-            } catch (\Throwable) {
+
+                return ! empty($indexes);
+            } catch (Throwable) {
                 return false;
             }
         }

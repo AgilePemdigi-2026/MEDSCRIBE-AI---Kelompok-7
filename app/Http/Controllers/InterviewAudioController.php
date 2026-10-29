@@ -3,13 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\ProcessInterviewAudio;
+use App\Models\DrafSoap;
 use App\Models\Kunjungan;
 use App\Models\RekamanAudio;
 use App\Models\Wawancara;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Symfony\Component\Process\Process;
 
 class InterviewAudioController extends Controller
 {
@@ -23,6 +25,9 @@ class InterviewAudioController extends Controller
             'audio' => ['required', 'file', 'max:'.config('medscribe.audio.max_size_kb'), 'mimetypes:audio/webm,video/webm,audio/ogg,audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/x-m4a'],
         ]);
         $file = $request->file('audio');
+        abort_if(($file->getSize() ?? 0) <= 0, 422, 'Berkas audio kosong.');
+        $duration = $this->probeDuration($file->getRealPath());
+        abort_if($duration !== null && $duration > config('medscribe.audio.max_duration_seconds'), 422, 'Durasi audio melebihi batas konfigurasi.');
         $disk = config('medscribe.audio.disk');
         $path = $file->store('interviews/'.$kunjungan->id_kunjungan, $disk);
 
@@ -32,6 +37,7 @@ class InterviewAudioController extends Controller
             'path_audio' => $path,
             'mime_type' => $file->getMimeType(),
             'file_size' => $file->getSize(),
+            'duration_seconds' => $duration,
             'status' => 'queued',
         ]);
         $interview->update(['processing_status' => 'queued', 'processing_error' => null]);
@@ -54,6 +60,7 @@ class InterviewAudioController extends Controller
                 'id' => $recording->id_rekaman,
                 'status' => $recording->status,
                 'size' => $recording->file_size,
+                'durationSeconds' => $recording->duration_seconds,
                 'mimeType' => $recording->mime_type,
                 'error' => $recording->error_message,
             ] : null,
@@ -99,6 +106,8 @@ class InterviewAudioController extends Controller
             'transcript_reviewed_at' => now(),
             'sumber_transkrip' => 'local_reviewed',
         ]);
+        DrafSoap::where('id_kunjungan', $kunjungan->id_kunjungan)
+            ->update(['needs_review' => true]);
 
         return response()->json(['status' => 'saved']);
     }
@@ -116,5 +125,56 @@ class InterviewAudioController extends Controller
         }
 
         abort_unless((int) $kunjungan->id_dokter === $userId, 403, 'Kunjungan ini ditugaskan kepada dokter lain.');
+    }
+
+    private function probeDuration(?string $path): ?int
+    {
+        if (! $path || ! is_file($path)) {
+            Log::warning('Audio duration probe could not access temporary upload.', ['path' => $path]);
+            abort(422, 'Berkas audio sementara tidak dapat diakses untuk validasi durasi.');
+        }
+
+        $probe = config('medscribe.audio.ffprobe_path', 'ffprobe');
+        if ((str_contains($probe, '/') || str_contains($probe, '\\') || str_ends_with(strtolower($probe), '.exe')) && ! is_file($probe)) {
+            Log::warning('Configured ffprobe executable does not exist.', ['probe' => $probe]);
+            abort(503, 'ffprobe tidak dapat dijalankan untuk validasi durasi audio.');
+        }
+
+        try {
+            $process = new Process([
+                $probe, '-v', 'error', '-show_entries', 'format=duration',
+                '-of', 'default=noprint_wrappers=1:nokey=1', $path,
+            ]);
+            $process->setTimeout(15);
+            $process->run();
+        } catch (\Throwable $exception) {
+            Log::warning('ffprobe could not be started for audio duration validation.', [
+                'path' => $path,
+                'probe' => $probe,
+                'exception' => $exception->getMessage(),
+            ]);
+            abort(503, 'ffprobe tidak dapat dijalankan untuk validasi durasi audio.');
+        }
+
+        $duration = trim($process->getOutput());
+
+        if (! $process->isSuccessful()) {
+            Log::warning('ffprobe failed to read uploaded audio.', [
+                'path' => $path,
+                'exit_code' => $process->getExitCode(),
+                'stderr' => trim($process->getErrorOutput()),
+            ]);
+            abort(422, 'ffprobe gagal membaca berkas audio. Pastikan format audio valid.');
+        }
+
+        if (! is_numeric($duration)) {
+            Log::warning('ffprobe returned an invalid audio duration.', [
+                'path' => $path,
+                'stdout' => $duration,
+            ]);
+            abort(422, 'ffprobe mengembalikan durasi audio yang tidak valid.');
+        }
+
+        return (int) ceil((float) $duration);
     }
 }

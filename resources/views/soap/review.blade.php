@@ -3,7 +3,18 @@
 @section('title', 'Review & Edit Draf SOAP - MedScribe AI')
 
 @section('content')
+@php
+    $soapStep = $kunjungan->status === 'SOAP Terverifikasi' ? 5 : 4;
+@endphp
 <div class="space-y-5">
+    <div class="bg-[#FFFFFF] p-4 sm:px-6 rounded-[24px] border border-[#E4E7F4] shadow-[0_4px_18px_rgba(18,32,86,0.05)] flex flex-wrap items-center gap-1 sm:gap-2 text-[10px] sm:text-[11px] font-semibold">
+        @foreach ([1 => 'TTV & Rekam Medis', 2 => 'Wawancara Audio', 3 => 'Review Transkrip', 4 => 'Review SOAP', 5 => 'Penyelesaian'] as $number => $label)
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border {{ $number < $soapStep ? 'bg-[#ECFDF5] text-[#059669] border-[#A7F3D0]' : ($number === $soapStep ? 'bg-[#5865DC] text-white border-[#5865DC] shadow-sm' : 'bg-[#FAFAFD] text-[#69718B] border-[#E4E7F4]') }}">
+                <span class="w-1.5 h-1.5 rounded-full {{ $number < $soapStep ? 'bg-[#10B981]' : ($number === $soapStep ? 'bg-white' : 'bg-[#CBD1EA]') }}"></span>{{ $number }}. {{ $label }}
+            </span>
+            @if ($number < 5)<span class="text-[#CBD1EA]">›</span>@endif
+        @endforeach
+    </div>
     <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div>
             <a href="{{ route('dokter.dashboard') }}" class="text-xs font-semibold text-sky-600 hover:text-sky-700">← Kembali ke antrean</a>

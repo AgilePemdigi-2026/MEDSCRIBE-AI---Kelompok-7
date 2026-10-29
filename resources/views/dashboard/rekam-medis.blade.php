@@ -3,6 +3,25 @@
 @section('title', 'Rekam Medis Pasien - ' . $pasien->nama_pasien . ' - MedScribe AI')
 
 @section('content')
+@php
+    $workflowStep = match ($workflowState) {
+        'ttv' => 1,
+        'completed' => 5,
+        'soap', 'soap-ready' => 4,
+        'transcript' => 3,
+        default => 2,
+    };
+    $workflowAction = match ($workflowState) {
+        'ttv' => 'TTV Belum Lengkap',
+        'interview' => 'Lanjut ke Wawancara',
+        'recording' => 'Lanjutkan Wawancara',
+        'processing' => 'Lihat Status Transkripsi',
+        'transcript' => 'Review Transkrip',
+        'soap-ready', 'soap' => 'Lanjut ke SOAP',
+        'completed' => 'Lihat Ringkasan Kunjungan',
+        default => 'Lanjut ke Wawancara',
+    };
+@endphp
 <div class="space-y-6">
 
     <!-- Top Breadcrumb & Workflow Stepper -->
@@ -24,18 +43,29 @@
 
         <!-- Clinical Workflow Stages -->
         <div class="flex items-center gap-1 sm:gap-2 text-[11px] font-semibold">
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EEEEFD] text-[#5865DC] border border-[#CBD1EA]">
-                <span class="w-1.5 h-1.5 rounded-full bg-[#5865DC]"></span>
-                1. TTV & Anamnesis
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full {{ 1 < $workflowStep ? 'bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]' : (1 === $workflowStep ? 'bg-[#5865DC] text-white border border-[#5865DC]' : 'bg-[#FAFAFD] text-[#69718B] border border-[#E4E7F4]') }}">
+                <span class="w-1.5 h-1.5 rounded-full {{ 1 < $workflowStep ? 'bg-[#10B981]' : (1 === $workflowStep ? 'bg-white' : 'bg-[#CBD1EA]') }}"></span>
+                1. TTV &amp; Rekam Medis
             </span>
             <span class="text-[#CBD1EA]">›</span>
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full {{ $rekamanAudio ? 'bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]' : 'bg-[#5865DC] text-[#FFFFFF] shadow-xs' }}">
-                <span class="w-1.5 h-1.5 rounded-full {{ $rekamanAudio ? 'bg-[#10B981]' : 'bg-[#FFFFFF]' }}"></span>
-                2. Rekaman Klinis
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full {{ 2 < $workflowStep ? 'bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]' : (2 === $workflowStep ? 'bg-[#5865DC] text-white border border-[#5865DC]' : 'bg-[#FAFAFD] text-[#69718B] border border-[#E4E7F4]') }}">
+                <span class="w-1.5 h-1.5 rounded-full {{ 2 < $workflowStep ? 'bg-[#10B981]' : (2 === $workflowStep ? 'bg-white' : 'bg-[#CBD1EA]') }}"></span>
+                2. Wawancara Audio
             </span>
             <span class="text-[#CBD1EA]">›</span>
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FAFAFD] text-[#69718B] border border-[#E4E7F4]">
-                3. Selesai
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full {{ 3 < $workflowStep ? 'bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]' : (3 === $workflowStep ? 'bg-[#5865DC] text-white border border-[#5865DC]' : 'bg-[#FAFAFD] text-[#69718B] border border-[#E4E7F4]') }}">
+                <span class="w-1.5 h-1.5 rounded-full {{ 3 < $workflowStep ? 'bg-[#10B981]' : (3 === $workflowStep ? 'bg-white' : 'bg-[#CBD1EA]') }}"></span>
+                3. Review Transkrip
+            </span>
+            <span class="text-[#CBD1EA]">›</span>
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full {{ 4 < $workflowStep ? 'bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]' : (4 === $workflowStep ? 'bg-[#5865DC] text-white border border-[#5865DC]' : 'bg-[#FAFAFD] text-[#69718B] border border-[#E4E7F4]') }}">
+                <span class="w-1.5 h-1.5 rounded-full {{ 4 < $workflowStep ? 'bg-[#10B981]' : (4 === $workflowStep ? 'bg-white' : 'bg-[#CBD1EA]') }}"></span>
+                4. Review SOAP
+            </span>
+            <span class="text-[#CBD1EA]">›</span>
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full {{ 5 < $workflowStep ? 'bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]' : (5 === $workflowStep ? 'bg-[#5865DC] text-white border border-[#5865DC]' : 'bg-[#FAFAFD] text-[#69718B] border border-[#E4E7F4]') }}">
+                <span class="w-1.5 h-1.5 rounded-full {{ 5 < $workflowStep ? 'bg-[#10B981]' : (5 === $workflowStep ? 'bg-white' : 'bg-[#CBD1EA]') }}"></span>
+                5. Penyelesaian
             </span>
         </div>
     </div>
@@ -211,6 +241,7 @@
         @endif
     </div>
 
+    @if (in_array($workflowState, ['ttv', 'interview', 'recording'], true))
     <!-- SECTION 2: REKAM WAWANCARA KLINIS (AUDIO INTERVIEW) -->
     <div class="bg-[#FFFFFF] rounded-[24px] border border-[#E4E7F4] shadow-[0_4px_18px_rgba(18,32,86,0.05)] p-5 sm:p-7 space-y-6">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E4E7F4]">
@@ -232,6 +263,13 @@
                     <span class="w-2 h-2 rounded-full bg-[#5865DC]"></span>
                     Mikrofon Siap
                 </span>
+                @if ($workflowState === 'ttv')
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]">TTV belum tersedia</span>
+                @elseif ($workflowState === 'completed')
+                    <a href="{{ route('dokter.soap.edit', $kunjungan) }}" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0] hover:bg-[#D1FAE5]">{{ $workflowAction }}</a>
+                @else
+                    <a href="{{ in_array($workflowState, ['soap-ready', 'soap'], true) ? route('dokter.soap.edit', $kunjungan) : route('dokter.interview.show', $kunjungan) }}" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold {{ in_array($workflowState, ['processing', 'transcript'], true) ? 'bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]' : 'bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]' }} hover:bg-[#D1FAE5]">{{ $workflowAction }}</a>
+                @endif
             </div>
         </div>
 
@@ -340,11 +378,22 @@
             </div>
         </div>
     </div>
+    @else
+        <div class="bg-[#FFFFFF] rounded-[24px] border border-[#E4E7F4] shadow-[0_4px_18px_rgba(18,32,86,0.05)] p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <p class="text-[11px] font-bold tracking-widest text-[#5865DC] uppercase">Status Kunjungan</p>
+                <h2 class="text-lg font-bold text-[#122056] mt-1">{{ $workflowAction }}</h2>
+                <p class="text-sm text-[#69718B] mt-1">Gunakan tombol di atas untuk melanjutkan dari tahap yang tersimpan.</p>
+            </div>
+            <a href="{{ in_array($workflowState, ['soap-ready', 'soap', 'completed'], true) ? route('dokter.soap.edit', $kunjungan) : route('dokter.interview.show', $kunjungan) }}" class="inline-flex justify-center rounded-[14px] bg-[#5865DC] hover:bg-[#4854C9] px-5 py-3 text-xs font-bold text-white">{{ $workflowAction }}</a>
+        </div>
+    @endif
 
 </div>
 @endsection
 
 @section('scripts')
+@if (in_array($workflowState, ['ttv', 'interview', 'recording'], true))
 <script>
     // Konfigurasi Endpoint & State Global
     const uploadAudioUrl = "{{ route('dokter.rekam-medis.upload-audio', $antrean->id_antrean) }}";
@@ -558,8 +607,8 @@
 
             if (result.success) {
                 statusBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]';
-                statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-[#10B981]"></span> Rekaman Tersimpan';
-                timerSub.textContent = 'Audio wawancara klinis berhasil disimpan di server.';
+                statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-[#10B981]"></span> Transkripsi Diantrikan';
+                timerSub.textContent = 'Audio disimpan lokal dan diantrikan ke service transkripsi.';
 
                 showFeedback('success', result.message || 'Rekaman wawancara klinis berhasil disimpan di server.');
             } else {
@@ -718,4 +767,5 @@
         }
     });
 </script>
+@endif
 @endsection

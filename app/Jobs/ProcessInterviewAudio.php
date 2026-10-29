@@ -7,11 +7,13 @@ use App\Models\Wawancara;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Symfony\Component\Process\Process;
 use Throwable;
 
 class ProcessInterviewAudio implements ShouldQueue
@@ -19,6 +21,7 @@ class ProcessInterviewAudio implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 7200;
+
     public int $tries = 2;
 
     public function __construct(public int $recordingId) {}
@@ -31,29 +34,38 @@ class ProcessInterviewAudio implements ShouldQueue
         $interview->update(['processing_status' => 'transcribing', 'processing_error' => null]);
 
         $input = Storage::disk(config('medscribe.audio.disk'))->path($recording->path_audio);
-        $output = tempnam(sys_get_temp_dir(), 'medscribe-result-').'.json';
-        $command = [
-            config('medscribe.audio.python'),
-            config('medscribe.audio.worker'),
-            '--input', $input,
-            '--output', $output,
-            '--model-size', config('medscribe.audio.model_size'),
-            '--device', config('medscribe.audio.device'),
-            '--compute-type', config('medscribe.audio.compute_type'),
-        ];
-        if (! config('medscribe.audio.diarization_enabled')) {
-            $command[] = '--no-diarization';
+        if (! is_file($input) || filesize($input) === 0) {
+            throw new \RuntimeException('Berkas audio tidak tersedia atau kosong.');
         }
 
-        $process = new Process($command, base_path(), null, null, config('medscribe.audio.max_duration_seconds') * 3 + 600);
-        $process->run();
-
-        if (! $process->isSuccessful()) {
-            throw new \RuntimeException(trim($process->getErrorOutput()) ?: 'Worker audio gagal dijalankan.');
+        $request = Http::acceptJson()
+            ->timeout(config('medscribe.stt.timeout'))
+            ->connectTimeout(15);
+        if (filled(config('medscribe.stt.token'))) {
+            $request = $request->withHeaders(['X-STT-API-Key' => config('medscribe.stt.token')]);
         }
 
-        $result = json_decode((string) file_get_contents($output), true, 512, JSON_THROW_ON_ERROR);
-        @unlink($output);
+        $stream = fopen($input, 'rb');
+        if ($stream === false) {
+            throw new \RuntimeException('Berkas audio tidak dapat dibaca.');
+        }
+
+        try {
+            $response = $request->attach('audio', $stream, basename($input))
+                ->post(rtrim(config('medscribe.stt.url'), '/').'/transcriptions', [
+                    'language' => config('medscribe.stt.language'),
+                ]);
+            $response->throw();
+            $result = $response->json();
+        } catch (ConnectionException) {
+            throw new \RuntimeException('Service transkripsi lokal tidak tersedia. Jalankan service STT dan pastikan URL-nya benar.');
+        } catch (RequestException $exception) {
+            $message = $exception->response?->json('message') ?: 'Service transkripsi lokal gagal memproses audio.';
+            throw new \RuntimeException(mb_substr($message, 0, 500));
+        } finally {
+            fclose($stream);
+        }
+
         $segments = $result['segments'] ?? [];
         if (! is_array($segments)) {
             throw new \RuntimeException('Worker mengembalikan segmen transkrip yang tidak valid.');
@@ -63,11 +75,9 @@ class ProcessInterviewAudio implements ShouldQueue
             'transkrip' => collect($segments)->pluck('text')->implode("\n"),
             'transcript_segments' => $segments,
             'speaker_map' => collect($segments)->pluck('speakerId')->filter()->unique()->mapWithKeys(fn ($id) => [$id => 'unknown'])->all(),
-            'sumber_transkrip' => 'local_faster_whisper_pyannote',
+            'sumber_transkrip' => 'local_whisper_transformers',
             'processing_status' => 'completed',
             'processing_error' => $result['diarizationError'] ?? null,
-            'status' => 'Wawancara Selesai',
-            'waktu_selesai' => now(),
         ]);
         $recording->update(['status' => 'completed', 'processed_at' => now(), 'waktu_selesai' => now()]);
     }

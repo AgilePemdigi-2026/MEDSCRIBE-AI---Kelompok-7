@@ -3,9 +3,9 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DokterController;
-use App\Http\Controllers\PemeriksaanAwalController;
-use App\Http\Controllers\InterviewController;
 use App\Http\Controllers\InterviewAudioController;
+use App\Http\Controllers\InterviewController;
+use App\Http\Controllers\PemeriksaanAwalController;
 use App\Http\Controllers\SoapReviewController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -23,6 +23,7 @@ Route::get('/', function () {
     if (Auth::check()) {
         return redirect()->route('dashboard');
     }
+
     return redirect()->route('login');
 });
 
@@ -47,7 +48,6 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
         Route::get('/dokter/dashboard', [DashboardController::class, 'dokterDashboard'])->name('dokter.dashboard');
         Route::get('/dokter/kunjungan/{kunjungan}/wawancara', [InterviewController::class, 'show'])->name('dokter.interview.show');
         Route::post('/dokter/kunjungan/{kunjungan}/wawancara/mulai', [InterviewController::class, 'start'])->name('dokter.interview.start');
-        Route::put('/dokter/kunjungan/{kunjungan}/wawancara/catatan', [InterviewController::class, 'save'])->name('dokter.interview.save');
         Route::post('/dokter/kunjungan/{kunjungan}/wawancara/selesai', [InterviewController::class, 'finish'])->name('dokter.interview.finish');
         Route::post('/dokter/kunjungan/{kunjungan}/wawancara/audio', [InterviewAudioController::class, 'upload'])->name('dokter.interview.audio.upload');
         Route::get('/dokter/kunjungan/{kunjungan}/wawancara/audio/status', [InterviewAudioController::class, 'status'])->name('dokter.interview.audio.status');

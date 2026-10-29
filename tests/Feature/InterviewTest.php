@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ProcessInterviewAudio;
 use App\Models\DrafSoap;
 use App\Models\Kunjungan;
 use App\Models\Pasien;
@@ -10,7 +11,6 @@ use App\Models\Pengguna;
 use App\Models\Wawancara;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
-use App\Jobs\ProcessInterviewAudio;
 use Tests\TestCase;
 
 class InterviewTest extends TestCase
@@ -19,9 +19,17 @@ class InterviewTest extends TestCase
 
     private Kunjungan $kunjungan;
 
+    private string $ffprobeStubPath;
+
     protected function setUp(): void
     {
         parent::setUp();
+
+        $probeDirectory = sys_get_temp_dir().DIRECTORY_SEPARATOR.'medscribe-ffprobe-'.uniqid();
+        mkdir($probeDirectory);
+        $this->ffprobeStubPath = $probeDirectory.DIRECTORY_SEPARATOR.'ffprobe.bat';
+        file_put_contents($this->ffprobeStubPath, "@echo 1.0\r\n");
+        config(['medscribe.audio.ffprobe_path' => $this->ffprobeStubPath]);
 
         $this->dokter = Pengguna::firstOrCreate(
             ['email' => 'interview-test@medscribe.id'],
@@ -48,28 +56,62 @@ class InterviewTest extends TestCase
         ]);
     }
 
-    public function test_dokter_dapat_memulai_dan_menyelesaikan_wawancara_simulasi(): void
+    protected function tearDown(): void
+    {
+        if (isset($this->ffprobeStubPath) && is_file($this->ffprobeStubPath)) {
+            $directory = dirname($this->ffprobeStubPath);
+            unlink($this->ffprobeStubPath);
+            @rmdir($directory);
+        }
+
+        parent::tearDown();
+    }
+
+    public function test_dokter_dapat_menyelesaikan_wawancara_setelah_transkrip_ditinjau(): void
     {
         $this->actingAs($this->dokter)
             ->post(route('dokter.interview.start', $this->kunjungan))
             ->assertRedirect();
 
-        $answers = ['keluhan_utama' => 'Sakit tenggorokan sejak tiga hari'];
+        $interview = Wawancara::where('id_kunjungan', $this->kunjungan->id_kunjungan)->firstOrFail();
+        $interview->update([
+            'transkrip' => 'Sakit tenggorokan sejak tiga hari',
+            'transcript_segments' => [[
+                'id' => 'segment_0', 'startTime' => 0, 'endTime' => 2,
+                'text' => 'Sakit tenggorokan sejak tiga hari', 'speakerId' => null,
+                'speakerRole' => 'patient', 'reviewStatus' => 'confirmed',
+            ]],
+            'transcript_reviewed_at' => now(),
+            'sumber_transkrip' => 'local_reviewed',
+        ]);
         $response = $this->actingAs($this->dokter)->post(
-            route('dokter.interview.finish', $this->kunjungan),
-            ['answers' => $answers]
+            route('dokter.interview.finish', $this->kunjungan)
         );
 
         $response->assertRedirect(route('dokter.soap.edit', $this->kunjungan));
         $this->assertDatabaseHas('wawancara', [
             'id_kunjungan' => $this->kunjungan->id_kunjungan,
             'status' => 'Wawancara Selesai',
-            'sumber_transkrip' => 'manual_simulation',
+            'sumber_transkrip' => 'local_reviewed',
         ]);
         $this->assertStringContainsString(
             'Sakit tenggorokan sejak tiga hari',
             Wawancara::where('id_kunjungan', $this->kunjungan->id_kunjungan)->first()->transkrip
         );
+    }
+
+    public function test_halaman_wawancara_berpusat_pada_audio_dan_tidak_menampilkan_input_manual(): void
+    {
+        $this->actingAs($this->dokter)
+            ->post(route('dokter.interview.start', $this->kunjungan));
+
+        $response = $this->actingAs($this->dokter)
+            ->get(route('dokter.interview.show', $this->kunjungan));
+
+        $response->assertOk()
+            ->assertDontSee('Catatan manual')
+            ->assertDontSee('Panduan wawancara')
+            ->assertDontSee('Simpan Catatan');
     }
 
     public function test_review_soap_menggunakan_transkrip_sesi_wawancara_dan_ttv(): void
@@ -79,7 +121,8 @@ class InterviewTest extends TestCase
             'status' => 'Wawancara Selesai',
             'jawaban' => ['keluhan_utama' => 'Nyeri saat menelan'],
             'transkrip' => 'Keluhan utama: Nyeri saat menelan',
-            'sumber_transkrip' => 'manual_simulation',
+            'sumber_transkrip' => 'local_reviewed',
+            'transcript_reviewed_at' => now(),
             'waktu_mulai' => now(),
             'waktu_selesai' => now(),
         ]);
@@ -110,6 +153,22 @@ class InterviewTest extends TestCase
         $this->assertDatabaseHas('rekaman_audio', ['id_kunjungan' => $this->kunjungan->id_kunjungan, 'status' => 'queued']);
     }
 
+    public function test_upload_audio_gagal_tertutup_jika_ffprobe_tidak_tersedia(): void
+    {
+        Queue::fake();
+        config(['medscribe.audio.ffprobe_path' => 'ffprobe-yang-tidak-ada.exe']);
+        $this->actingAs($this->dokter)->post(route('dokter.interview.start', $this->kunjungan));
+
+        $response = $this->actingAs($this->dokter)->postJson(
+            route('dokter.interview.audio.upload', $this->kunjungan),
+            ['audio' => UploadedFile::fake()->create('interview.webm', 100, 'audio/webm')]
+        );
+
+        $response->assertStatus(503)
+            ->assertJsonFragment(['message' => 'ffprobe tidak dapat dijalankan untuk validasi durasi audio.']);
+        Queue::assertNothingPushed();
+    }
+
     public function test_koreksi_transkrip_menyimpan_role_speaker_dan_teks(): void
     {
         $interview = Wawancara::create([
@@ -131,6 +190,39 @@ class InterviewTest extends TestCase
         $response->assertOk()->assertJson(['status' => 'saved']);
         $this->assertSame('Saya merasa pusing sejak kemarin.', $interview->fresh()->transkrip);
         $this->assertSame('patient', $interview->fresh()->speaker_map['speaker_0']);
+    }
+
+    public function test_perubahan_transkrip_menandai_draf_soap_perlu_ditinjau(): void
+    {
+        $interview = Wawancara::create([
+            'id_kunjungan' => $this->kunjungan->id_kunjungan,
+            'status' => 'Wawancara Berlangsung',
+            'processing_status' => 'completed',
+            'transcript_segments' => [],
+            'transkrip' => 'Keluhan awal',
+            'transcript_reviewed_at' => now(),
+        ]);
+        $draft = DrafSoap::create([
+            'id_kunjungan' => $this->kunjungan->id_kunjungan,
+            'id_pengguna' => $this->dokter->id_pengguna,
+            'subjective_text' => 'Keluhan awal',
+            'objective_text' => 'TTV tersedia',
+            'assessment_text' => 'Perlu tinjau',
+            'plan_text' => 'Konfirmasi',
+            'needs_review' => false,
+            'source_transcript_hash' => hash('sha256', 'Keluhan awal'),
+        ]);
+
+        $this->actingAs($this->dokter)->putJson(route('dokter.interview.transcript.update', $this->kunjungan), [
+            'segments' => [[
+                'id' => 'segment_0', 'startTime' => 0, 'endTime' => 1,
+                'text' => 'Keluhan berubah', 'speakerId' => null,
+                'speakerRole' => 'patient', 'reviewStatus' => 'edited',
+            ]],
+            'speakerMap' => [],
+        ])->assertOk();
+
+        $this->assertTrue($draft->fresh()->needs_review);
     }
 
     public function test_upload_audio_mengklaim_kunjungan_yang_belum_ditugaskan(): void
@@ -176,5 +268,77 @@ class InterviewTest extends TestCase
 
         $response->assertForbidden();
         Queue::assertNothingPushed();
+    }
+
+    public function test_transcript_completed_menampilkan_review_tanpa_konsol_rekaman(): void
+    {
+        Wawancara::create([
+            'id_kunjungan' => $this->kunjungan->id_kunjungan,
+            'status' => 'Wawancara Berlangsung',
+            'processing_status' => 'completed',
+            'transkrip' => 'Pasien merasa pusing.',
+            'transcript_segments' => [[
+                'id' => 'segment_0', 'startTime' => 0, 'endTime' => 2,
+                'text' => 'Pasien merasa pusing.', 'speakerId' => null,
+                'speakerRole' => 'unknown', 'reviewStatus' => 'ambiguous',
+            ]],
+        ]);
+
+        $response = $this->actingAs($this->dokter)->get(route('dokter.interview.show', $this->kunjungan));
+
+        $response->assertOk()
+            ->assertSee('Review Transkrip Wawancara')
+            ->assertSee('Simpan Review Transkrip')
+            ->assertDontSee('id="recording-console"');
+    }
+
+    public function test_audio_sedang_diproses_tidak_menawarkan_rekaman_baru(): void
+    {
+        Wawancara::create([
+            'id_kunjungan' => $this->kunjungan->id_kunjungan,
+            'status' => 'Wawancara Berlangsung',
+            'processing_status' => 'transcribing',
+        ]);
+
+        $response = $this->actingAs($this->dokter)->get(route('dokter.interview.show', $this->kunjungan));
+
+        $response->assertOk()
+            ->assertSee('Transkripsi sedang diproses')
+            ->assertDontSee('Mulai Rekaman')
+            ->assertDontSee('id="recording-console"');
+    }
+
+    public function test_dokter_lain_tidak_dapat_membaca_halaman_soap(): void
+    {
+        $otherDoctor = Pengguna::create([
+            'email' => 'soap-other-'.uniqid().'@medscribe.id',
+            'nama_lengkap' => 'Dokter SOAP Lain',
+            'role' => 'dokter',
+            'password' => bcrypt('password123'),
+        ]);
+        $this->kunjungan->update(['id_dokter' => $otherDoctor->id_pengguna]);
+
+        $this->actingAs($this->dokter)
+            ->get(route('dokter.soap.edit', $this->kunjungan))
+            ->assertForbidden();
+    }
+
+    public function test_soap_tidak_dapat_dibuat_sebelum_transkrip_direview(): void
+    {
+        Wawancara::create([
+            'id_kunjungan' => $this->kunjungan->id_kunjungan,
+            'status' => 'Wawancara Berlangsung',
+            'transkrip' => 'Transkrip belum ditinjau.',
+            'transcript_segments' => [[
+                'id' => 'segment_0', 'startTime' => 0, 'endTime' => 1,
+                'text' => 'Transkrip belum ditinjau.', 'speakerId' => null,
+                'speakerRole' => 'unknown', 'reviewStatus' => 'ambiguous',
+            ]],
+        ]);
+
+        $this->actingAs($this->dokter)
+            ->post(route('dokter.soap.generate', $this->kunjungan))
+            ->assertRedirect()
+            ->assertSessionHas('warning');
     }
 }

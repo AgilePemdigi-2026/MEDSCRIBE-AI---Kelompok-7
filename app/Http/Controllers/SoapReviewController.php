@@ -22,16 +22,22 @@ class SoapReviewController extends Controller
 
     public function edit(Kunjungan $kunjungan): View
     {
+        $this->authorizeVisit($kunjungan);
         $kunjungan->load(['pasien', 'dokter', 'pemeriksaanAwal', 'drafSoap', 'finalisasi', 'wawancara']);
-        $transcript = $kunjungan->wawancara?->transkrip ?: MockSoapDraftService::TRANSCRIPT;
+        $transcript = $kunjungan->wawancara?->transkrip ?: '';
         $sourceHash = hash('sha256', $transcript);
         $ttvSnapshot = $this->draftService->vitalsSnapshot($kunjungan->pemeriksaanAwal);
         $draf = $kunjungan->drafSoap;
         $generationError = null;
-        $requiresTranscriptReview = $kunjungan->wawancara?->transcript_segments
-            && ! $kunjungan->wawancara?->transcript_reviewed_at;
+        $requiresTranscriptReview = filled($transcript) && ! $kunjungan->wawancara?->transcript_reviewed_at;
 
-        if (! $draf) {
+        if (! $draf && ! filled($transcript)) {
+            $generationError = 'Transkrip wawancara yang sudah ditinjau belum tersedia. Draf SOAP belum dibuat.';
+            $draf = new DrafSoap([
+                'subjective_text' => '', 'objective_text' => '', 'assessment_text' => '', 'plan_text' => '',
+                'needs_review' => true, 'icd10_suggestions' => [], 'missing_information' => ['Transkrip wawancara'], 'review_warnings' => [],
+            ]);
+        } elseif (! $draf) {
             try {
                 if ($requiresTranscriptReview) {
                     throw new \RuntimeException('Tinjau dan simpan koreksi transkrip serta label speaker sebelum membuat draf SOAP.');
@@ -71,6 +77,10 @@ class SoapReviewController extends Controller
 
     public function save(Request $request, Kunjungan $kunjungan): RedirectResponse
     {
+        $this->authorizeVisit($kunjungan);
+        if (! $this->transcriptIsReviewed($kunjungan)) {
+            return back()->with('warning', 'Tinjau dan simpan transkrip sebelum menyimpan SOAP.');
+        }
         $validated = $this->validateDraft($request);
 
         DB::transaction(function () use ($validated, $kunjungan) {
@@ -93,10 +103,15 @@ class SoapReviewController extends Controller
 
     public function generate(Kunjungan $kunjungan): RedirectResponse
     {
+        $this->authorizeVisit($kunjungan);
         $kunjungan->load(['pemeriksaanAwal', 'wawancara']);
-        $transcript = $kunjungan->wawancara?->transkrip ?: MockSoapDraftService::TRANSCRIPT;
+        $transcript = $kunjungan->wawancara?->transkrip ?: '';
 
-        if ($kunjungan->wawancara?->transcript_segments && ! $kunjungan->wawancara?->transcript_reviewed_at) {
+        if (! filled($transcript)) {
+            return back()->with('warning', 'Draf SOAP tidak dapat dibuat tanpa transkrip wawancara yang sudah ditinjau.');
+        }
+
+        if (! $kunjungan->wawancara?->transcript_reviewed_at) {
             return back()->with('warning', 'Tinjau dan simpan transkrip serta label speaker sebelum membuat draf SOAP.');
         }
 
@@ -120,6 +135,10 @@ class SoapReviewController extends Controller
 
     public function verify(Request $request, Kunjungan $kunjungan): RedirectResponse
     {
+        $this->authorizeVisit($kunjungan);
+        if (! $this->transcriptIsReviewed($kunjungan)) {
+            return back()->with('warning', 'Tinjau dan simpan transkrip sebelum memverifikasi SOAP.');
+        }
         $validated = $this->validateDraft($request);
 
         DB::transaction(function () use ($validated, $kunjungan, $request) {
@@ -163,13 +182,37 @@ class SoapReviewController extends Controller
 
     private function sourceMetadata(Kunjungan $kunjungan): array
     {
-        $transcript = $kunjungan->wawancara?->transkrip ?: MockSoapDraftService::TRANSCRIPT;
+        $transcript = $kunjungan->wawancara?->transkrip ?: '';
 
         return [
             'source_transcript_hash' => hash('sha256', $transcript),
             'source_ttv_snapshot' => $this->draftService->vitalsSnapshot($kunjungan->pemeriksaanAwal),
             'needs_review' => false,
-            'source_type' => $kunjungan->wawancara?->transkrip ? 'manual_simulation' : 'legacy_simulation',
+            'source_type' => 'local_reviewed_transcript',
         ];
+    }
+
+    private function transcriptIsReviewed(Kunjungan $kunjungan): bool
+    {
+        $wawancara = $kunjungan->relationLoaded('wawancara')
+            ? $kunjungan->wawancara
+            : $kunjungan->wawancara()->first();
+
+        return $wawancara !== null
+            && filled($wawancara->transkrip)
+            && $wawancara->transcript_reviewed_at !== null;
+    }
+
+    private function authorizeVisit(Kunjungan $kunjungan): void
+    {
+        $userId = (int) auth()->user()->id_pengguna;
+
+        if ($kunjungan->id_dokter === null) {
+            $kunjungan->update(['id_dokter' => $userId]);
+
+            return;
+        }
+
+        abort_unless((int) $kunjungan->id_dokter === $userId, 403, 'Kunjungan ini ditugaskan kepada dokter lain.');
     }
 }
