@@ -219,6 +219,8 @@
                             No. RM: <strong class="text-[#5865DC] font-semibold">{{ $pasienTerpilih->pasien->no_rekam_medis ?? '00-12-345' }}</strong>
                             <span class="mx-2 text-[#CBD1EA]">|</span>
                             Kunjungan: <strong class="text-[#122056] font-semibold font-mono">{{ $idKunjunganCode }}</strong>
+                            <span class="mx-2 text-[#CBD1EA]">|</span>
+                            RS: <strong class="text-[#122056] font-semibold">{{ $pasienTerpilih->hospital->hospital_name ?? ($user->hospital->hospital_name ?? 'RS Universitas Airlangga') }}</strong>
                         </div>
                     </div>
 
@@ -254,6 +256,18 @@
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                            <!-- Konteks Rumah Sakit Pemeriksaan -->
+                            <div class="sm:col-span-2 p-3 rounded-[14px] bg-[#EEEEFD]/60 border border-[#CBD1EA] flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-[#5865DC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                    </svg>
+                                    <span class="text-xs font-semibold text-[#122056]">Rumah Sakit:</span>
+                                    <span class="text-xs font-medium text-[#5865DC]">{{ $pasienTerpilih->hospital->hospital_name ?? ($user->hospital->hospital_name ?? 'RS Universitas Airlangga') }}</span>
+                                </div>
+                                <span class="text-[11px] px-2 py-0.5 rounded-full bg-[#FFFFFF] border border-[#CBD1EA] text-[#69718B] font-medium">Terkunci ke Faskes Pasien</span>
+                            </div>
 
                             <!-- 1. Tekanan Darah -->
                             <div>
@@ -803,6 +817,36 @@
                                 <option value="Perempuan" {{ old('jenis_kelamin') === 'Perempuan' ? 'selected' : '' }}>Perempuan</option>
                             </select>
                             @error('jenis_kelamin')
+                                <p class="text-[11px] text-[#DC2626] mt-1">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Rumah Sakit Pendaftaran (Phase 6 A) -->
+                        <div class="sm:col-span-2">
+                            <label for="modal_hospital_id" class="block text-xs font-semibold text-[#122056] mb-1">
+                                Rumah Sakit <span class="text-[#DC2626]">*</span>
+                            </label>
+                            @if ($user->hospital_id)
+                                <div class="relative">
+                                    <input type="hidden" name="hospital_id" value="{{ $user->hospital_id }}">
+                                    <input type="text" readonly
+                                           value="{{ $user->hospital->hospital_name ?? 'Rumah Sakit Terdaftar' }}"
+                                           class="w-full px-3.5 py-2.5 bg-[#EEEEFD]/50 border border-[#CBD1EA] rounded-[14px] text-sm font-semibold text-[#122056] cursor-not-allowed">
+                                    <span class="absolute inset-y-0 right-3.5 flex items-center text-xs text-[#5865DC] font-medium pointer-events-none">Faskes Anda</span>
+                                </div>
+                                <p class="text-[11px] text-[#69718B] mt-1">Sesuai penugasan perawat, pasien didaftarkan pada unit rumah sakit Anda.</p>
+                            @else
+                                <select id="modal_hospital_id" name="hospital_id" required
+                                        class="w-full px-3.5 py-2.5 bg-[#FAFAFD] border border-[#E4E7F4] rounded-[14px] text-sm font-medium text-[#20294A] focus:bg-[#FFFFFF] focus:outline-none focus:border-[#5865DC] focus:ring-3 focus:ring-[#5865DC]/15 transition-all cursor-pointer">
+                                    <option value="" disabled selected>Pilih Rumah Sakit (Kota Surabaya)...</option>
+                                    @foreach ($activeHospitals ?? [] as $h)
+                                        <option value="{{ $h->id }}" {{ (string) old('hospital_id') === (string) $h->id ? 'selected' : '' }}>
+                                            {{ $h->hospital_name }} ({{ $h->hospital_type ?? 'RSU' }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                            @endif
+                            @error('hospital_id')
                                 <p class="text-[11px] text-[#DC2626] mt-1">{{ $message }}</p>
                             @enderror
                         </div>

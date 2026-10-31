@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DokterController;
+use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\PemeriksaanAwalController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -11,8 +12,8 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | Web Routes - MedScribe AI
 |--------------------------------------------------------------------------
-| Sistem Autentikasi dan Otorisasi Peran Tenaga Medis (Dokter & Perawat)
-| Sesuai Dokumen SRS MedScribe AI dan PDM Relasional.
+| Sistem Autentikasi Tenaga Medis, Verifikasi OTP Email, Pemulihan Password,
+| OAuth Google, dan Isolasi Data Multi-Tenancy Berbasis Rumah Sakit.
 */
 
 // Halaman Utama: Redirect cerdas sesuai status sesi pengguna
@@ -25,10 +26,31 @@ Route::get('/', function () {
 
 // Rute Tamu / Guest (Hanya untuk pengguna yang BELUM terautentikasi)
 Route::middleware('guest')->group(function () {
+    // 1. Login & Registrasi
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->name('login.submit');
     Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.submit');
+
+    // 2. Verifikasi OTP Email Registrasi (Phase 2)
+    Route::get('/verify-email-otp', [AuthController::class, 'showVerifyEmailOtpForm'])->name('verification.otp.show');
+    Route::post('/verify-email-otp', [AuthController::class, 'verifyEmailOtp'])->name('verification.otp.verify');
+    Route::post('/verify-email-otp/resend', [AuthController::class, 'resendEmailOtp'])->name('verification.otp.resend');
+
+    // 3. Google OAuth 2.0 (Phase 2 D)
+    Route::get('/auth/google', [AuthController::class, 'redirectToGoogle'])->name('auth.google');
+    Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');
+    Route::get('/register/google-complete', [AuthController::class, 'showGoogleCompleteForm'])->name('register.google.complete');
+    Route::post('/register/google-complete', [AuthController::class, 'storeGoogleComplete'])->name('register.google.complete.submit');
+
+    // 4. Lupa Password & Reset Password via OTP (Phase 3)
+    Route::get('/forgot-password', [ForgotPasswordController::class, 'showForgotPasswordForm'])->name('password.request');
+    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetOtp'])->name('password.email');
+    Route::get('/forgot-password/verify-otp', [ForgotPasswordController::class, 'showVerifyOtpForm'])->name('password.otp.show');
+    Route::post('/forgot-password/verify-otp', [ForgotPasswordController::class, 'verifyResetOtp'])->name('password.otp.verify');
+    Route::post('/forgot-password/resend-otp', [ForgotPasswordController::class, 'resendResetOtp'])->name('password.otp.resend');
+    Route::get('/reset-password', [ForgotPasswordController::class, 'showResetForm'])->name('password.reset');
+    Route::post('/reset-password', [ForgotPasswordController::class, 'resetPassword'])->name('password.update');
 });
 
 // Rute Terlindungi (Wajib sesi login aktif & proteksi browser cache-history)

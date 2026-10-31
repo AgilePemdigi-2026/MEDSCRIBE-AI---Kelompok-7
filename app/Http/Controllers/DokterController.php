@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Antrean;
 use App\Models\Kunjungan;
 use App\Models\PemeriksaanAwal;
+use App\Models\Pengguna;
 use App\Models\RekamanAudio;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +23,7 @@ class DokterController extends Controller
     /**
      * Menampilkan Halaman Rekam Medis Pasien untuk Dokter Poliklinik.
      * Mengintegrasikan data pasien, TTV Nurse Station, perekaman audio wawancara klinis,
-     * serta penelaahan draf catatan medis SOAP.
+     * serta menerapkan pembatasan isolasi data rumah sakit (Multi-Tenancy).
      */
     public function showRekamMedis(Request $request, int $id_antrean): View|RedirectResponse
     {
@@ -31,7 +33,10 @@ class DokterController extends Controller
         }
 
         // 1. Ambil antrean dan data pasien terkait
-        $antrean = Antrean::with('pasien')->findOrFail($id_antrean);
+        $antrean = Antrean::with(['pasien', 'hospital'])->findOrFail($id_antrean);
+
+        // Validasi batasan rumah sakit: Dokter hanya dapat mengakses pasien rumah sakitnya
+        $this->authorizeHospitalAccess($user, $antrean);
 
         if (!$antrean->pasien) {
             return redirect()
@@ -43,16 +48,25 @@ class DokterController extends Controller
         $kunjungan = Kunjungan::firstOrCreate(
             ['id_antrean' => $antrean->id_antrean],
             [
-                'id_pasien' => $antrean->id_pasien,
-                'id_dokter' => $user->id_pengguna,
-                'tanggal'   => $antrean->tanggal_kunjungan ?: Carbon::today()->toDateString(),
-                'status'    => 'Sedang Diperiksa',
+                'hospital_id' => $user->hospital_id ?? $antrean->hospital_id,
+                'id_pasien'   => $antrean->id_pasien,
+                'id_dokter'   => $user->id_pengguna,
+                'tanggal'     => $antrean->tanggal_kunjungan ?: Carbon::today()->toDateString(),
+                'status'      => 'Sedang Diperiksa',
             ]
         );
 
-        // Jika dokter belum terasosiasi atau status masih awal, perbarui
+        // Jika dokter atau hospital_id belum terasosiasi, perbarui
+        $updated = false;
         if (!$kunjungan->id_dokter) {
             $kunjungan->id_dokter = $user->id_pengguna;
+            $updated = true;
+        }
+        if (!$kunjungan->hospital_id && $user->hospital_id) {
+            $kunjungan->hospital_id = $user->hospital_id;
+            $updated = true;
+        }
+        if ($updated) {
             $kunjungan->save();
         }
 
@@ -81,9 +95,10 @@ class DokterController extends Controller
             ->latest('id_rekaman')
             ->first();
 
-        // 5. Format kode kunjungan medis
+        // 5. Format kode kunjungan medis spesifik rumah sakit
         $tglStr = str_replace('-', '', $kunjungan->tanggal ?: date('Ymd'));
-        $idKunjunganCode = 'RSUA-' . $tglStr . '-' . str_pad($antrean->id_antrean, 3, '0', STR_PAD_LEFT);
+        $prefix = $user->hospital?->hospital_code ? 'RS' . $user->hospital->hospital_code : 'RSUA';
+        $idKunjunganCode = $prefix . '-' . $tglStr . '-' . str_pad($antrean->id_antrean, 3, '0', STR_PAD_LEFT);
 
         $pasien = $antrean->pasien;
         $umur = $pasien->umur ?: ($pasien->tanggal_lahir ? Carbon::parse($pasien->tanggal_lahir)->age : null);
@@ -103,7 +118,6 @@ class DokterController extends Controller
     /**
      * Memproses upload berkas audio wawancara klinis dari browser
      * dan menyimpannya secara aman pada penyimpanan server.
-     * Pemrosesan AI / generasi otomatis draf SOAP ditangguhkan ke sprint mendatang.
      */
     public function uploadAudio(Request $request, int $id_antrean): JsonResponse
     {
@@ -116,14 +130,16 @@ class DokterController extends Controller
         }
 
         $antrean = Antrean::with('pasien')->findOrFail($id_antrean);
+        $this->authorizeHospitalAccess($user, $antrean);
 
         $kunjungan = Kunjungan::firstOrCreate(
             ['id_antrean' => $antrean->id_antrean],
             [
-                'id_pasien' => $antrean->id_pasien,
-                'id_dokter' => $user->id_pengguna,
-                'tanggal'   => $antrean->tanggal_kunjungan ?: Carbon::today()->toDateString(),
-                'status'    => 'Sedang Diperiksa',
+                'hospital_id' => $user->hospital_id ?? $antrean->hospital_id,
+                'id_pasien'   => $antrean->id_pasien,
+                'id_dokter'   => $user->id_pengguna,
+                'tanggal'     => $antrean->tanggal_kunjungan ?: Carbon::today()->toDateString(),
+                'status'      => 'Sedang Diperiksa',
             ]
         );
 
@@ -184,7 +200,9 @@ class DokterController extends Controller
             abort(403, 'Akses ditolak.');
         }
 
-        $antrean = Antrean::findOrFail($id_antrean);
+        $antrean = Antrean::with('pasien')->findOrFail($id_antrean);
+        $this->authorizeHospitalAccess($user, $antrean);
+
         $kunjungan = Kunjungan::where('id_antrean', $antrean->id_antrean)->firstOrFail();
 
         $rekaman = RekamanAudio::where('id_kunjungan', $kunjungan->id_kunjungan)
@@ -212,6 +230,22 @@ class DokterController extends Controller
             'Accept-Ranges'       => 'bytes',
             'Cache-Control'       => 'no-store, no-cache, must-revalidate',
         ]);
+    }
+
+    /**
+     * Memvalidasi otorisasi data multi-tenancy: dokter hanya dapat mengakses data rumah sakitnya.
+     */
+    protected function authorizeHospitalAccess(Pengguna $user, Antrean $antrean): void
+    {
+        if (!$user->hospital_id) {
+            return; // Akun legacy tanpa pembatasan rumah sakit spesifik
+        }
+
+        $targetHospitalId = $antrean->hospital_id ?? $antrean->pasien?->hospital_id;
+
+        if ($targetHospitalId && (int) $targetHospitalId !== (int) $user->hospital_id) {
+            abort(403, 'Akses ditolak: Anda tidak memiliki wewenang untuk mengakses rekam medis dari rumah sakit lain.');
+        }
     }
 
     /**

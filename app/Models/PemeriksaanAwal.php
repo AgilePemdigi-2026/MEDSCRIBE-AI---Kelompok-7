@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PemeriksaanAwal extends Model
 {
@@ -38,13 +39,18 @@ class PemeriksaanAwal extends Model
         'updated_at' => 'datetime',
     ];
 
-    public function kunjungan()
+    public function kunjungan(): BelongsTo
     {
         return $this->belongsTo(Kunjungan::class, 'id_kunjungan', 'id_kunjungan');
     }
 
-    public function perawat()
+    public function perawat(): BelongsTo
     {
         return $this->belongsTo(Pengguna::class, 'id_perawat', 'id_pengguna');
+    }
+
+    public function hospital(): ?Hospital
+    {
+        return $this->kunjungan?->hospital;
     }
 }

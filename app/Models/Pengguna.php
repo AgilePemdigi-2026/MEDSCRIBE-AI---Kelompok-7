@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -31,8 +33,13 @@ class Pengguna extends Authenticatable
     protected $fillable = [
         'nama_lengkap',
         'email',
+        'email_verified_at',
         'role',
+        'hospital_id',
+        'approval_status',
         'password',
+        'google_id',
+        'avatar',
     ];
 
     /**
@@ -44,13 +51,46 @@ class Pengguna extends Authenticatable
     ];
 
     /**
-     * Tipe casting otomatis untuk keamanan hashing password.
+     * Tipe casting otomatis untuk keamanan hashing password dan tanggal verifikasi email.
      */
     protected function casts(): array
     {
         return [
-            'password' => 'hashed',
+            'password'          => 'hashed',
+            'email_verified_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Relasi ke master data Rumah Sakit tempat tenaga medis berafiliasi.
+     */
+    public function hospital(): BelongsTo
+    {
+        return $this->belongsTo(Hospital::class, 'hospital_id');
+    }
+
+    /**
+     * Relasi ke kode OTP verifikasi email dan lupa password.
+     */
+    public function emailOtps(): HasMany
+    {
+        return $this->hasMany(EmailOtp::class, 'user_id', 'id_pengguna');
+    }
+
+    /**
+     * Helper untuk memeriksa apakah email akun telah terverifikasi.
+     */
+    public function isEmailVerified(): bool
+    {
+        return $this->email_verified_at !== null;
+    }
+
+    /**
+     * Helper untuk memeriksa apakah akun telah disetujui untuk akses data klinis.
+     */
+    public function isApproved(): bool
+    {
+        return strtolower($this->approval_status ?? 'approved') === 'approved';
     }
 
     /**
@@ -75,6 +115,14 @@ class Pengguna extends Authenticatable
     public function getPeranAttribute(): ?string
     {
         return $this->role;
+    }
+
+    /**
+     * Scope query berdasarkan rumah sakit pengguna.
+     */
+    public function scopeForHospital(Builder $query, int $hospitalId): Builder
+    {
+        return $query->where('hospital_id', $hospitalId);
     }
 
     /**

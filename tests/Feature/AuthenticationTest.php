@@ -3,12 +3,14 @@
 namespace Tests\Feature;
 
 use App\Models\Pengguna;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
 {
+    use DatabaseTransactions;
     /**
      * Halaman login dapat diakses oleh tamu.
      */
@@ -34,7 +36,8 @@ class AuthenticationTest extends TestCase
     }
 
     /**
-     * 1. Register berhasil: pengguna baru tersimpan di database dengan password ter-hash.
+     * 1. Register berhasil: membuat pending registration (bukan akun resmi), mengirim OTP.
+     * Akun resmi di tabel pengguna baru dibuat setelah OTP diverifikasi.
      */
     public function test_register_berhasil_dan_tersimpan_di_database(): void
     {
@@ -44,39 +47,242 @@ class AuthenticationTest extends TestCase
             'nama_lengkap' => 'dr. Agus Santoso, Sp.A',
             'email' => $email,
             'role' => 'dokter',
+            'hospital_id' => 1,
             'password' => 'password123',
             'password_confirmation' => 'password123',
         ]);
 
-        $response->assertRedirect('/dokter/dashboard');
-        $this->assertAuthenticated();
+        // Tidak boleh langsung masuk aplikasi, diarahkan ke form verifikasi OTP
+        $response->assertRedirect(route('verification.otp.show', ['email' => $email]));
+        $this->assertGuest();
 
-        // Verifikasi ke database
+        // Verifikasi ke database: Akun BELUM dibuat di tabel pengguna (Scenario 1 #3)
+        $this->assertDatabaseMissing('pengguna', [
+            'email' => $email,
+        ]);
+
+        // Verifikasi pendaftaran sementara ada di pending_registrations
+        $this->assertDatabaseHas('pending_registrations', [
+            'email' => $email,
+            'nama_lengkap' => 'dr. Agus Santoso, Sp.A',
+            'role' => 'dokter',
+            'hospital_id' => 1,
+        ]);
+
+        $pending = \App\Models\PendingRegistration::where('email', $email)->first();
+        $this->assertNotNull($pending);
+        $this->assertTrue(Hash::check('password123', $pending->password));
+        $this->assertNotNull($pending->otp_hash);
+
+        $plainOtp = '123456';
+        $pending->update([
+            'otp_hash' => Hash::make($plainOtp),
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        // Verifikasi OTP
+        $verifyResponse = $this->post(route('verification.otp.verify'), [
+            'email' => $email,
+            'otp' => $plainOtp,
+        ]);
+
+        $verifyResponse->assertRedirect(route('login'));
+        $verifyResponse->assertSessionHas('status');
+        $this->assertGuest(); // Tetap guest, harus login manual
+
+        // Sekarang akun resmi telah dibuat di tabel pengguna
         $this->assertDatabaseHas('pengguna', [
             'email' => $email,
             'nama_lengkap' => 'dr. Agus Santoso, Sp.A',
             'role' => 'dokter',
+            'hospital_id' => 1,
         ]);
 
         $user = Pengguna::where('email', $email)->first();
         $this->assertNotNull($user);
-        $this->assertTrue(Hash::check('password123', $user->password));
+        $this->assertNotNull($user->email_verified_at);
+
+        // Pending registration telah dibersihkan
+        $this->assertDatabaseMissing('pending_registrations', [
+            'email' => $email,
+        ]);
+
+        // Setelah verifikasi, pengguna dapat login eksplisit
+        $loginResponse = $this->post('/login', [
+            'email' => $email,
+            'password' => 'password123',
+        ]);
+        $loginResponse->assertRedirect('/dokter/dashboard');
+        $this->assertAuthenticated();
     }
 
     /**
-     * 2. Register dengan email duplikat ditolak.
+     * Scenario 2: Pengguna mendaftar ulang dengan email pending yang belum verifikasi OTP
+     * TIDAK BOLEH ditolak dengan error 'Email sudah terdaftar'.
      */
-    public function test_register_dengan_email_duplikat_ditolak(): void
+    public function test_pendaftaran_ulang_dengan_email_pending_tidak_menampilkan_error_duplikat(): void
+    {
+        $email = 'abandoned.' . uniqid() . '@gmail.com';
+
+        // 1. Submit registrasi pertama kali
+        $res1 = $this->post('/register', [
+            'nama_lengkap' => 'Calon Dokter Pertama',
+            'email' => $email,
+            'role' => 'dokter',
+            'hospital_id' => 1,
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+        $res1->assertRedirect(route('verification.otp.show', ['email' => $email]));
+
+        // 2. Simulasi user meninggalkan halaman (navigate away) dan membuka form registrasi lagi
+        $pending = \App\Models\PendingRegistration::where('email', $email)->first();
+        $pending->update(['last_sent_at' => now()->subSeconds(65)]);
+
+        $res2 = $this->post('/register', [
+            'nama_lengkap' => 'dr. Calon Dokter Revisi',
+            'email' => $email,
+            'role' => 'dokter',
+            'hospital_id' => 1,
+            'password' => 'newpassword123',
+            'password_confirmation' => 'newpassword123',
+        ]);
+
+        // Tidak boleh muncul error 'Email ini sudah terdaftar'!
+        $res2->assertSessionDoesntHaveErrors();
+        $res2->assertRedirect(route('verification.otp.show', ['email' => $email]));
+
+        // Pending registration terupdate dengan data terbaru
+        $pending->refresh();
+        $this->assertEquals('dr. Calon Dokter Revisi', $pending->nama_lengkap);
+        $this->assertTrue(Hash::check('newpassword123', $pending->password));
+    }
+
+    /**
+     * Scenario 3: Verifikasi OTP yang kedaluwarsa ditolak, dan user dapat meminta OTP baru.
+     */
+    public function test_verifikasi_otp_kedaluwarsa_ditolak_dan_bisa_minta_otp_baru(): void
+    {
+        $email = 'expired.' . uniqid() . '@medscribe.id';
+
+        $this->post('/register', [
+            'nama_lengkap' => 'dr. Expired Test',
+            'email' => $email,
+            'role' => 'dokter',
+            'hospital_id' => 1,
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $pending = \App\Models\PendingRegistration::where('email', $email)->first();
+        $plainOtp = '654321';
+        $pending->update([
+            'otp_hash' => Hash::make($plainOtp),
+            'expires_at' => now()->subMinute(), // Kedaluwarsa
+            'last_sent_at' => now()->subSeconds(70),
+        ]);
+
+        // Coba verifikasi dengan kode kedaluwarsa -> Ditolak!
+        $verifyRes = $this->post(route('verification.otp.verify'), [
+            'email' => $email,
+            'otp' => $plainOtp,
+        ]);
+        $verifyRes->assertSessionHasErrors('otp');
+
+        // Minta kirim ulang kode baru
+        $resendRes = $this->post(route('verification.otp.resend'), [
+            'email' => $email,
+        ]);
+        $resendRes->assertSessionHas('status');
+
+        $pending->refresh();
+        $this->assertTrue($pending->expires_at->isFuture());
+    }
+
+    /**
+     * Scenario 4: Akun yang sudah terverifikasi resmi ditolak saat mencoba mendaftar ulang.
+     */
+    public function test_akun_sudah_terverifikasi_ditolak_saat_mendaftar_ulang(): void
     {
         $response = $this->post('/register', [
             'nama_lengkap' => 'dr. Rina Tiruan',
-            'email' => 'rina@medscribe.id', // Sudah ada di database seeder
+            'email' => 'rina@medscribe.id', // Terverifikasi di database seeder
             'role' => 'dokter',
+            'hospital_id' => 1,
             'password' => 'password123',
             'password_confirmation' => 'password123',
         ]);
 
         $response->assertSessionHasErrors('email');
+        $errors = session('errors')->get('email');
+        $this->assertStringContainsString('Email ini sudah terdaftar', $errors[0]);
+    }
+
+    /**
+     * Scenario 5: Verifikasi OTP dengan kode salah dan melebihi batas percobaan.
+     */
+    public function test_verifikasi_otp_dengan_kode_salah_dan_melebihi_batas_percobaan(): void
+    {
+        $email = 'wrong.' . uniqid() . '@medscribe.id';
+        $this->post('/register', [
+            'nama_lengkap' => 'dr. Salah Kode',
+            'email' => $email,
+            'role' => 'dokter',
+            'hospital_id' => 1,
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $pending = \App\Models\PendingRegistration::where('email', $email)->first();
+        $pending->update([
+            'otp_hash' => Hash::make('123456'),
+            'expires_at' => now()->addMinutes(10),
+            'attempts' => 4,
+            'max_attempts' => 5,
+        ]);
+
+        // Percobaan ke-5 salah
+        $res = $this->post(route('verification.otp.verify'), [
+            'email' => $email,
+            'otp' => '999999',
+        ]);
+        $res->assertSessionHasErrors('otp');
+
+        $pending->refresh();
+        $this->assertEquals(5, $pending->attempts);
+        $this->assertTrue($pending->hasExceededAttempts());
+
+        // Percobaan ke-6 ditolak karena sudah melampaui batas
+        $res2 = $this->post(route('verification.otp.verify'), [
+            'email' => $email,
+            'otp' => '123456',
+        ]);
+        $res2->assertSessionHasErrors('otp');
+    }
+
+    /**
+     * Pengguna dengan email belum terverifikasi dicegah untuk login.
+     */
+    public function test_pengguna_belum_verifikasi_email_dicegah_login(): void
+    {
+        $email = 'unverified.' . uniqid() . '@medscribe.id';
+        $user = Pengguna::create([
+            'nama_lengkap' => 'Perawat Belum Verifikasi',
+            'email' => $email,
+            'role' => 'perawat',
+            'hospital_id' => 1,
+            'email_verified_at' => null,
+            'password' => Hash::make('password123'),
+        ]);
+
+        $response = $this->post('/login', [
+            'email' => $email,
+            'password' => 'password123',
+        ]);
+
+        $response->assertRedirect(route('verification.otp.show', ['email' => $email]));
+        $response->assertSessionHasErrors('otp');
+        $this->assertGuest();
     }
 
     /**
@@ -253,5 +459,16 @@ class AuthenticationTest extends TestCase
 
         $response->assertRedirect('/login');
         $this->assertGuest();
+    }
+
+    /**
+     * 14. Rute autentikasi Google (/auth/google) berhasil redirect ke OAuth Google.
+     */
+    public function test_rute_google_redirect_mengarahkan_ke_google_oauth(): void
+    {
+        $response = $this->get('/auth/google');
+
+        $response->assertRedirect();
+        $this->assertTrue(str_contains($response->headers->get('Location'), 'accounts.google.com'));
     }
 }

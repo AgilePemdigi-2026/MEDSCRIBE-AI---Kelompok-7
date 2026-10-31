@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StorePasienPemeriksaanRequest extends FormRequest
 {
@@ -21,8 +22,20 @@ class StorePasienPemeriksaanRequest extends FormRequest
      */
     public function rules(): array
     {
+        $user = $this->user();
+
         return [
-            // Data Pasien
+            // Data Pasien & Rumah Sakit
+            'hospital_id'     => [
+                'nullable',
+                'integer',
+                Rule::exists('hospitals', 'id')->where('is_active', true),
+                function ($attribute, $value, $fail) use ($user) {
+                    if ($user && $user->hospital_id && (int) $value !== (int) $user->hospital_id) {
+                        $fail('Anda hanya memiliki wewenang untuk mendaftarkan pasien di rumah sakit tempat Anda bertugas.');
+                    }
+                },
+            ],
             'nama_pasien'     => ['required', 'string', 'max:100', 'regex:/\S/'],
             'umur'            => ['required', 'integer', 'min:0', 'max:120'],
             'jenis_kelamin'   => ['required', 'string', 'in:Laki-laki,Perempuan'],
@@ -48,7 +61,8 @@ class StorePasienPemeriksaanRequest extends FormRequest
     public function messages(): array
     {
         return [
-            // Data Pasien
+            // Data Pasien & RS
+            'hospital_id.exists'       => 'Rumah sakit yang dipilih tidak valid atau tidak aktif.',
             'nama_pasien.required'     => 'Nama lengkap pasien wajib diisi.',
             'nama_pasien.max'          => 'Nama lengkap pasien maksimal 100 karakter.',
             'nama_pasien.regex'        => 'Nama lengkap pasien tidak boleh hanya berisi spasi.',
@@ -99,15 +113,10 @@ class StorePasienPemeriksaanRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        if ($this->has('nama_pasien')) {
+        $user = $this->user();
+        if ($user && $user->hospital_id && empty($this->hospital_id)) {
             $this->merge([
-                'nama_pasien' => trim($this->input('nama_pasien')),
-            ]);
-        }
-
-        if ($this->has('catatan')) {
-            $this->merge([
-                'catatan' => trim($this->input('catatan', '')),
+                'hospital_id' => $user->hospital_id,
             ]);
         }
     }

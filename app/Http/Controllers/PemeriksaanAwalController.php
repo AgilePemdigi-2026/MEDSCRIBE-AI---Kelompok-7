@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StorePasienPemeriksaanRequest;
 use App\Models\Antrean;
 use App\Models\DrafSoap;
+use App\Models\Hospital;
 use App\Models\Kunjungan;
 use App\Models\Pasien;
 use App\Models\PemeriksaanAwal;
@@ -21,14 +22,16 @@ class PemeriksaanAwalController extends Controller
 {
     /**
      * Menampilkan dashboard Triase & Pemeriksaan Awal Nurse Station.
-     * Mendukung pencarian, filter tanggal, dan daftar pasien terdaftar.
+     * Mendukung pencarian, filter tanggal, daftar pasien, serta isolasi data rumah sakit (Multi-Tenancy).
      */
     public function index(Request $request): View
     {
         $user = Auth::user();
+        $hospitalId = $user->hospital_id;
 
-        // === BAGIAN 1: Daftar Antrean Aktif (Panel Kiri) ===
-        $antreanQuery = Antrean::with(['pasien'])
+        // === BAGIAN 1: Daftar Antrean Aktif (Panel Kiri) Terisolasi Berdasarkan Rumah Sakit ===
+        $antreanQuery = Antrean::forHospital($hospitalId)
+            ->with(['pasien', 'hospital'])
             ->whereHas('pasien')
             ->where('status', '!=', 'Dibatalkan')
             ->orderBy('id_antrean', 'asc');
@@ -48,7 +51,7 @@ class PemeriksaanAwalController extends Controller
         $pasienTerpilih = null;
 
         if ($selectedAntreanId) {
-            $pasienTerpilih = $daftarAntrean->firstWhere('id_antrean', (int)$selectedAntreanId);
+            $pasienTerpilih = $daftarAntrean->firstWhere('id_antrean', (int) $selectedAntreanId);
         }
         if (!$pasienTerpilih) {
             $pasienTerpilih = $daftarAntrean->firstWhere('status', 'Menunggu TTV') ?? $daftarAntrean->first();
@@ -71,16 +74,18 @@ class PemeriksaanAwalController extends Controller
             }
 
             $tglStr = str_replace('-', '', $pasienTerpilih->tanggal_kunjungan ?: date('Ymd'));
-            $idKunjunganCode = 'RSUA-' . $tglStr . '-' . str_pad($pasienTerpilih->id_antrean, 3, '0', STR_PAD_LEFT);
+            $prefix = $user->hospital?->hospital_code ? 'RS' . $user->hospital->hospital_code : 'RSUA';
+            $idKunjunganCode = $prefix . '-' . $tglStr . '-' . str_pad($pasienTerpilih->id_antrean, 3, '0', STR_PAD_LEFT);
         }
 
-        // === BAGIAN 2: Daftar Pasien Terdaftar (Tab Baru) ===
+        // === BAGIAN 2: Daftar Pasien Terdaftar (Tab Baru) Terisolasi Rumah Sakit ===
         $searchPasien = trim($request->query('cari_pasien', ''));
         $filterTahun = $request->query('tahun');
         $filterBulan = $request->query('bulan');
         $filterTanggal = $request->query('tanggal');
 
-        $pasienQuery = Pasien::query()
+        $pasienQuery = Pasien::forHospital($hospitalId)
+            ->with('hospital')
             ->orderBy('created_at', 'desc')
             ->orderBy('id_pasien', 'desc');
 
@@ -106,8 +111,9 @@ class PemeriksaanAwalController extends Controller
         // Eager load relasi terakhir
         $daftarPasien = $pasienQuery->paginate(15)->appends($request->query());
 
-        // Ambil tahun yang tersedia untuk filter
-        $tahunTersedia = Pasien::selectRaw('YEAR(created_at) as tahun')
+        // Ambil tahun yang tersedia untuk filter dalam rumah sakit perawat
+        $tahunTersedia = Pasien::forHospital($hospitalId)
+            ->selectRaw('YEAR(created_at) as tahun')
             ->whereNotNull('created_at')
             ->distinct()
             ->orderBy('tahun', 'desc')
@@ -123,6 +129,9 @@ class PemeriksaanAwalController extends Controller
         // Tentukan tab aktif
         $activeTab = $request->query('tab', 'antrean');
 
+        // Daftar rumah sakit aktif untuk konteks pemilihan jika dibutuhkan
+        $activeHospitals = Hospital::active()->orderBy('hospital_name')->get();
+
         return view('dashboard.perawat', compact(
             'user',
             'daftarAntrean',
@@ -136,7 +145,8 @@ class PemeriksaanAwalController extends Controller
             'filterBulan',
             'filterTanggal',
             'tahunTersedia',
-            'activeTab'
+            'activeTab',
+            'activeHospitals'
         ));
     }
 
@@ -146,6 +156,8 @@ class PemeriksaanAwalController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $user = Auth::user();
+
         // 1. Validasi input data TTV sesuai ketentuan REQ-6
         $validated = $request->validate([
             'id_antrean'      => ['required', 'integer', 'exists:antrean,id_antrean'],
@@ -180,20 +192,36 @@ class PemeriksaanAwalController extends Controller
             'catatan.required'         => 'Catatan awal perawat wajib diisi.',
         ]);
 
+        $antrean = Antrean::with('pasien')->findOrFail($validated['id_antrean']);
+
+        // Validasi Multi-Tenancy: Perawat tidak boleh menginput TTV untuk RS lain
+        if ($user->hospital_id) {
+            $targetHospitalId = $antrean->hospital_id ?? $antrean->pasien?->hospital_id;
+            if ($targetHospitalId && (int) $targetHospitalId !== (int) $user->hospital_id) {
+                abort(403, 'Akses ditolak: Anda tidak memiliki wewenang menginput TTV untuk rumah sakit lain.');
+            }
+        }
+
         try {
             DB::beginTransaction();
 
-            $antrean = Antrean::with('pasien')->findOrFail($validated['id_antrean']);
+            $hospitalId = $user->hospital_id ?? $antrean->hospital_id;
 
             // 2. Hubungkan atau buat entitas kunjungan (REQ-7)
             $kunjungan = Kunjungan::firstOrCreate(
                 ['id_antrean' => $antrean->id_antrean],
                 [
-                    'id_pasien' => $antrean->id_pasien,
-                    'tanggal'   => $antrean->tanggal_kunjungan ?: Carbon::today()->toDateString(),
-                    'status'    => 'Menunggu Dokter',
+                    'hospital_id' => $hospitalId,
+                    'id_pasien'   => $antrean->id_pasien,
+                    'tanggal'     => $antrean->tanggal_kunjungan ?: Carbon::today()->toDateString(),
+                    'status'      => 'Menunggu Dokter',
                 ]
             );
+
+            if (!$kunjungan->hospital_id && $hospitalId) {
+                $kunjungan->hospital_id = $hospitalId;
+                $kunjungan->save();
+            }
 
             // Parse tekanan darah terpisah
             $tdParts = explode('/', $validated['tekanan_darah']);
@@ -204,16 +232,16 @@ class PemeriksaanAwalController extends Controller
             $pemeriksaan = PemeriksaanAwal::updateOrCreate(
                 ['id_kunjungan' => $kunjungan->id_kunjungan],
                 [
-                    'id_perawat'               => Auth::id(),
-                    'tekanan_darah'            => trim($validated['tekanan_darah']),
-                    'tekanan_darah_sistolik'   => $sistolik,
-                    'tekanan_darah_diastolik'  => $diastolik,
-                    'suhu_tubuh'               => (float) $validated['suhu_tubuh'],
-                    'nadi'                     => (int) $validated['nadi'],
-                    'laju_pernapasan'          => (int) $validated['laju_pernapasan'],
-                    'berat_badan'              => (float) $validated['berat_badan'],
-                    'tinggi_badan'             => (float) $validated['tinggi_badan'],
-                    'catatan'                  => trim($validated['catatan']),
+                    'id_perawat'              => Auth::id(),
+                    'tekanan_darah'           => trim($validated['tekanan_darah']),
+                    'tekanan_darah_sistolik'  => $sistolik,
+                    'tekanan_darah_diastolik' => $diastolik,
+                    'suhu_tubuh'              => (float) $validated['suhu_tubuh'],
+                    'nadi'                    => (int) $validated['nadi'],
+                    'laju_pernapasan'         => (int) $validated['laju_pernapasan'],
+                    'berat_badan'             => (float) $validated['berat_badan'],
+                    'tinggi_badan'            => (float) $validated['tinggi_badan'],
+                    'catatan'                 => trim($validated['catatan']),
                 ]
             );
 
@@ -244,7 +272,6 @@ class PemeriksaanAwalController extends Controller
 
             DB::commit();
 
-            // 6. Redirect dengan umpan balik sukses (REQ-9)
             return redirect()
                 ->route('perawat.dashboard', [
                     'antrean_id' => $antrean->id_antrean,
@@ -265,12 +292,16 @@ class PemeriksaanAwalController extends Controller
     }
 
     /**
-     * Memproses registrasi pasien baru + input TTV dalam satu transaksi.
+     * Memproses registrasi pasien baru + input TTV dalam satu transaksi terisolasi rumah sakit.
      * Menghasilkan ID pasien format YYYYMMDD-NNN secara atomik.
      */
     public function storePasienBaru(StorePasienPemeriksaanRequest $request): RedirectResponse
     {
         $validated = $request->validated();
+        $user = Auth::user();
+
+        // Tentukan rumah sakit pendaftaran: perawat terikat pada rumah sakit tempatnya bertugas
+        $hospitalId = $user->hospital_id ?? ($validated['hospital_id'] ?? null);
 
         try {
             DB::beginTransaction();
@@ -279,47 +310,50 @@ class PemeriksaanAwalController extends Controller
             $today = Carbon::now('Asia/Jakarta');
             $datePrefix = $today->format('Ymd');
 
-            $noRekamMedis = $this->generatePatientId($datePrefix);
+            $noRekamMedis = $this->generatePatientId($datePrefix, $hospitalId);
 
-            // 2. Simpan data pasien
+            // 2. Simpan data pasien dengan hospital_id
             $pasien = Pasien::create([
+                'hospital_id'    => $hospitalId,
                 'no_rekam_medis' => $noRekamMedis,
                 'nama_pasien'    => $validated['nama_pasien'],
                 'umur'           => (int) $validated['umur'],
                 'jenis_kelamin'  => $validated['jenis_kelamin'],
             ]);
 
-            // 3. Buat antrean untuk pasien baru
+            // 3. Buat antrean untuk pasien baru dengan hospital_id
             $antrean = Antrean::create([
-                'id_pasien'        => $pasien->id_pasien,
+                'hospital_id'       => $hospitalId,
+                'id_pasien'         => $pasien->id_pasien,
                 'tanggal_kunjungan' => $today->toDateString(),
-                'status'           => 'Siap Periksa',
+                'status'            => 'Siap Periksa',
             ]);
 
-            // 4. Buat kunjungan
+            // 4. Buat kunjungan dengan hospital_id
             $kunjungan = Kunjungan::create([
-                'id_antrean' => $antrean->id_antrean,
-                'id_pasien'  => $pasien->id_pasien,
-                'tanggal'    => $today->toDateString(),
-                'status'     => 'Menunggu Dokter',
+                'hospital_id' => $hospitalId,
+                'id_antrean'  => $antrean->id_antrean,
+                'id_pasien'   => $pasien->id_pasien,
+                'tanggal'     => $today->toDateString(),
+                'status'      => 'Menunggu Dokter',
             ]);
 
             // 5. Simpan data TTV / Pemeriksaan Awal
             $tekananDarah = $validated['tekanan_darah_sistolik'] . '/' . $validated['tekanan_darah_diastolik'];
 
             PemeriksaanAwal::create([
-                'id_kunjungan'             => $kunjungan->id_kunjungan,
-                'id_perawat'               => Auth::id(),
-                'tekanan_darah'            => $tekananDarah,
-                'tekanan_darah_sistolik'   => (int) $validated['tekanan_darah_sistolik'],
-                'tekanan_darah_diastolik'  => (int) $validated['tekanan_darah_diastolik'],
-                'suhu_tubuh'               => (float) $validated['suhu_tubuh'],
-                'saturasi_oksigen'         => (int) $validated['saturasi_oksigen'],
-                'nadi'                     => (int) $validated['nadi'],
-                'laju_pernapasan'          => (int) $validated['laju_pernapasan'],
-                'berat_badan'              => isset($validated['berat_badan']) ? (float) $validated['berat_badan'] : null,
-                'tinggi_badan'             => isset($validated['tinggi_badan']) ? (float) $validated['tinggi_badan'] : null,
-                'catatan'                  => $validated['catatan'] ?? null,
+                'id_kunjungan'            => $kunjungan->id_kunjungan,
+                'id_perawat'              => Auth::id(),
+                'tekanan_darah'           => $tekananDarah,
+                'tekanan_darah_sistolik'  => (int) $validated['tekanan_darah_sistolik'],
+                'tekanan_darah_diastolik' => (int) $validated['tekanan_darah_diastolik'],
+                'suhu_tubuh'              => (float) $validated['suhu_tubuh'],
+                'saturasi_oksigen'        => (int) $validated['saturasi_oksigen'],
+                'nadi'                    => (int) $validated['nadi'],
+                'laju_pernapasan'         => (int) $validated['laju_pernapasan'],
+                'berat_badan'             => isset($validated['berat_badan']) ? (float) $validated['berat_badan'] : null,
+                'tinggi_badan'            => isset($validated['tinggi_badan']) ? (float) $validated['tinggi_badan'] : null,
+                'catatan'                 => $validated['catatan'] ?? null,
             ]);
 
             // 6. Buat Draf SOAP Objective otomatis
@@ -365,14 +399,19 @@ class PemeriksaanAwalController extends Controller
 
     /**
      * Menampilkan detail pasien dan riwayat pemeriksaan.
+     * Menerapkan validasi Multi-Tenancy rumah sakit.
      */
     public function showPasien(int $id): View
     {
         $user = Auth::user();
-        $pasien = Pasien::findOrFail($id);
+        $pasien = Pasien::with('hospital')->findOrFail($id);
 
-        // Ambil semua kunjungan beserta pemeriksaan awal terkait
-        $riwayatKunjungan = Kunjungan::with(['pemeriksaanAwal', 'pemeriksaanAwal.perawat'])
+        if ($user->hospital_id && $pasien->hospital_id && (int) $pasien->hospital_id !== (int) $user->hospital_id) {
+            abort(403, 'Akses ditolak: Anda tidak memiliki wewenang untuk melihat data pasien dari rumah sakit lain.');
+        }
+
+        // Ambil riwayat kunjungan beserta pemeriksaan awal terkait
+        $riwayatKunjungan = Kunjungan::with(['pemeriksaanAwal', 'pemeriksaanAwal.perawat', 'dokter'])
             ->where('id_pasien', $pasien->id_pasien)
             ->orderBy('tanggal', 'desc')
             ->orderBy('id_kunjungan', 'desc')
@@ -383,7 +422,7 @@ class PemeriksaanAwalController extends Controller
 
     /**
      * Membatalkan / menghapus registrasi pasien secara aman (Soft Delete).
-     * Mempertahankan integritas riwayat medis & rekam audit sesuai SOP.
+     * Menerapkan validasi Multi-Tenancy rumah sakit.
      */
     public function destroyPasien(Request $request, int $id): RedirectResponse|JsonResponse
     {
@@ -400,9 +439,18 @@ class PemeriksaanAwalController extends Controller
 
         $pasien = Pasien::findOrFail($id);
 
-        // Validasi perlindungan data rekam medis:
-        // Pasien yang belum ada input TTV (pemeriksaan awal) selalu dapat dihapus / dibatalkan.
-        // Pembatalan hanya diblokir jika pasien sudah memiliki input TTV dan riwayat pemeriksaan dokter telah selesai.
+        // Validasi isolasi rumah sakit: Perawat hanya dapat membatalkan pasien di rumah sakitnya
+        if ($user->hospital_id && $pasien->hospital_id && (int) $pasien->hospital_id !== (int) $user->hospital_id) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak: Anda tidak berwenang membatalkan registrasi pasien rumah sakit lain.',
+                ], 403);
+            }
+            abort(403, 'Akses ditolak: Anda tidak berwenang membatalkan registrasi pasien rumah sakit lain.');
+        }
+
+        // Validasi perlindungan data rekam medis
         $hasTtv = PemeriksaanAwal::whereHas('kunjungan', function ($q) use ($pasien) {
             $q->where('id_pasien', $pasien->id_pasien);
         })->exists();
@@ -445,14 +493,12 @@ class PemeriksaanAwalController extends Controller
                 ->where('status', '!=', 'Selesai')
                 ->update(['status' => 'Dibatalkan']);
 
-            // Jika pasien belum ada input TTV, batalkan seluruh antrean dan kunjungan terkait
             if (!$hasTtv) {
                 Antrean::where('id_pasien', $pasien->id_pasien)->update(['status' => 'Dibatalkan']);
                 Kunjungan::where('id_pasien', $pasien->id_pasien)->update(['status' => 'Dibatalkan']);
             }
 
-            // 4. Soft delete pasien (tidak dihapus fisik dari database)
-            // Seluruh foreign key, riwayat TTV, dan audit tetap terjaga utuh
+            // 4. Soft delete pasien
             $pasien->delete();
 
             DB::commit();
@@ -487,20 +533,17 @@ class PemeriksaanAwalController extends Controller
     /**
      * Generate ID pasien unik dalam format YYYYMMDD-NNN secara atomik.
      * Menggunakan database locking untuk mencegah race condition.
-     *
-     * @throws \RuntimeException jika sequence harian telah mencapai 999
      */
-    private function generatePatientId(string $datePrefix): string
+    private function generatePatientId(string $datePrefix, ?int $hospitalId = null): string
     {
-        // Menggunakan pessimistic locking: query terakhir no_rekam_medis untuk hari ini
-        // dengan lock FOR UPDATE agar concurrent request menunggu
-        $lastRecord = Pasien::where('no_rekam_medis', 'like', $datePrefix . '-%')
+        $query = Pasien::withTrashed()
+            ->where('no_rekam_medis', 'like', $datePrefix . '-%')
             ->orderBy('no_rekam_medis', 'desc')
-            ->lockForUpdate()
-            ->first();
+            ->lockForUpdate();
+
+        $lastRecord = $query->first();
 
         if ($lastRecord) {
-            // Parse sequence dari ID terakhir
             $parts = explode('-', $lastRecord->no_rekam_medis);
             $lastSequence = (int) ($parts[1] ?? 0);
             $nextSequence = $lastSequence + 1;
@@ -508,7 +551,6 @@ class PemeriksaanAwalController extends Controller
             $nextSequence = 1;
         }
 
-        // Safety: cegah overflow di atas 999
         if ($nextSequence > 999) {
             throw new \RuntimeException(
                 'Batas maksimum registrasi pasien harian (999) telah tercapai untuk tanggal ' . $datePrefix . '. ' .

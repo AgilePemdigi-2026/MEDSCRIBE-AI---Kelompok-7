@@ -32,19 +32,23 @@ class DashboardController extends Controller
 
     /**
      * Dashboard Antrean Dokter (Sesuai SRS Gambar 3.2).
+     * Menerapkan isolasi data multi-tenancy berbasis rumah sakit dokter.
      */
     public function dokterDashboard(Request $request): View
     {
         $user = Auth::user();
+        $hospitalId = $user->hospital_id;
 
-        // Mengambil antrean hari ini dan pasien terkait (diurutkan dari nomor antrean terbesar ke terkecil)
-        $antreanQuery = Antrean::with('pasien')->orderBy('id_antrean', 'desc');
+        // Mengambil antrean hari ini dan pasien terkait dengan pembatasan rumah sakit dokter
+        $antreanQuery = Antrean::forHospital($hospitalId)
+            ->with(['pasien', 'hospital'])
+            ->orderBy('id_antrean', 'desc');
 
         if ($statusFilter = $request->query('status')) {
             $antreanQuery->where('status', $statusFilter);
         }
 
-        if ($search = $request->query('cari')) {
+        if ($search = trim($request->query('cari', ''))) {
             $antreanQuery->whereHas('pasien', function ($q) use ($search) {
                 $q->where('nama_pasien', 'like', "%{$search}%")
                   ->orWhere('no_rekam_medis', 'like', "%{$search}%");
@@ -53,11 +57,11 @@ class DashboardController extends Controller
 
         $daftarAntrean = $antreanQuery->get();
 
-        // Statistik antrean
-        $totalAntrean = Antrean::count();
-        $siapPeriksa = Antrean::where('status', 'Siap Periksa')->count();
-        $menungguTTV = Antrean::where('status', 'Menunggu TTV')->count();
-        $selesai = Antrean::where('status', 'Selesai')->count();
+        // Statistik antrean terisolasi berdasarkan rumah sakit dokter
+        $totalAntrean = Antrean::forHospital($hospitalId)->count();
+        $siapPeriksa = Antrean::forHospital($hospitalId)->where('status', 'Siap Periksa')->count();
+        $menungguTTV = Antrean::forHospital($hospitalId)->where('status', 'Menunggu TTV')->count();
+        $selesai = Antrean::forHospital($hospitalId)->where('status', 'Selesai')->count();
 
         return view('dashboard.dokter', compact(
             'user',

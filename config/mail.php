@@ -111,8 +111,23 @@ return [
     */
 
     'from' => [
-        'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
-        'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
+        'address' => env('MAIL_FROM_ADDRESS', 'noreply@medscribe.id'),
+        'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'MedScribe AI')),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Global "Reply-To" Address
+    |--------------------------------------------------------------------------
+    |
+    | Alamat Reply-To resmi yang digunakan saat penerima merespons email otomatis.
+    | Menjamin komunikasi diarahkan ke saluran bantuan/support faskes resmi.
+    |
+    */
+
+    'reply_to' => [
+        'address' => env('MAIL_REPLY_TO_ADDRESS', env('MAIL_FROM_ADDRESS', 'noreply@medscribe.id')),
+        'name' => env('MAIL_REPLY_TO_NAME', env('MAIL_FROM_NAME', 'MedScribe AI Support')),
     ],
 
 ];
