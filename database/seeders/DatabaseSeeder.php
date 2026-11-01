@@ -56,8 +56,8 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // 4. Data pasien awal jika tabel masih kosong
-        if (DB::table('pasien')->count() === 0) {
+        // 4. Data pasien awal jika tabel masih kosong atau belum ada Budi Santoso
+        if (!DB::table('pasien')->where('nama_pasien', 'Budi Santoso')->exists()) {
             DB::table('pasien')->insert([
                 ['id_pasien' => 1, 'hospital_id' => $rsuaId, 'no_rekam_medis' => '00-12-345', 'nama_pasien' => 'Budi Santoso', 'tanggal_lahir' => '1992-05-14', 'jenis_kelamin' => 'Laki-laki', 'created_at' => now(), 'updated_at' => now()],
                 ['id_pasien' => 2, 'hospital_id' => $rsuaId, 'no_rekam_medis' => '00-12-346', 'nama_pasien' => 'Siti Aminah', 'tanggal_lahir' => '1980-08-21', 'jenis_kelamin' => 'Perempuan', 'created_at' => now(), 'updated_at' => now()],
@@ -70,8 +70,8 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // 5. Data antrean awal jika tabel masih kosong
-        if (DB::table('antrean')->count() === 0) {
+        // 5. Data antrean awal jika belum ada antrean awal
+        if (!DB::table('antrean')->where('id_antrean', 1)->exists()) {
             DB::table('antrean')->insert([
                 ['id_antrean' => 1, 'hospital_id' => $rsuaId, 'id_pasien' => 1, 'tanggal_kunjungan' => '2026-09-19', 'status' => 'Siap Periksa'],
                 ['id_antrean' => 2, 'hospital_id' => $rsuaId, 'id_pasien' => 2, 'tanggal_kunjungan' => '2026-09-19', 'status' => 'Siap Periksa'],
@@ -84,22 +84,22 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // 6. Data kunjungan awal jika tabel masih kosong
-        if (DB::table('kunjungan')->count() === 0) {
+        // 6. Data kunjungan awal jika belum ada
+        if (!DB::table('kunjungan')->where('id_kunjungan', 1)->exists()) {
             DB::table('kunjungan')->insert([
                 ['id_kunjungan' => 1, 'hospital_id' => $rsuaId, 'id_antrean' => 1, 'id_pasien' => 1, 'id_dokter' => 2, 'tanggal' => '2026-09-19', 'status' => 'SOAP Terverifikasi'],
             ]);
         }
 
-        // 7. Data pemeriksaan awal jika tabel masih kosong
-        if (DB::table('pemeriksaan_awal')->count() === 0) {
+        // 7. Data pemeriksaan awal jika belum ada
+        if (!DB::table('pemeriksaan_awal')->where('id_pemeriksaan', 1)->exists()) {
             DB::table('pemeriksaan_awal')->insert([
                 ['id_pemeriksaan' => 1, 'id_kunjungan' => 1, 'id_perawat' => 1, 'tekanan_darah' => '120/80', 'suhu_tubuh' => 38.6, 'nadi' => 78, 'catatan' => 'Demam 3 hari, nyeri menelan, dan batuk kering. Suhu tubuh 38,6°C', 'created_at' => now(), 'updated_at' => now()],
             ]);
         }
 
-        // 8. Data draf SOAP jika tabel masih kosong
-        if (DB::table('draf_soap')->count() === 0) {
+        // 8. Data draf SOAP jika belum ada
+        if (!DB::table('draf_soap')->where('id_draf_soap', 1)->exists()) {
             DB::table('draf_soap')->insert([
                 [
                     'id_draf_soap'    => 1,

@@ -53,3 +53,56 @@ Artisan::command('medscribe:unassigned-users', function () {
     $this->line("Gunakan: php artisan medscribe:assign-hospital {userId} {hospitalCodeOrId}");
     return 0;
 })->purpose('Daftar pengguna legacy tanpa asosiasi rumah sakit');
+
+/**
+ * Menjalankan BDD (Behavior-Driven Development) Testing Suite MedScribe AI.
+ */
+Artisan::command('test:bdd {--filter= : Filter skenario atau kelas pengujian BDD}', function () {
+    $this->newLine();
+    $this->line('<fg=cyan;options=bold>====================================================================</>');
+    $this->line('<fg=cyan;options=bold>   MEDSCRIBE AI - BEHAVIOR DRIVEN DEVELOPMENT (BDD) TEST RUNNER     </>');
+    $this->line('<fg=cyan;options=bold>====================================================================</>');
+    $this->newLine();
+
+    $featuresDir = base_path('features');
+    $featureFiles = glob($featuresDir . '/*.feature');
+    $filter = $this->option('filter');
+
+    $this->info("Ditemukan " . count($featureFiles) . " file spesifikasi fitur Gherkin (BDD):");
+    foreach ($featureFiles as $file) {
+        $filename = basename($file);
+        $lines = file($file, FILE_IGNORE_NEW_LINES);
+        $featureTitle = '';
+        $scenarios = [];
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+            if (str_starts_with($trimmed, 'Fitur:') || str_starts_with($trimmed, 'Feature:')) {
+                $featureTitle = $trimmed;
+            } elseif (str_starts_with($trimmed, 'Skenario:') || str_starts_with($trimmed, 'Scenario:')) {
+                $scenarios[] = $trimmed;
+            }
+        }
+        $this->line(" <fg=yellow>▶</> <fg=white;options=bold>{$filename}</> - <fg=gray>{$featureTitle}</>");
+        $this->line("   <fg=cyan>•</> " . count($scenarios) . " Skenario BDD");
+    }
+
+    $this->newLine();
+    $this->info("Menjalankan eksekusi otomasi BDD test suite" . ($filter ? " [Filter: {$filter}]" : "") . "...");
+    $this->newLine();
+
+    $params = ['--testsuite' => 'BDD'];
+    if ($filter) {
+        $params['--filter'] = $filter;
+    }
+
+    $exitCode = Artisan::call('test', $params);
+    $this->line(Artisan::output());
+
+    if ($exitCode === 0) {
+        $this->line('<fg=green;options=bold>✓ SEMUA SKENARIO BDD (BEHAVIOR DRIVEN DEVELOPMENT) BERHASIL DIUJI!</>');
+    } else {
+        $this->line('<fg=red;options=bold>✗ TERDAPAT KEGAGALAN PADA PENGUJIAN SKENARIO BDD.</>');
+    }
+
+    return $exitCode;
+})->purpose('Menjalankan seluruh pengujian skenario BDD (Behavior-Driven Development)');
