@@ -39,8 +39,14 @@ class DashboardController extends Controller
         $user = Auth::user();
         $hospitalId = $user->hospital_id;
 
+        // Antrean aktif saja: sama seperti Nurse Station, antrean yang dibatalkan dan
+        // pasien yang sudah dihapus (soft delete) tidak ikut ditampilkan maupun dihitung.
+        $antreanAktif = fn () => Antrean::forHospital($hospitalId)
+            ->whereHas('pasien')
+            ->where('status', '!=', 'Dibatalkan');
+
         // Mengambil antrean hari ini dan pasien terkait dengan pembatasan rumah sakit dokter
-        $antreanQuery = Antrean::forHospital($hospitalId)
+        $antreanQuery = $antreanAktif()
             ->with(['pasien', 'hospital'])
             ->orderBy('id_antrean', 'desc');
 
@@ -58,10 +64,10 @@ class DashboardController extends Controller
         $daftarAntrean = $antreanQuery->get();
 
         // Statistik antrean terisolasi berdasarkan rumah sakit dokter
-        $totalAntrean = Antrean::forHospital($hospitalId)->count();
-        $siapPeriksa = Antrean::forHospital($hospitalId)->where('status', 'Siap Periksa')->count();
-        $menungguTTV = Antrean::forHospital($hospitalId)->where('status', 'Menunggu TTV')->count();
-        $selesai = Antrean::forHospital($hospitalId)->where('status', 'Selesai')->count();
+        $totalAntrean = $antreanAktif()->count();
+        $siapPeriksa = $antreanAktif()->where('status', 'Siap Periksa')->count();
+        $menungguTTV = $antreanAktif()->where('status', 'Menunggu TTV')->count();
+        $selesai = $antreanAktif()->where('status', 'Selesai')->count();
 
         return view('dashboard.dokter', compact(
             'user',
