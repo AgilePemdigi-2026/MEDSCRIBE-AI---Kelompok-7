@@ -3,236 +3,203 @@
 @section('title', 'Dashboard Antrean Dokter - MedScribe AI')
 
 @section('content')
+@php
+    $persen = fn ($n) => $totalAntrean > 0 ? round($n / $totalAntrean * 100) : 0;
+    $filters = [
+        '' => 'Semua status',
+        'Siap Periksa' => 'Siap periksa',
+        'Menunggu TTV' => 'Menunggu TTV',
+        'Selesai' => 'Selesai',
+    ];
+    // Segmen donat ringkasan (pola 21st.dev "Donut Chart With Center Stats").
+    // "Dalam pemeriksaan" = sisa antrean yang sedang ditangani dokter, agar cincin genap 100%.
+    $dalamPemeriksaan = max(0, $totalAntrean - $siapPeriksa - $menungguTTV - $selesai);
+    $segmen = [
+        ['Siap Periksa', $siapPeriksa, '#5865DC'],
+        ['Dalam pemeriksaan', $dalamPemeriksaan, '#A5ADD8'],
+        ['Menunggu TTV', $menungguTTV, '#F59E0B'],
+        ['Selesai', $selesai, '#10B981'],
+    ];
+    $keliling = 2 * M_PI * 52;
+    $mulai = 0;
+    foreach ($segmen as $i => [$label, $n, $warna]) {
+        $panjang = $totalAntrean > 0 ? $n / $totalAntrean * $keliling : 0;
+        // Celah tipis antar segmen supaya batasnya terbaca.
+        $segmen[$i][] = $panjang > 4 ? $panjang - 3 : $panjang;
+        $segmen[$i][] = $mulai / $keliling * 360;
+        $mulai += $panjang;
+    }
+@endphp
+
 <div class="space-y-6">
 
-    <!-- Header Section (Modern Medical Header) -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#FFFFFF] p-6 rounded-[24px] border border-[#E4E7F4] shadow-[0_4px_18px_rgba(18,32,86,0.05)]">
-        <div>
-            <div class="flex items-center gap-2.5">
-                <span class="w-2.5 h-2.5 rounded-full bg-[#5865DC] animate-pulse"></span>
-                <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-[#122056]">Dashboard Antrean Dokter</h1>
-            </div>
-            <p class="text-xs sm:text-sm text-[#69718B] mt-1 font-normal">{{ date('d F Y') }} · Poli Penyakit Dalam · {{ Auth::user()->nama_lengkap ?? 'dr. Rina Anggraini, Sp.PD' }}</p>
-        </div>
-        <div class="flex items-center gap-2">
-            <span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-[#EEEEFD] text-[#5865DC] border border-[#CBD1EA]">
-                <span class="w-1.5 h-1.5 rounded-full bg-[#5865DC]"></span>
-                Antrean Aktif Hari Ini
-            </span>
-        </div>
-    </div>
+    {{-- Sapaan: satu baris penuh, ukuran huruf mengikuti lebar layar agar nama panjang tidak terpotong --}}
+    <section class="rise">
+        <p class="eyebrow">Dashboard Antrean Dokter · {{ \Carbon\Carbon::now('Asia/Jakarta')->locale('id')->isoFormat('dddd, D MMMM Y') }}</p>
+        <h1 class="mt-2 text-[clamp(1.75rem,2.6vw,2.75rem)] leading-[1.1] font-semibold tracking-[-0.04em] text-medical-navy">
+            Selamat datang, <span class="text-royal-indigo">{{ Auth::user()->nama_lengkap }}</span>
+        </h1>
+    </section>
 
-    <!-- 4 Summary Metrics (Elevated Medical Cards) -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Total Antrean -->
-        <div class="bg-[#FFFFFF] p-5 rounded-[20px] border border-[#E4E7F4] shadow-[0_4px_18px_rgba(18,32,86,0.05)] flex items-center justify-between transition-all hover:border-[#CBD1EA] hover:-translate-y-0.5 duration-200">
-            <div>
-                <div class="flex items-center gap-1.5 text-xs font-semibold text-[#69718B]">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-[#5865DC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                    Total Antrean
-                </div>
-                <div class="text-3xl font-bold text-[#122056] mt-2 tracking-tight">{{ $totalAntrean }}</div>
-            </div>
-            <div class="w-11 h-11 rounded-[14px] bg-[#EEEEFD] border border-[#CBD1EA] flex items-center justify-center text-[#5865DC]">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-            </div>
-        </div>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-        <!-- Siap Periksa -->
-        <div class="bg-[#FFFFFF] p-5 rounded-[20px] border border-[#5865DC] shadow-[0_4px_18px_rgba(88,101,220,0.12)] flex items-center justify-between transition-all hover:-translate-y-0.5 duration-200">
-            <div>
-                <div class="flex items-center gap-1.5 text-xs font-semibold text-[#5865DC]">
-                    <span class="w-2 h-2 rounded-full bg-[#10B981]"></span>
-                    Siap Periksa
-                </div>
-                <div class="text-3xl font-bold text-[#122056] mt-2 tracking-tight">{{ $siapPeriksa }}</div>
-            </div>
-            <div class="w-11 h-11 rounded-[14px] bg-gradient-to-br from-[#122056] to-[#5865DC] text-[#FFFFFF] flex items-center justify-center shadow-[0_2px_8px_rgba(88,101,220,0.25)]">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-            </div>
-        </div>
-
-        <!-- Menunggu TTV -->
-        <div class="bg-[#FFFFFF] p-5 rounded-[20px] border border-[#E4E7F4] shadow-[0_4px_18px_rgba(18,32,86,0.05)] flex items-center justify-between transition-all hover:border-[#CBD1EA] hover:-translate-y-0.5 duration-200">
-            <div>
-                <div class="flex items-center gap-1.5 text-xs font-semibold text-[#D97706]">
-                    <span class="w-2 h-2 rounded-full bg-[#F59E0B]"></span>
-                    Menunggu TTV
-                </div>
-                <div class="text-3xl font-bold text-[#122056] mt-2 tracking-tight">{{ $menungguTTV }}</div>
-            </div>
-            <div class="w-11 h-11 rounded-[14px] bg-[#FFFBEB] border border-[#FDE68A] flex items-center justify-center text-[#D97706]">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-            </div>
-        </div>
-
-        <!-- Selesai -->
-        <div class="bg-[#FFFFFF] p-5 rounded-[20px] border border-[#E4E7F4] shadow-[0_4px_18px_rgba(18,32,86,0.05)] flex items-center justify-between transition-all hover:border-[#CBD1EA] hover:-translate-y-0.5 duration-200">
-            <div>
-                <div class="flex items-center gap-1.5 text-xs font-semibold text-[#69718B]">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-[#059669]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                    Selesai
-                </div>
-                <div class="text-3xl font-bold text-[#122056] mt-2 tracking-tight">{{ $selesai }}</div>
-            </div>
-            <div class="w-11 h-11 rounded-[14px] bg-[#ECFDF5] border border-[#A7F3D0] flex items-center justify-center text-[#059669]">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-            </div>
-        </div>
-    </div>
-
-    <!-- Antrean Pasien Table Card -->
-    <div class="bg-[#FFFFFF] rounded-[24px] border border-[#E4E7F4] shadow-[0_4px_18px_rgba(18,32,86,0.05)] overflow-hidden">
-        <div class="p-5 sm:p-6 border-b border-[#E4E7F4] flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-                <h2 class="text-base font-bold text-[#122056]">Antrean Pasien Poliklinik</h2>
-                <p class="text-xs text-[#69718B] mt-0.5">Prioritas pemanggilan: Pasien dengan status <strong class="text-[#059669]">Siap Periksa</strong></p>
-            </div>
-
-            <!-- Filter Status Pills -->
-            <div class="flex flex-wrap items-center gap-1.5">
-                <a
-                    href="{{ route('dokter.dashboard') }}"
-                    class="px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all {{ !request('status') ? 'bg-[#5865DC] text-[#FFFFFF] shadow-sm' : 'bg-[#EEEEFD] text-[#122056] hover:bg-[#e2e2fb]' }}"
-                >
-                    Semua status
-                </a>
-                <a
-                    href="{{ route('dokter.dashboard', ['status' => 'Siap Periksa']) }}"
-                    class="px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all {{ request('status') === 'Siap Periksa' ? 'bg-[#5865DC] text-[#FFFFFF] shadow-sm' : 'bg-[#EEEEFD] text-[#122056] hover:bg-[#e2e2fb]' }}"
-                >
-                    Siap periksa
-                </a>
-                <a
-                    href="{{ route('dokter.dashboard', ['status' => 'Menunggu TTV']) }}"
-                    class="px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all {{ request('status') === 'Menunggu TTV' ? 'bg-[#5865DC] text-[#FFFFFF] shadow-sm' : 'bg-[#EEEEFD] text-[#122056] hover:bg-[#e2e2fb]' }}"
-                >
-                    Menunggu TTV
-                </a>
-                <a
-                    href="{{ route('dokter.dashboard', ['status' => 'Selesai']) }}"
-                    class="px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all {{ request('status') === 'Selesai' ? 'bg-[#5865DC] text-[#FFFFFF] shadow-sm' : 'bg-[#EEEEFD] text-[#122056] hover:bg-[#e2e2fb]' }}"
-                >
-                    Selesai
-                </a>
-            </div>
-        </div>
-
-        <!-- Table -->
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse text-xs sm:text-sm">
-                <thead>
-                    <tr class="bg-[#FAFAFD] border-b border-[#E4E7F4] text-[#69718B] font-semibold uppercase text-[11px] tracking-wider">
-                        <th class="py-3 px-5">Nama Pasien</th>
-                        <th class="py-3 px-5">No. Antrean</th>
-                        <th class="py-3 px-5">Status</th>
-                        <th class="py-3 px-5 text-right">Tindakan</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-[#E4E7F4]">
-                    @forelse ($daftarAntrean as $antrean)
-                        <tr class="hover:bg-[#FAFAFD] transition-colors">
-                            <td class="py-4 px-5">
-                                <div class="font-semibold text-[#122056] text-sm">{{ $antrean->pasien->nama_pasien ?? 'Pasien #' . $antrean->id_pasien }}</div>
-                                <div class="text-[11px] text-[#69718B] mt-0.5 font-mono">
-                                    RM: <span class="font-semibold text-[#5865DC]">{{ $antrean->pasien->no_rekam_medis ?? '-' }}</span> · <span class="font-sans">{{ $antrean->pasien->jenis_kelamin ?? '' }}</span>
-                                </div>
-                            </td>
-                            <td class="py-4 px-5">
-                                <span class="font-mono text-xs font-bold text-[#122056] bg-[#EEEEFD] px-2.5 py-1 rounded-[8px] border border-[#CBD1EA] inline-block">
-                                    A-{{ str_pad($antrean->id_antrean, 3, '0', STR_PAD_LEFT) }}
-                                </span>
-                            </td>
-                            <td class="py-4 px-5">
-                                @if ($antrean->status === 'Siap Periksa')
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-[#10B981]"></span>
-                                        Siap Periksa
-                                    </span>
-                                @elseif ($antrean->status === 'Sedang Diperiksa' || $antrean->status === 'Draf SOAP Tersedia')
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#EEEEFD] text-[#5865DC] border border-[#CBD1EA]">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-[#5865DC] animate-pulse"></span>
-                                        {{ $antrean->status }}
-                                    </span>
-                                @elseif ($antrean->status === 'Menunggu TTV')
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-[#F59E0B]"></span>
-                                        Menunggu TTV
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FAFAFD] text-[#69718B] border border-[#CBD1EA]">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-[#69718B]"></span>
-                                        {{ $antrean->status }}
-                                    </span>
-                                @endif
-                            </td>
-                            <td class="py-4 px-5 text-right">
-                                @if (in_array($antrean->status, ['Siap Periksa', 'Sedang Diperiksa', 'Draf SOAP Tersedia', 'SOAP Terverifikasi']))
-                                    <a
-                                        href="{{ route('dokter.rekam-medis', $antrean->id_antrean) }}"
-                                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-[14px] bg-[#5865DC] hover:bg-[#4854C9] active:bg-[#3D47B0] text-[#FFFFFF] font-medium text-xs transition-all cursor-pointer shadow-[0_2px_10px_rgba(88,101,220,0.24)] hover:shadow-[0_4px_16px_rgba(88,101,220,0.32)]"
-                                    >
-                                        <span>Buka Rekam Medis</span>
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </a>
-                                @elseif ($antrean->status === 'Menunggu TTV')
-                                    <button
-                                        type="button"
-                                        disabled
-                                        class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-[14px] bg-[#FAFAFD] text-[#69718B] font-medium text-xs cursor-not-allowed border border-[#E4E7F4]"
-                                        title="Menunggu perawat menyelesaikan TTV"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-[#69718B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                        </svg>
-                                        <span>Menunggu TTV</span>
-                                    </button>
-                                @else
-                                    <a
-                                        href="{{ route('dokter.rekam-medis', $antrean->id_antrean) }}"
-                                        class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-[14px] bg-[#FFFFFF] hover:bg-[#FAFAFD] text-[#122056] border border-[#E4E7F4] hover:border-[#CBD1EA] font-medium text-xs transition-all cursor-pointer shadow-xs"
-                                        title="Lihat berkas rekam medis yang telah selesai"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-[#5865DC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                        <span>Lihat Berkas</span>
-                                    </a>
-                                @endif
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="4" class="py-8 text-center text-[#69718B] text-xs">
-                                Tidak ada data antrean yang sesuai filter.
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Clinical Guidelines Footer -->
-        <div class="p-4 bg-[#FAFAFD] border-t border-[#E4E7F4] text-xs text-[#69718B] flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-[#5865DC] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        {{-- Ringkasan antrean: total, jumlah per status beserta proporsinya, dan protokol klinis --}}
+        <aside class="card-navy spotlight lg:col-span-4 lg:col-start-9 lg:row-start-1 lg:sticky lg:top-28 rise" style="--i: 1" aria-labelledby="judulRingkasan">
+            {{-- Hiasan: cincin konsentris samar yang menggemakan bentuk donat --}}
+            <svg class="absolute -right-24 -top-24 w-72 h-72 text-white/[0.06] pointer-events-none" viewBox="0 0 200 200" fill="none" stroke="currentColor" aria-hidden="true">
+                <circle cx="100" cy="100" r="40" /><circle cx="100" cy="100" r="62" /><circle cx="100" cy="100" r="84" />
             </svg>
-            <span><strong class="text-[#122056]">Protokol Klinis:</strong> Pasien berstatus "Menunggu TTV" terkunci secara sistematis dan memerlukan verifikasi tanda vital oleh perawat sebelum dokter dapat memulai pemeriksaan.</span>
-        </div>
+
+            <div class="relative p-6 pb-5">
+                <div class="flex items-center justify-between gap-3">
+                    <h2 id="judulRingkasan" class="text-base font-semibold">Ringkasan Antrean</h2>
+                    <span class="px-2.5 py-1 rounded-full bg-white/10 border border-white/10 text-[11px] text-[#CBD1EA]">
+                        {{ \Carbon\Carbon::now('Asia/Jakarta')->locale('id')->isoFormat('D MMM Y') }}
+                    </span>
+                </div>
+
+                {{-- Donat: tiap segmen = proporsi status dari total antrean --}}
+                <figure class="mt-6 flex flex-col sm:flex-row lg:flex-col 2xl:flex-row items-center gap-6">
+                    <div class="relative w-40 h-40 flex-shrink-0">
+                        <svg class="w-full h-full -rotate-90" viewBox="0 0 120 120" role="img"
+                             aria-label="Komposisi antrean: {{ collect($segmen)->map(fn ($s) => $s[0] . ' ' . $s[1])->join(', ') }}">
+                            <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="12" />
+                            @foreach ($segmen as $i => [$label, $n, $warna, $panjang, $sudut])
+                                @if ($n > 0)
+                                    <circle cx="60" cy="60" r="52" fill="none" stroke="{{ $warna }}" stroke-width="12" stroke-linecap="butt"
+                                            class="donut-seg" style="--len: {{ round($panjang, 2) }}; --c: {{ round($keliling, 2) }}; --d: {{ $i * 120 }}ms"
+                                            stroke-dasharray="{{ round($panjang, 2) }} {{ round($keliling, 2) }}"
+                                            transform="rotate({{ round($sudut, 2) }} 60 60)" />
+                                @endif
+                            @endforeach
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span class="text-[2.5rem] leading-none font-semibold tracking-[-0.05em] num" data-ticker="{{ $totalAntrean }}">{{ $totalAntrean }}</span>
+                            <span class="mt-1 text-[11px] text-[#A5ADD8]">Total Antrean</span>
+                        </div>
+                    </div>
+
+                    <figcaption class="w-full">
+                        <dl class="space-y-1">
+                            @foreach ($segmen as [$label, $n, $warna])
+                                <div class="flex items-center gap-2.5 px-2.5 py-2 rounded-[12px] transition-colors hover:bg-white/[0.07]">
+                                    <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {{ $warna }}" aria-hidden="true"></span>
+                                    <dt class="flex-1 text-[13px] text-[#E4E7F4]">{{ $label }}</dt>
+                                    <dd class="text-right whitespace-nowrap">
+                                        <span class="text-sm font-semibold num" data-ticker="{{ $n }}">{{ $n }}</span>
+                                        <span class="ml-1 text-[11px] text-[#A5ADD8] num">{{ $persen($n) }}%</span>
+                                    </dd>
+                                </div>
+                            @endforeach
+                        </dl>
+                    </figcaption>
+                </figure>
+            </div>
+
+            {{-- Sorotan siap periksa: tindakan utama dokter --}}
+            <div class="relative mx-4 p-4 rounded-[20px] bg-royal-indigo/90 border border-white/15 shadow-[0_12px_28px_-14px_rgba(88,101,220,0.9)] flex items-center gap-3">
+                <span class="avatar w-10 h-10 bg-white text-royal-indigo" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </span>
+                <p class="flex-1 text-sm leading-snug">
+                    <span class="font-semibold num">{{ $siapPeriksa }} pasien</span> siap dipanggil sekarang
+                </p>
+                @if ($siapPeriksa > 0)
+                    <a href="{{ route('dokter.dashboard', ['status' => 'Siap Periksa']) }}" class="btn btn-sm bg-white text-medical-navy hover:bg-pale-lavender">Lihat</a>
+                @endif
+            </div>
+
+            <div class="relative m-4 mt-3 p-4 rounded-[20px] bg-white/[0.05] border border-white/10 flex gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0 text-[#A5ADD8]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                <p class="text-xs leading-relaxed text-[#CBD1EA]">
+                    <span class="font-semibold text-white">Protokol Klinis:</span>
+                    Pasien berstatus "Menunggu TTV" terkunci secara sistematis dan memerlukan verifikasi tanda vital oleh perawat sebelum dokter dapat memulai pemeriksaan.
+                </p>
+            </div>
+        </aside>
+
+        {{-- Antrean pasien --}}
+        <section class="card spotlight lg:col-span-8 lg:col-start-1 lg:row-start-1 overflow-hidden rise" style="--i: 2" aria-labelledby="judulAntrean">
+            <div class="relative p-5 sm:p-6 flex flex-col gap-4">
+                <div>
+                    <h2 id="judulAntrean" class="text-lg font-semibold text-medical-navy">Antrean Pasien Poliklinik</h2>
+                    <p class="text-xs text-text-secondary mt-0.5">Prioritas pemanggilan: pasien dengan status <span class="font-semibold text-success-text">Siap Periksa</span></p>
+                </div>
+
+                <nav aria-label="Saring status" class="-mx-1 px-1 overflow-x-auto [scrollbar-width:none]">
+                    <div class="pill-nav">
+                        @foreach ($filters as $value => $text)
+                            @php $aktif = (string) request('status', '') === (string) $value; @endphp
+                            <a href="{{ route('dokter.dashboard', $value !== '' ? ['status' => $value] : []) }}" @if ($aktif) aria-current="page" @endif>{{ $text }}</a>
+                        @endforeach
+                    </div>
+                </nav>
+            </div>
+
+            <div class="relative overflow-x-auto border-t border-border-subtle">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Nama Pasien</th>
+                            <th scope="col">No. Antrean</th>
+                            <th scope="col">Status</th>
+                            <th scope="col" class="text-right">Tindakan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($daftarAntrean as $antrean)
+                            @php
+                                $namaPasien = $antrean->pasien->nama_pasien ?? 'Pasien #' . $antrean->id_pasien;
+                            @endphp
+                            <tr>
+                                <td>
+                                    <div class="flex items-center gap-3 min-w-[13rem]">
+                                        <span class="avatar w-9 h-9 bg-pale-lavender text-royal-indigo-hover text-xs" aria-hidden="true">{{ strtoupper(substr($namaPasien, 0, 1)) }}</span>
+                                        <div>
+                                            <div class="font-semibold text-medical-navy text-sm">{{ $namaPasien }}</div>
+                                            <div class="text-[11px] text-text-secondary mt-0.5">
+                                                RM <span class="font-mono font-semibold text-royal-indigo-hover">{{ $antrean->pasien->no_rekam_medis ?? '-' }}</span>
+                                                @if ($antrean->pasien?->jenis_kelamin) · {{ $antrean->pasien->jenis_kelamin }} @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="tag-id tag-id-muted">A-{{ str_pad($antrean->id_antrean, 3, '0', STR_PAD_LEFT) }}</span></td>
+                                <td>@include('partials.queue-status', ['status' => $antrean->status])</td>
+                                <td class="text-right whitespace-nowrap">
+                                    @if (in_array($antrean->status, ['Siap Periksa', 'Sedang Diperiksa', 'Draf SOAP Tersedia', 'SOAP Terverifikasi']))
+                                        <a href="{{ route('dokter.rekam-medis', $antrean->id_antrean) }}" class="btn btn-primary btn-sm group">
+                                            Buka Rekam Medis
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                                        </a>
+                                    @elseif ($antrean->status === 'Menunggu TTV')
+                                        <button type="button" disabled class="btn btn-secondary btn-sm" title="Menunggu perawat menyelesaikan TTV">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                            Menunggu TTV
+                                        </button>
+                                    @else
+                                        <a href="{{ route('dokter.rekam-medis', $antrean->id_antrean) }}" class="btn btn-secondary btn-sm" title="Lihat berkas rekam medis yang telah selesai">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-royal-indigo" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                            Lihat Berkas
+                                        </a>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="!py-12 text-center">
+                                    <p class="text-sm font-semibold text-medical-navy">Tidak ada data antrean yang sesuai filter.</p>
+                                    @if (request('status'))
+                                        <a href="{{ route('dokter.dashboard') }}" class="link text-xs inline-flex min-h-11 items-center">Tampilkan semua status</a>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
     </div>
 </div>
 @endsection

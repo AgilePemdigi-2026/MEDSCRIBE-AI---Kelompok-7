@@ -3,30 +3,30 @@
 @section('title', 'Dashboard - MedScribe AI')
 
 @section('content')
-<div class="max-w-xl mx-auto bg-[#FFFFFF] p-8 rounded-[24px] border border-[#E4E7F4] shadow-[0_10px_30px_rgba(18,32,86,0.08)] text-center">
-    <div class="w-13 h-13 rounded-[16px] bg-gradient-to-br from-[#122056] to-[#5865DC] text-[#FFFFFF] mx-auto flex items-center justify-center mb-4 shadow-[0_4px_16px_rgba(88,101,220,0.3)]">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-    </div>
-    <h1 class="text-2xl font-bold tracking-tight text-[#122056]">Selamat Datang, {{ $user->nama_lengkap }}</h1>
-    <p class="text-sm text-[#69718B] mt-1.5 font-normal">
-        Anda terautentikasi sebagai <strong class="text-[#5865DC] font-semibold capitalize">{{ $user->role }}</strong> di sistem Rekam Medis Elektronik MedScribe AI.
-    </p>
+<div class="max-w-xl mx-auto card spotlight p-8 text-center rise">
+    <div class="relative">
+        <span class="mx-auto avatar w-14 h-14 bg-gradient-to-br from-medical-navy to-royal-indigo text-white" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+        </span>
+        <h1 class="mt-4 text-2xl font-semibold tracking-tight text-medical-navy">Selamat Datang, {{ $user->nama_lengkap }}</h1>
+        <p class="text-sm text-text-secondary mt-1.5">
+            Anda terautentikasi sebagai <strong class="text-royal-indigo-hover font-semibold capitalize">{{ $user->role }}</strong> di sistem Rekam Medis Elektronik MedScribe AI.
+        </p>
 
-    <div class="mt-6 p-4 rounded-[18px] bg-[#EEEEFD] border border-[#CBD1EA] text-left text-xs space-y-2.5">
-        <div class="flex justify-between items-center py-1 border-b border-[#E4E7F4]">
-            <span class="text-[#69718B]">ID Pengguna:</span>
-            <span class="font-mono font-semibold text-[#122056]">#{{ $user->id_pengguna }}</span>
-        </div>
-        <div class="flex justify-between items-center py-1 border-b border-[#E4E7F4]">
-            <span class="text-[#69718B]">Alamat Email:</span>
-            <span class="font-medium text-[#122056]">{{ $user->email }}</span>
-        </div>
-        <div class="flex justify-between items-center py-1">
-            <span class="text-[#69718B]">Peran Medis:</span>
-            <span class="font-semibold text-[#5865DC] capitalize">{{ $user->role }}</span>
-        </div>
+        <dl class="mt-6 p-4 rounded-[18px] bg-pale-lavender border border-border-hover text-left text-xs divide-y divide-border-hover">
+            <div class="flex justify-between items-center gap-4 py-2">
+                <dt class="text-text-secondary">ID Pengguna:</dt>
+                <dd class="font-mono font-semibold text-medical-navy">#{{ $user->id_pengguna }}</dd>
+            </div>
+            <div class="flex justify-between items-center gap-4 py-2">
+                <dt class="text-text-secondary">Alamat Email:</dt>
+                <dd class="font-medium text-medical-navy break-all text-right">{{ $user->email }}</dd>
+            </div>
+            <div class="flex justify-between items-center gap-4 py-2">
+                <dt class="text-text-secondary">Peran Medis:</dt>
+                <dd class="font-semibold text-royal-indigo-hover capitalize">{{ $user->role }}</dd>
+            </div>
+        </dl>
     </div>
 </div>
 @endsection

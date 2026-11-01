@@ -4,11 +4,15 @@
 @source '../../storage/framework/views/*.php';
 @source '../views/**/*.blade.php';
 
+/*
+ * MedScribe AI design tokens: palet asli kelompok (navy, royal indigo, lavender).
+ * Satu-satunya penyesuaian: teks kecil di atas latar status memakai satu tingkat lebih gelap
+ * dari keluarga warna yang sama agar lolos kontras WCAG AA (4.5:1).
+ */
 @theme {
     --font-sans: 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-    /* MedScribe AI Premium Medical Design Tokens */
     --color-medical-navy: #122056;
     --color-medical-navy-dark: #0c163d;
     --color-royal-indigo: #5865DC;
@@ -25,170 +29,951 @@
     --color-border-hover: #CBD1EA;
 
     --color-success-bg: #ECFDF5;
-    --color-success-text: #059669;
+    --color-success-text: #047857;
+    --color-success-dot: #10B981;
     --color-success-border: #A7F3D0;
 
     --color-warning-bg: #FFFBEB;
-    --color-warning-text: #D97706;
+    --color-warning-text: #B45309;
+    --color-warning-dot: #F59E0B;
     --color-warning-border: #FDE68A;
 
     --color-danger-bg: #FEF2F2;
-    --color-danger-text: #DC2626;
+    --color-danger-text: #B91C1C;
+    --color-danger-solid: #DC2626;
     --color-danger-border: #FECACA;
+
+    --radius-card: 24px;
+    --radius-field: 14px;
 }
 
-/* Background Texture with Soft Off-White and Lavender Mesh */
-.bg-medical-mesh {
+@layer base {
+    html {
+        background-color: #FAFAFD;
+    }
+
+    body {
+        background-color: #FAFAFD;
+        color: #20294A;
+        font-family: var(--font-sans);
+        font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    h1, h2, h3 { text-wrap: balance; }
+    p { text-wrap: pretty; }
+
+    ::selection {
+        background-color: #5865DC;
+        color: #FFFFFF;
+    }
+
+    a[href],
+    button:not(:disabled),
+    summary,
+    select:not(:disabled),
+    label[for],
+    label:has(input[type='radio']),
+    label:has(input[type='checkbox']),
+    input[type='checkbox'],
+    input[type='radio'] {
+        cursor: pointer;
+    }
+
+    button:disabled,
+    select:disabled,
+    input:disabled,
+    input[readonly] {
+        cursor: not-allowed;
+    }
+
+    :focus-visible {
+        outline: 2px solid #5865DC;
+        outline-offset: 2px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
+    }
+}
+
+/* Latar: semburat lavender lembut di sudut, menggantikan pola titik lama yang ramai. */
+.app-backdrop {
     background-color: #FAFAFD;
-    background-image: 
-        radial-gradient(circle at 10% 10%, rgba(88, 101, 220, 0.04) 0%, transparent 40%),
-        radial-gradient(circle at 90% 90%, rgba(18, 32, 86, 0.03) 0%, transparent 45%),
-        radial-gradient(circle, rgba(18, 32, 86, 0.035) 1px, transparent 1px);
-    background-size: 100% 100%, 100% 100%, 28px 28px;
+    background-image:
+        radial-gradient(1200px 600px at 100% -10%, rgba(88, 101, 220, 0.08), transparent 60%),
+        radial-gradient(900px 500px at -10% 110%, rgba(238, 238, 253, 0.9), transparent 60%);
     background-attachment: fixed;
 }
 
-/* Base resets & typography */
-body {
-    background-color: #FAFAFD;
-    color: #20294A;
-    font-family: var(--font-sans);
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
+@layer components {
+    /* ---------- Permukaan ---------- */
+    .card {
+        position: relative;
+        background-color: #FFFFFF;
+        border: 1px solid #E4E7F4;
+        border-radius: var(--radius-card);
+        box-shadow: 0 1px 2px rgba(18, 32, 86, 0.04), 0 8px 24px -12px rgba(18, 32, 86, 0.10);
+    }
 
-/* Elevated Cards and Layered Surfaces */
-.med-card {
-    background-color: #FFFFFF;
-    border: 1px solid #E4E7F4;
-    border-radius: 20px;
-    box-shadow: 0 4px 18px rgba(18, 32, 86, 0.05);
-}
+    /* Kartu yang bisa diklik: naik sedikit, bingkai menyala indigo. */
+    .card-hover {
+        transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 260ms ease, border-color 200ms ease;
+    }
 
-.med-card-elevated {
-    background-color: #FFFFFF;
-    border: 1px solid #E4E7F4;
-    border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(18, 32, 86, 0.08);
-}
+    .card-hover:hover {
+        transform: translateY(-3px);
+        border-color: #CBD1EA;
+        box-shadow: 0 2px 4px rgba(18, 32, 86, 0.04), 0 18px 36px -14px rgba(88, 101, 220, 0.35);
+    }
 
-.med-card-interactive {
-    background-color: #FFFFFF;
-    border: 1px solid #E4E7F4;
-    border-radius: 20px;
-    box-shadow: 0 4px 18px rgba(18, 32, 86, 0.05);
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
+    /* Kartu navy: blok penekanan (antrean, daftar tugas), seperti panel gelap di referensi. */
+    .card-navy {
+        position: relative;
+        background-color: #122056;
+        color: #FFFFFF;
+        border-radius: var(--radius-card);
+        box-shadow: 0 18px 40px -18px rgba(18, 32, 86, 0.55);
+        overflow: hidden;
+    }
 
-.med-card-interactive:hover {
-    transform: translateY(-2px);
-    border-color: #CBD1EA;
-    box-shadow: 0 10px 25px rgba(88, 101, 220, 0.12);
-}
+    /* Kartu identitas: gradien lavender ke indigo lembut untuk profil pasien / pengguna. */
+    .card-lavender {
+        position: relative;
+        border-radius: var(--radius-card);
+        background:
+            radial-gradient(120% 90% at 100% 0%, rgba(88, 101, 220, 0.35), transparent 60%),
+            linear-gradient(160deg, #EEEEFD 0%, #DCDFF8 100%);
+        border: 1px solid #CBD1EA;
+        overflow: hidden;
+    }
 
-/* Frosted Navigation Surfaces */
-.frosted-navbar {
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border-bottom: 1px solid #E4E7F4;
-}
+    /* Spotlight (diadaptasi dari 21st.dev "Spotlight Card"): cahaya mengikuti kursor. */
+    .spotlight {
+        isolation: isolate;
+    }
 
-/* Form Controls */
-.med-input {
-    background-color: #FFFFFF;
-    border: 1px solid #E4E7F4;
-    border-radius: 14px;
-    color: #20294A;
-    transition: all 0.15s ease;
-}
-
-.med-input:hover {
-    border-color: #CBD1EA;
-}
-
-.med-input:focus {
-    outline: none;
-    border-color: #5865DC;
-    box-shadow: 0 0 0 3px rgba(88, 101, 220, 0.15);
-}
-
-/* Buttons */
-.med-btn-primary {
-    background-color: #5865DC;
-    color: #FFFFFF;
-    border-radius: 14px;
-    font-weight: 500;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 0 2px 10px rgba(88, 101, 220, 0.22);
-}
-
-.med-btn-primary:hover {
-    background-color: #4854C9;
-    box-shadow: 0 4px 16px rgba(88, 101, 220, 0.32);
-    transform: translateY(-1px);
-}
-
-.med-btn-primary:active {
-    background-color: #3D47B0;
-    transform: translateY(0);
-}
-
-.med-btn-secondary {
-    background-color: #EEEEFD;
-    color: #122056;
-    border-radius: 14px;
-    font-weight: 500;
-    transition: all 0.15s ease;
-}
-
-.med-btn-secondary:hover {
-    background-color: #e2e2fb;
-}
-
-.med-btn-outline {
-    background-color: #FFFFFF;
-    color: #122056;
-    border: 1px solid #E4E7F4;
-    border-radius: 14px;
-    font-weight: 500;
-    transition: all 0.15s ease;
-}
-
-.med-btn-outline:hover {
-    background-color: #FAFAFD;
-    border-color: #CBD1EA;
-}
-
-/* Custom Refined Scrollbar */
-::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
-::-webkit-scrollbar-track {
-    background: #FAFAFD;
-}
-::-webkit-scrollbar-thumb {
-    background: #CBD1EA;
-    border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-    background: #5865DC;
-}
-
-/* Modal Smooth Scale-in Animation */
-@keyframes scaleIn {
-    0% {
+    .spotlight::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        pointer-events: none;
         opacity: 0;
-        transform: scale(0.96) translateY(4px);
+        transition: opacity 300ms ease;
+        background: radial-gradient(420px circle at var(--spot-x, 50%) var(--spot-y, 50%), rgba(88, 101, 220, 0.10), transparent 45%);
+        z-index: -1;
     }
-    100% {
+
+    .spotlight:hover::after {
         opacity: 1;
-        transform: scale(1) translateY(0);
+    }
+
+    .card-navy.spotlight::after {
+        background: radial-gradient(380px circle at var(--spot-x, 50%) var(--spot-y, 50%), rgba(255, 255, 255, 0.10), transparent 45%);
+        z-index: 0;
+    }
+
+    /* ---------- Tipografi angka ---------- */
+    .stat-number {
+        font-size: 2.75rem;
+        line-height: 1;
+        font-weight: 600;
+        letter-spacing: -0.04em;
+        color: #122056;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .num { font-variant-numeric: tabular-nums; }
+
+    .eyebrow {
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: #69718B;
+    }
+
+    /* ---------- Tombol (pil) ---------- */
+    .btn {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        min-height: 2.75rem;
+        padding: 0.5rem 1.25rem;
+        border-radius: 9999px;
+        border: 1px solid transparent;
+        font-size: 0.875rem;
+        font-weight: 500;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 220ms ease, transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .btn:hover:not(:disabled):not([aria-disabled='true']) {
+        transform: translateY(-1px);
+    }
+
+    .btn:active:not(:disabled):not([aria-disabled='true']) {
+        transform: translateY(0) scale(0.97);
+    }
+
+    .btn:disabled,
+    .btn[aria-disabled='true'] {
+        opacity: 0.6;
+    }
+
+    .btn-sm {
+        min-height: 2.75rem;
+        padding: 0.375rem 0.95rem;
+        font-size: 0.8125rem;
+    }
+
+    @media (min-width: 640px) {
+        .btn-sm { min-height: 2.25rem; }
+    }
+
+    .btn-icon {
+        min-width: 2.75rem;
+        padding: 0;
+    }
+
+    .btn-primary {
+        background-color: #5865DC;
+        color: #FFFFFF;
+        box-shadow: 0 2px 10px rgba(88, 101, 220, 0.24);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background-color: #4854C9;
+        box-shadow: 0 8px 22px -6px rgba(88, 101, 220, 0.55);
+    }
+
+    .btn-primary:active:not(:disabled) {
+        background-color: #3D47B0;
+    }
+
+    /* Kilau menyapu saat hover (diadaptasi dari 21st.dev "Shiny Button"). */
+    .btn-primary::before,
+    .btn-navy::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.32) 50%, transparent 70%);
+        transform: translateX(-120%);
+        transition: transform 650ms cubic-bezier(0.16, 1, 0.3, 1);
+        pointer-events: none;
+    }
+
+    .btn-primary:hover:not(:disabled)::before,
+    .btn-navy:hover:not(:disabled)::before {
+        transform: translateX(120%);
+    }
+
+    .btn-navy {
+        background-color: #122056;
+        color: #FFFFFF;
+    }
+
+    .btn-navy:hover:not(:disabled) {
+        background-color: #0c163d;
+        box-shadow: 0 8px 22px -8px rgba(18, 32, 86, 0.6);
+    }
+
+    .btn-secondary {
+        background-color: #FFFFFF;
+        border-color: #E4E7F4;
+        color: #122056;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+        border-color: #5865DC;
+        color: #4854C9;
+        box-shadow: 0 6px 16px -8px rgba(88, 101, 220, 0.45);
+    }
+
+    .btn-soft {
+        background-color: #EEEEFD;
+        color: #122056;
+    }
+
+    .btn-soft:hover:not(:disabled) {
+        background-color: #E2E2FB;
+    }
+
+    .btn-ghost {
+        background-color: transparent;
+        color: #69718B;
+    }
+
+    .btn-ghost:hover:not(:disabled) {
+        background-color: #EEEEFD;
+        color: #122056;
+    }
+
+    .btn-danger {
+        background-color: #DC2626;
+        color: #FFFFFF;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+        background-color: #B91C1C;
+        box-shadow: 0 8px 20px -8px rgba(220, 38, 38, 0.55);
+    }
+
+    .btn-danger-quiet {
+        background-color: #FFFFFF;
+        border-color: #E4E7F4;
+        color: #B91C1C;
+    }
+
+    .btn-danger-quiet:hover:not(:disabled) {
+        background-color: #FEF2F2;
+        border-color: #FECACA;
+    }
+
+    .link {
+        color: #4854C9;
+        font-weight: 500;
+        text-underline-offset: 4px;
+    }
+
+    .link:hover {
+        text-decoration: underline;
+    }
+
+    /* ---------- Navigasi pil dengan indikator bergeser (21st.dev "Animated Tabs") ---------- */
+    .pill-nav {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.3rem;
+        border-radius: 9999px;
+        background-color: #FFFFFF;
+        border: 1px solid #E4E7F4;
+    }
+
+    .pill-nav > a,
+    .pill-nav > button {
+        position: relative;
+        z-index: 1;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        min-height: 2.5rem;
+        padding: 0 1rem;
+        border-radius: 9999px;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: #20294A;
+        white-space: nowrap;
+        transition: color 220ms ease;
+    }
+
+    .pill-nav > [aria-current] {
+        color: #FFFFFF;
+    }
+
+    .pill-nav .pill-count {
+        font-size: 0.75rem;
+        font-variant-numeric: tabular-nums;
+        padding: 0.05rem 0.45rem;
+        border-radius: 9999px;
+        background-color: #EEEEFD;
+        color: #4854C9;
+        transition: background-color 220ms ease, color 220ms ease;
+    }
+
+    .pill-nav > [aria-current] .pill-count {
+        background-color: rgba(255, 255, 255, 0.16);
+        color: #FFFFFF;
+    }
+
+    /* Indikator aktif (navy) dan bayangan hover (lavender) digeser oleh JS. */
+    .pill-nav .pill-indicator,
+    .pill-nav .pill-hover {
+        position: absolute;
+        top: 0.3rem;
+        bottom: 0.3rem;
+        left: 0;
+        border-radius: 9999px;
+        pointer-events: none;
+        transition: transform 380ms cubic-bezier(0.16, 1, 0.3, 1), width 380ms cubic-bezier(0.16, 1, 0.3, 1), opacity 200ms ease;
+    }
+
+    .pill-nav .pill-indicator {
+        background-color: #122056;
+        box-shadow: 0 6px 16px -6px rgba(18, 32, 86, 0.55);
+    }
+
+    .pill-nav .pill-hover {
+        background-color: #EEEEFD;
+        opacity: 0;
+    }
+
+    .pill-nav:hover .pill-hover.is-ready {
+        opacity: 1;
+    }
+
+    /* Tanpa JS: indikator tetap terlihat lewat warna latar item aktif. */
+    .pill-nav:not(.is-enhanced) > [aria-current] {
+        background-color: #122056;
+    }
+
+    /* ---------- Formulir ---------- */
+    .field-label {
+        display: block;
+        margin-bottom: 0.375rem;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: #122056;
+    }
+
+    .field-label .req {
+        color: #DC2626;
+    }
+
+    .field-hint {
+        margin-top: 0.375rem;
+        font-size: 0.75rem;
+        color: #69718B;
+    }
+
+    .field-error {
+        margin-top: 0.375rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #B91C1C;
+    }
+
+    .field {
+        display: block;
+        width: 100%;
+        min-height: 2.75rem;
+        padding: 0.55rem 0.9rem;
+        background-color: #FAFAFD;
+        border: 1px solid #E4E7F4;
+        border-radius: var(--radius-field);
+        color: #20294A;
+        font-size: 1rem;
+        transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+    }
+
+    @media (min-width: 640px) {
+        .field { font-size: 0.875rem; }
+    }
+
+    .field::placeholder {
+        color: rgba(105, 113, 139, 0.7);
+    }
+
+    .field:hover:not(:disabled):not([readonly]) {
+        border-color: #CBD1EA;
+        background-color: #FFFFFF;
+    }
+
+    .field:focus {
+        outline: none;
+        background-color: #FFFFFF;
+        border-color: #5865DC;
+        box-shadow: 0 0 0 4px rgba(88, 101, 220, 0.15);
+    }
+
+    .field[readonly] {
+        background-color: rgba(238, 238, 253, 0.5);
+        border-color: #CBD1EA;
+        color: #122056;
+        font-weight: 600;
+    }
+
+    .field.is-invalid {
+        border-color: #DC2626;
+    }
+
+    .field-num {
+        font-weight: 600;
+        color: #122056;
+        font-variant-numeric: tabular-nums;
+    }
+
+    select.field {
+        appearance: none;
+        padding-right: 2.25rem;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2369718B'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 0.7rem center;
+        background-size: 1.1rem;
+    }
+
+    .field-unit { position: relative; }
+    .field-unit > .field { padding-right: 4.5rem; }
+
+    .field-unit > .unit {
+        position: absolute;
+        inset-block: 0;
+        right: 0.9rem;
+        display: flex;
+        align-items: center;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #69718B;
+        pointer-events: none;
+    }
+
+    .field-icon { position: relative; }
+    .field-icon > .field { padding-left: 2.6rem; }
+
+    .field-icon > svg {
+        position: absolute;
+        left: 0.9rem;
+        top: 50%;
+        width: 1rem;
+        height: 1rem;
+        transform: translateY(-50%);
+        color: #69718B;
+        pointer-events: none;
+        transition: color 180ms ease;
+    }
+
+    .field-icon:focus-within > svg {
+        color: #5865DC;
+    }
+
+    /* ---------- Pesan ---------- */
+    .alert {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.625rem;
+        padding: 0.8rem 1rem;
+        border-radius: 18px;
+        border: 1px solid transparent;
+        font-size: 0.8125rem;
+        line-height: 1.5;
+    }
+
+    .alert > svg {
+        width: 1.05rem;
+        height: 1.05rem;
+        flex-shrink: 0;
+        margin-top: 0.1rem;
+    }
+
+    .alert-ok { background-color: #ECFDF5; color: #047857; border-color: #A7F3D0; }
+    .alert-warn { background-color: #FFFBEB; color: #B45309; border-color: #FDE68A; }
+    .alert-danger { background-color: #FEF2F2; color: #B91C1C; border-color: #FECACA; }
+    .alert-info { background-color: #EEEEFD; color: #122056; border-color: #CBD1EA; }
+
+    /* ---------- Status (pil dengan titik) ---------- */
+    .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.25rem 0.7rem;
+        border-radius: 9999px;
+        border: 1px solid transparent;
+        font-size: 0.75rem;
+        font-weight: 600;
+        line-height: 1.3;
+        white-space: nowrap;
+    }
+
+    .status::before {
+        content: '';
+        width: 0.4rem;
+        height: 0.4rem;
+        border-radius: 9999px;
+        background-color: currentColor;
+        flex-shrink: 0;
+    }
+
+    .status-ok { background-color: #ECFDF5; color: #047857; border-color: #A7F3D0; }
+    .status-ok::before { background-color: #10B981; }
+    .status-warn { background-color: #FFFBEB; color: #B45309; border-color: #FDE68A; }
+    .status-warn::before { background-color: #F59E0B; }
+    .status-active { background-color: #EEEEFD; color: #4854C9; border-color: #CBD1EA; }
+    .status-active::before { background-color: #5865DC; }
+    .status-danger { background-color: #FEF2F2; color: #B91C1C; border-color: #FECACA; }
+    .status-danger::before { background-color: #DC2626; }
+    .status-muted { background-color: #FAFAFD; color: #69718B; border-color: #CBD1EA; }
+    .status-muted::before { background-color: #69718B; }
+
+    /* Kode identitas (No. RM, antrean, kunjungan) dalam huruf mono seperti versi asli. */
+    .tag-id {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.15rem 0.6rem;
+        border-radius: 9999px;
+        background-color: #EEEEFD;
+        border: 1px solid #CBD1EA;
+        color: #4854C9;
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .tag-id-muted {
+        background-color: #FAFAFD;
+        border-color: #E4E7F4;
+        color: #122056;
+    }
+
+    /* ---------- Bilah progres (seperti baris persentase di referensi) ---------- */
+    .bar {
+        position: relative;
+        height: 2.25rem;
+        border-radius: 9999px;
+        overflow: hidden;
+        background-color: #FAFAFD;
+        border: 1px solid #E4E7F4;
+    }
+
+    /* Arsiran diagonal: sisa yang belum terisi. */
+    .bar-hatch {
+        background-image: repeating-linear-gradient(-45deg, #E4E7F4 0 1px, transparent 1px 7px);
+    }
+
+    .bar-fill {
+        position: absolute;
+        inset-block: 0;
+        left: 0;
+        display: flex;
+        align-items: center;
+        padding-left: 0.85rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+        width: 0;
+        transition: width 1100ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* ---------- Nilai tanda vital ---------- */
+    .vital {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 0.5rem;
+        padding: 0.9rem 1rem;
+        border-radius: 18px;
+        background-color: #FAFAFD;
+        border: 1px solid #E4E7F4;
+        min-width: 0;
+        container-type: inline-size;
+        transition: border-color 200ms ease, transform 260ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 260ms ease;
+    }
+
+    .vital:hover {
+        border-color: #CBD1EA;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 22px -14px rgba(88, 101, 220, 0.45);
+    }
+
+    .vital-label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #69718B;
+    }
+
+    /* Angka mengecil mengikuti lebar kartu; satuan turun baris bila tetap tidak muat. */
+    .vital-value {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        column-gap: 0.25rem;
+        row-gap: 0.15rem;
+        font-size: clamp(1.15rem, 17cqi, 1.6rem);
+        line-height: 1;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        color: #122056;
+        font-variant-numeric: tabular-nums;
+        overflow-wrap: anywhere;
+    }
+
+    .vital-unit {
+        font-size: 0.75rem;
+        font-weight: 500;
+        letter-spacing: 0;
+        color: #69718B;
+        white-space: nowrap;
+    }
+
+    .vital.is-flagged {
+        background-color: #FEF2F2;
+        border-color: #FECACA;
+    }
+
+    .vital.is-flagged .vital-value {
+        color: #B91C1C;
+    }
+
+    /* ---------- Tabel ---------- */
+    .table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.8125rem;
+        text-align: left;
+    }
+
+    .table thead th {
+        padding: 0.75rem 1.25rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #69718B;
+        background-color: #FAFAFD;
+        border-bottom: 1px solid #E4E7F4;
+        white-space: nowrap;
+    }
+
+    .table tbody td {
+        padding: 0.9rem 1.25rem;
+        border-bottom: 1px solid #E4E7F4;
+        vertical-align: middle;
+        transition: background-color 160ms ease;
+    }
+
+    .table tbody tr:last-child td { border-bottom: 0; }
+    .table tbody tr:hover td { background-color: #FAFAFD; }
+
+    /* ---------- Dialog ---------- */
+    .dialog-backdrop {
+        position: fixed;
+        inset: 0;
+        background-color: rgba(18, 32, 86, 0.45);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+    }
+
+    .dialog {
+        background-color: #FFFFFF;
+        border: 1px solid #E4E7F4;
+        border-radius: var(--radius-card);
+        box-shadow: 0 24px 60px -16px rgba(18, 32, 86, 0.35);
+    }
+
+    /* ---------- Avatar inisial ---------- */
+    .avatar {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        border-radius: 9999px;
+        font-weight: 600;
+        user-select: none;
     }
 }
 
-.animate-scaleIn {
-    animation: scaleIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* ---------- Animasi ---------- */
+@keyframes dialogIn {
+    from { opacity: 0; transform: translateY(10px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+.animate-dialog {
+    animation: dialogIn 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Muncul berurutan saat halaman dibuka, agar mata membaca dari atas ke bawah. */
+@keyframes riseIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .rise {
+        animation: riseIn 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation-delay: calc(var(--i, 0) * 70ms);
+    }
+}
+
+@keyframes recPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* Satu-satunya animasi berulang: indikator saat mikrofon benar-benar merekam. */
+.rec-dot,
+.status.is-live::before {
+    animation: recPulse 1.4s ease-in-out infinite;
+}
+
+/* ---------- Carousel polaroid tergantung (halaman Masuk/Daftar) ---------- */
+.polaroid-stage {
+    position: relative;
+    height: 300px;
+    touch-action: pan-y;
+    cursor: grab;
+    user-select: none;
+    border-radius: 18px;
+}
+
+.polaroid-stage:active {
+    cursor: grabbing;
+}
+
+.polaroid-stage:focus-visible {
+    outline: 2px solid #FFFFFF;
+    outline-offset: 4px;
+}
+
+.polaroid-string {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.polaroid-string path {
+    fill: none;
+    stroke: rgba(203, 209, 234, 0.55);
+    stroke-width: 1.5;
+}
+
+.polaroid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 216px;
+    margin: 0;
+    padding: 10px 10px 0;
+    background-color: #FFFFFF;
+    border-radius: 6px;
+    box-shadow: 0 18px 36px -14px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.18);
+    transform-origin: 50% 0;
+    will-change: transform;
+    opacity: 0;
+}
+
+.polaroid-carousel.is-settling .polaroid {
+    transition: transform 650ms cubic-bezier(0.34, 1.4, 0.64, 1), opacity 450ms ease;
+}
+
+.polaroid img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 3;
+    border-radius: 2px;
+    pointer-events: none;
+}
+
+.polaroid figcaption {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+    padding: 0.55rem 0.25rem 0.75rem;
+    text-align: center;
+}
+
+/* Tulisan tangan seperti keterangan di foto polaroid sungguhan. */
+.polaroid-caption {
+    font-family: 'Caveat', 'Segoe Print', cursive;
+    font-size: 1.3rem;
+    line-height: 1.1;
+    font-weight: 600;
+    color: #122056;
+}
+
+.polaroid-role {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: #69718B;
+}
+
+/* Jepitan kayu di atas tiap foto. */
+.polaroid-peg {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    width: 14px;
+    height: 26px;
+    margin-left: -7px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, #E4E7F4, #CBD1EA);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.polaroid-peg::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 9px;
+    width: 4px;
+    height: 4px;
+    margin-left: -2px;
+    border-radius: 9999px;
+    background-color: #69718B;
+}
+
+.polaroid-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+    color: #FFFFFF;
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    transition: background-color 180ms ease, transform 160ms ease;
+}
+
+.polaroid-btn:hover {
+    background-color: rgba(255, 255, 255, 0.18);
+}
+
+.polaroid-btn:active {
+    transform: scale(0.94);
+}
+
+.polaroid-btn:focus-visible {
+    outline: 2px solid #FFFFFF;
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .polaroid-carousel.is-settling .polaroid {
+        transition: opacity 200ms ease;
+    }
+}
+
+/* Segmen donat ringkasan antrean: tergambar berurutan saat halaman dibuka. */
+@keyframes donutDraw {
+    from { stroke-dasharray: 0 var(--c); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .donut-seg {
+        animation: donutDraw 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation-delay: calc(250ms + var(--d, 0ms));
+    }
+}
+
+.donut-seg {
+    transition: stroke-width 200ms ease;
+}
+
+.donut-seg:hover {
+    stroke-width: 15;
+}
+
+/* Cincin timer (21st.dev "Circular Progress") */
+.ring-track { stroke: #EEEEFD; }
+.ring-value {
+    stroke: #5865DC;
+    transition: stroke-dashoffset 300ms linear, stroke 300ms ease;
+}
+.ring-value.is-recording { stroke: #DC2626; }
