@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('wawancara', function (Blueprint $table) {
             $table->increments('id_wawancara');
-            // Match the existing legacy schema, where kunjungan.id_kunjungan is a signed INT.
-            $table->integer('id_kunjungan')->unique();
+            // Harus sama dengan kunjungan.id_kunjungan (increments = INT UNSIGNED) agar foreign key MySQL valid.
+            $table->unsignedInteger('id_kunjungan')->unique();
             $table->string('status', 30)->default('Belum Dimulai');
             $table->json('jawaban')->nullable();
             $table->text('transkrip')->nullable();

@@ -107,12 +107,12 @@ class PemeriksaanAwalController extends Controller
         $daftarPasien = $pasienQuery->paginate(15)->appends($request->query());
 
         // Ambil tahun yang tersedia untuk filter
-        $tahunTersedia = Pasien::selectRaw('YEAR(created_at) as tahun')
-            ->whereNotNull('created_at')
-            ->distinct()
-            ->orderBy('tahun', 'desc')
-            ->pluck('tahun')
-            ->filter()
+        // Diambil di PHP agar jalan di SQLite maupun MySQL (YEAR() hanya ada di MySQL)
+        $tahunTersedia = Pasien::whereNotNull('created_at')
+            ->pluck('created_at')
+            ->map(fn ($tanggal) => \Illuminate\Support\Carbon::parse($tanggal)->year)
+            ->unique()
+            ->sortDesc()
             ->values();
 
         // Jika tidak ada tahun tersedia, tambahkan tahun saat ini
