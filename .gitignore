@@ -29,3 +29,5 @@ Thumbs.db
 
 # Local Whisper model cache
 /services/audio_processor/models_cache/
+
+services/audio_processor/.venv*/
