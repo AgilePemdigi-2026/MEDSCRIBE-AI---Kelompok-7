@@ -19,6 +19,7 @@ return [
         'language' => env('MEDSCRIBE_STT_LANGUAGE', 'indonesian'),
         'beam_size' => (int) env('MEDSCRIBE_STT_BEAM_SIZE', 5),
         'timeout' => (int) env('MEDSCRIBE_STT_TIMEOUT_SECONDS', 7200),
+        'queue' => env('MEDSCRIBE_STT_QUEUE', 'stt'),
     ],
 
     'openrouter' => [

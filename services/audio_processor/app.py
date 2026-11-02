@@ -2,7 +2,9 @@
 """Local, hardware-agnostic speech-to-text API for MedScribe."""
 
 import os
+import logging
 import tempfile
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -27,6 +29,7 @@ stt_pipeline: Any = None
 diarization_pipeline: Any = None
 diarization_error: str | None = None
 runtime: dict[str, str] = {}
+logger = logging.getLogger("medscribe.stt")
 
 
 def resolve_device() -> str:
@@ -126,6 +129,7 @@ async def transcribe(
     audio: UploadFile = File(...),
     language: str = Form(default=DEFAULT_LANGUAGE),
     x_stt_api_key: str | None = Header(default=None),
+    x_stt_request_id: str | None = Header(default=None),
 ) -> dict[str, Any]:
     authorize(x_stt_api_key)
     if stt_pipeline is None:
@@ -141,6 +145,7 @@ async def transcribe(
 
     suffix = Path(audio.filename).suffix.lower() or ".audio"
     temporary_path = None
+    started_at = time.perf_counter()
     try:
         with tempfile.NamedTemporaryFile(prefix="medscribe-stt-", suffix=suffix, delete=False) as temporary:
             temporary.write(data)
@@ -174,6 +179,14 @@ async def transcribe(
             })
         if not segments:
             raise HTTPException(status_code=422, detail="Audio tidak menghasilkan teks.")
+
+        logger.info(
+            "STT inference completed request_id=%s bytes=%d segments=%d duration_ms=%d",
+            x_stt_request_id or "unknown",
+            len(data),
+            len(segments),
+            round((time.perf_counter() - started_at) * 1000),
+        )
 
         if diarization_pipeline:
             turns = [

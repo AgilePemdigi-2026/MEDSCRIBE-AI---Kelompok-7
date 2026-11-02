@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\ProcessInterviewAudio;
 use App\Models\Antrean;
 use App\Models\Kunjungan;
 use App\Models\PemeriksaanAwal;
@@ -17,7 +16,9 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
-use Symfony\Component\Process\Process;
+use App\Services\AudioProbeException;
+use App\Services\InterviewAudioUploadException;
+use App\Services\InterviewAudioUploadService;
 
 class DokterController extends Controller
 {
@@ -71,16 +72,6 @@ class DokterController extends Controller
             ->where('id_kunjungan', $kunjungan->id_kunjungan)
             ->first();
 
-        // Fallback jika belum terhubung via id_kunjungan tapi ada di hari yang sama
-        if (! $pemeriksaanAwal) {
-            $pemeriksaanAwal = PemeriksaanAwal::with('perawat')
-                ->whereHas('kunjungan', function ($q) use ($antrean) {
-                    $q->where('id_pasien', $antrean->id_pasien);
-                })
-                ->latest('id_pemeriksaan')
-                ->first();
-        }
-
         // 4. Ambil rekaman audio wawancara klinis terakhir
         $rekamanAudio = RekamanAudio::where('id_kunjungan', $kunjungan->id_kunjungan)
             ->latest('id_rekaman')
@@ -126,21 +117,22 @@ class DokterController extends Controller
 
         $antrean = Antrean::with('pasien')->findOrFail($id_antrean);
 
-        $kunjungan = Kunjungan::firstOrCreate(
-            ['id_antrean' => $antrean->id_antrean],
-            [
-                'id_pasien' => $antrean->id_pasien,
-                'id_dokter' => $user->id_pengguna,
-                'tanggal' => $antrean->tanggal_kunjungan ?: Carbon::today()->toDateString(),
-                'status' => 'Sedang Diperiksa',
-            ]
-        );
-        $this->authorizeKunjungan($kunjungan, $user->id_pengguna);
+        $kunjungan = DB::transaction(function () use ($antrean, $user): Kunjungan {
+            // Serialize legacy visit creation before the upload service locks the visit row.
+            $lockedAntrean = Antrean::whereKey($antrean->id_antrean)->lockForUpdate()->firstOrFail();
+            $kunjungan = Kunjungan::firstOrCreate(
+                ['id_antrean' => $lockedAntrean->id_antrean],
+                [
+                    'id_pasien' => $lockedAntrean->id_pasien,
+                    'id_dokter' => $user->id_pengguna,
+                    'tanggal' => $lockedAntrean->tanggal_kunjungan ?: Carbon::today()->toDateString(),
+                    'status' => 'Sedang Diperiksa',
+                ]
+            );
+            $this->authorizeKunjungan($kunjungan, $user->id_pengguna);
 
-        $interview = Wawancara::firstOrCreate(
-            ['id_kunjungan' => $kunjungan->id_kunjungan],
-            ['status' => 'Wawancara Berlangsung', 'jawaban' => []]
-        );
+            return $kunjungan->fresh();
+        });
 
         $request->validate([
             'audio' => [
@@ -150,37 +142,12 @@ class DokterController extends Controller
         ]);
         $file = $request->file('audio');
         abort_if(($file->getSize() ?? 0) <= 0, 422, 'Berkas audio kosong.');
-        $duration = $this->probeDuration($file->getRealPath());
-        abort_if($duration !== null && $duration > config('medscribe.audio.max_duration_seconds'), 422, 'Durasi audio melebihi batas konfigurasi.');
 
         try {
-            DB::beginTransaction();
-
-            $path = $file->store('interviews/'.$kunjungan->id_kunjungan, 'local');
-            $rekaman = RekamanAudio::create([
-                'id_kunjungan' => $kunjungan->id_kunjungan,
-                'id_wawancara' => $interview->id_wawancara,
-                'path_audio' => $path,
-                'mime_type' => $file->getMimeType(),
-                'file_size' => $file->getSize(),
-                'duration_seconds' => $duration,
-                'status' => 'queued',
-            ]);
-            $interview->update(['processing_status' => 'queued', 'processing_error' => null]);
-            ProcessInterviewAudio::dispatch($rekaman->id_rekaman);
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Rekaman disimpan dan diantrikan ke service transkripsi lokal.',
-                'audio_id' => $rekaman->id_rekaman,
-                'status' => 'queued',
-                'audio_stream' => route('dokter.rekam-medis.stream-audio', $antrean->id_antrean),
-            ], 202);
-
+            $result = app(InterviewAudioUploadService::class)->upload($kunjungan, $file, false);
+        } catch (AudioProbeException|InterviewAudioUploadException $exception) {
+            return response()->json(['success' => false, 'message' => $exception->getMessage()], $exception->statusCode);
         } catch (\Throwable) {
-            DB::rollBack();
             Log::warning('Clinical audio upload failed.', ['queue' => true]);
 
             return response()->json([
@@ -188,6 +155,19 @@ class DokterController extends Controller
                 'message' => 'Gagal menyimpan rekaman audio. Periksa format dan ukuran file, lalu coba lagi.',
             ], 500);
         }
+
+        $recording = $result['recording'];
+        $isExisting = $result['outcome'] === 'existing';
+
+        return response()->json([
+            'success' => true,
+            'message' => $isExisting
+                ? 'Rekaman ini sedang diproses. Tidak dibuat rekaman baru.'
+                : 'Rekaman disimpan dan diantrikan ke service transkripsi lokal.',
+            'audio_id' => $recording->id_rekaman,
+            'status' => $recording->status === 'transcribing' ? 'transcribing' : 'queued',
+            'audio_stream' => route('dokter.rekam-medis.stream-audio', $antrean->id_antrean),
+        ], 202);
     }
 
     /**
@@ -267,57 +247,6 @@ class DokterController extends Controller
         }
 
         abort_unless((int) $kunjungan->id_dokter === $userId, 403, 'Kunjungan ini ditugaskan kepada dokter lain.');
-    }
-
-    private function probeDuration(?string $path): ?int
-    {
-        if (! $path || ! is_file($path)) {
-            Log::warning('Audio duration probe could not access temporary upload.', ['path' => $path]);
-            abort(422, 'Berkas audio sementara tidak dapat diakses untuk validasi durasi.');
-        }
-
-        $probe = config('medscribe.audio.ffprobe_path', 'ffprobe');
-        if ((str_contains($probe, '/') || str_contains($probe, '\\') || str_ends_with(strtolower($probe), '.exe')) && ! is_file($probe)) {
-            Log::warning('Configured ffprobe executable does not exist.', ['probe' => $probe]);
-            abort(503, 'ffprobe tidak dapat dijalankan untuk validasi durasi audio.');
-        }
-
-        try {
-            $process = new Process([
-                $probe, '-v', 'error', '-show_entries', 'format=duration',
-                '-of', 'default=noprint_wrappers=1:nokey=1', $path,
-            ]);
-            $process->setTimeout(15);
-            $process->run();
-        } catch (\Throwable $exception) {
-            Log::warning('ffprobe could not be started for audio duration validation.', [
-                'path' => $path,
-                'probe' => $probe,
-                'exception' => $exception->getMessage(),
-            ]);
-            abort(503, 'ffprobe tidak dapat dijalankan untuk validasi durasi audio.');
-        }
-
-        $duration = trim($process->getOutput());
-
-        if (! $process->isSuccessful()) {
-            Log::warning('ffprobe failed to read uploaded audio.', [
-                'path' => $path,
-                'exit_code' => $process->getExitCode(),
-                'stderr' => trim($process->getErrorOutput()),
-            ]);
-            abort(422, 'ffprobe gagal membaca berkas audio. Pastikan format audio valid.');
-        }
-
-        if (! is_numeric($duration)) {
-            Log::warning('ffprobe returned an invalid audio duration.', [
-                'path' => $path,
-                'stdout' => $duration,
-            ]);
-            abort(422, 'ffprobe mengembalikan durasi audio yang tidak valid.');
-        }
-
-        return (int) ceil((float) $duration);
     }
 
     private function workflowState(Kunjungan $kunjungan, ?PemeriksaanAwal $pemeriksaanAwal, ?Wawancara $wawancara): string

@@ -8,6 +8,8 @@ use App\Models\Kunjungan;
 use App\Models\Pasien;
 use App\Models\PemeriksaanAwal;
 use App\Models\Pengguna;
+use App\Models\RekamanAudio;
+use App\Models\Wawancara;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
@@ -35,7 +37,7 @@ class DokterRekamMedisTest extends TestCase
         $probeDirectory = sys_get_temp_dir().DIRECTORY_SEPARATOR.'medscribe-ffprobe-'.uniqid();
         mkdir($probeDirectory);
         $this->ffprobeStubPath = $probeDirectory.DIRECTORY_SEPARATOR.'ffprobe.bat';
-        file_put_contents($this->ffprobeStubPath, "@echo 1.0\r\n");
+        file_put_contents($this->ffprobeStubPath, "@echo {\"streams\":[{\"codec_type\":\"audio\"}],\"format\":{\"format_name\":\"matroska,webm\",\"duration\":\"1.0\"}}\r\n");
         config(['medscribe.audio.ffprobe_path' => $this->ffprobeStubPath]);
 
         $this->dokter = Pengguna::firstOrCreate(
@@ -99,12 +101,59 @@ class DokterRekamMedisTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee($this->pasien->nama_pasien);
-        $response->assertSee('TTV & Catatan Perawat');
-        $response->assertSee('Rekam Wawancara Klinis');
+        $response->assertSee('TTV & Catatan Perawat', false);
+        $response->assertSee('Status Kunjungan');
 
         // Pastikan draf SOAP dan kontrol AI tidak tampil di halaman
         $response->assertDontSee('Draf Catatan Medis (SOAP)');
         $response->assertDontSee('Proses AI Ulang');
+    }
+
+    public function test_rekam_medis_mengarahkan_ke_wawancara_dengan_kunjungan_yang_sama_dan_tidak_memiliki_recorder(): void
+    {
+        PemeriksaanAwal::create([
+            'id_kunjungan' => Kunjungan::firstOrCreate(
+                ['id_antrean' => $this->antrean->id_antrean],
+                [
+                    'id_pasien' => $this->pasien->id_pasien,
+                    'id_dokter' => $this->dokter->id_pengguna,
+                    'tanggal' => '2026-09-19',
+                    'status' => 'Sedang Diperiksa',
+                ]
+            )->id_kunjungan,
+            'id_perawat' => $this->perawat->id_pengguna,
+        ]);
+        $response = $this->actingAs($this->dokter)->get(route('dokter.rekam-medis', $this->antrean));
+        $kunjungan = Kunjungan::where('id_antrean', $this->antrean->id_antrean)->firstOrFail();
+
+        $response->assertOk()
+            ->assertSee(route('dokter.interview.show', $kunjungan), false)
+            ->assertDontSee('recording-console')
+            ->assertDontSee('startClinicalRecording');
+    }
+
+    public function test_lanjutkan_wawancara_tidak_membuat_sesi_baru(): void
+    {
+        $kunjungan = Kunjungan::create([
+            'id_antrean' => $this->antrean->id_antrean,
+            'id_pasien' => $this->pasien->id_pasien,
+            'id_dokter' => $this->dokter->id_pengguna,
+            'tanggal' => '2026-09-19',
+            'status' => 'Sedang Diperiksa',
+        ]);
+        $interview = Wawancara::create([
+            'id_kunjungan' => $kunjungan->id_kunjungan,
+            'status' => 'Wawancara Berlangsung',
+        ]);
+
+        $this->actingAs($this->dokter)
+            ->get(route('dokter.interview.show', $kunjungan))
+            ->assertOk()
+            ->assertSee('Wawancara Audio')
+            ->assertSee('KJ-'.str_pad($kunjungan->id_kunjungan, 4, '0', STR_PAD_LEFT));
+
+        $this->assertSame($interview->id_wawancara, Wawancara::where('id_kunjungan', $kunjungan->id_kunjungan)->value('id_wawancara'));
+        $this->assertSame(1, Wawancara::where('id_kunjungan', $kunjungan->id_kunjungan)->count());
     }
 
     /**
@@ -184,6 +233,71 @@ class DokterRekamMedisTest extends TestCase
         ]);
     }
 
+    public function test_upload_legacy_ditolak_setelah_recording_completed(): void
+    {
+        Storage::fake('local');
+        Queue::fake();
+        $kunjungan = Kunjungan::create([
+            'id_antrean' => $this->antrean->id_antrean,
+            'id_pasien' => $this->pasien->id_pasien,
+            'id_dokter' => $this->dokter->id_pengguna,
+            'tanggal' => '2026-09-19',
+            'status' => 'Sedang Diperiksa',
+        ]);
+        $interview = Wawancara::create([
+            'id_kunjungan' => $kunjungan->id_kunjungan,
+            'status' => 'Wawancara Berlangsung',
+        ]);
+        RekamanAudio::create([
+            'id_kunjungan' => $kunjungan->id_kunjungan,
+            'id_wawancara' => $interview->id_wawancara,
+            'path_audio' => 'interviews/completed.webm',
+            'status' => 'completed',
+        ]);
+
+        $response = $this->actingAs($this->dokter)->postJson(
+            route('dokter.rekam-medis.upload-audio', $this->antrean),
+            ['audio' => UploadedFile::fake()->create('interview.webm', 100, 'audio/webm')]
+        );
+
+        $response->assertStatus(409);
+        $this->assertDatabaseCount('rekaman_audio', 1);
+        Queue::assertNothingPushed();
+    }
+
+    public function test_upload_legacy_dengan_recording_failed_membuat_recording_baru(): void
+    {
+        Storage::fake('local');
+        Queue::fake();
+        $kunjungan = Kunjungan::create([
+            'id_antrean' => $this->antrean->id_antrean,
+            'id_pasien' => $this->pasien->id_pasien,
+            'id_dokter' => $this->dokter->id_pengguna,
+            'tanggal' => '2026-09-19',
+            'status' => 'Sedang Diperiksa',
+        ]);
+        $interview = Wawancara::create([
+            'id_kunjungan' => $kunjungan->id_kunjungan,
+            'status' => 'Wawancara Berlangsung',
+            'processing_status' => 'failed',
+        ]);
+        RekamanAudio::create([
+            'id_kunjungan' => $kunjungan->id_kunjungan,
+            'id_wawancara' => $interview->id_wawancara,
+            'path_audio' => 'interviews/failed.webm',
+            'status' => 'failed',
+        ]);
+
+        $response = $this->actingAs($this->dokter)->postJson(
+            route('dokter.rekam-medis.upload-audio', $this->antrean),
+            ['audio' => UploadedFile::fake()->create('interview.webm', 100, 'audio/webm')]
+        );
+
+        $response->assertStatus(202)->assertJson(['status' => 'queued']);
+        $this->assertDatabaseCount('rekaman_audio', 2);
+        Queue::assertPushed(ProcessInterviewAudio::class);
+    }
+
     public function test_dokter_ditolak_mengunggah_audio_yang_melebihi_batas_durasi(): void
     {
         Storage::fake('local');
@@ -191,7 +305,7 @@ class DokterRekamMedisTest extends TestCase
         config(['medscribe.audio.max_duration_seconds' => 1]);
 
         $file = UploadedFile::fake()->createWithContent('wawancara.wav', $this->wavBytes(2));
-        file_put_contents($this->ffprobeStubPath, "@echo 2.0\r\n");
+        file_put_contents($this->ffprobeStubPath, "@echo {\"streams\":[{\"codec_type\":\"audio\"}],\"format\":{\"format_name\":\"wav\",\"duration\":\"2.0\"}}\r\n");
 
         $response = $this->actingAs($this->dokter)->postJson(
             '/dokter/rekam-medis/'.$this->antrean->id_antrean.'/audio',
@@ -219,7 +333,7 @@ class DokterRekamMedisTest extends TestCase
         );
 
         $response->assertStatus(503)
-            ->assertJsonFragment(['message' => 'ffprobe tidak dapat dijalankan untuk validasi durasi audio.']);
+            ->assertJsonFragment(['message' => 'ffprobe tidak dapat dijalankan untuk validasi audio.']);
         Queue::assertNothingPushed();
     }
 

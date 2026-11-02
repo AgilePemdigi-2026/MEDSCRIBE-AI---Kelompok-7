@@ -58,6 +58,7 @@ class ProcessInterviewAudioTest extends TestCase
             $this->assertTrue($request->hasFile('audio'));
             $this->assertStringContainsString('name="language"', $request->body());
             $this->assertStringContainsString('indonesian', $request->body());
+            $this->assertStringContainsString('filename="test-audio.webm"', $request->body());
             $this->assertSame(['test-stt-token'], $request->header('X-STT-API-Key'));
 
             return Http::response([
@@ -125,6 +126,43 @@ class ProcessInterviewAudioTest extends TestCase
         $this->assertSame($exception->getMessage(), $recording->fresh()->error_message);
         $this->assertSame('failed', $interview->fresh()->processing_status);
         $this->assertSame($exception->getMessage(), $interview->fresh()->processing_error);
+    }
+
+    public function test_fastapi_detail_error_is_exposed_as_safe_job_error(): void
+    {
+        [$recording, $interview] = $this->createRecording();
+
+        Http::fake([
+            '*' => Http::response(['detail' => 'Audio tidak menghasilkan teks.'], 422),
+        ]);
+
+        $exception = $this->runJobAndCaptureException($recording);
+
+        $this->assertSame('Audio tidak menghasilkan teks.', $exception->getMessage());
+
+        (new ProcessInterviewAudio($recording->id_rekaman))->failed($exception);
+
+        $this->assertSame('failed', $recording->fresh()->status);
+        $this->assertSame('failed', $interview->fresh()->processing_status);
+    }
+
+    public function test_empty_or_invalid_segments_do_not_mark_transcription_completed(): void
+    {
+        [$recording, $interview] = $this->createRecording();
+
+        Http::fake([
+            '*' => Http::response(['segments' => []]),
+        ]);
+
+        $exception = $this->runJobAndCaptureException($recording);
+
+        $this->assertSame('Worker mengembalikan segmen transkrip yang tidak valid.', $exception->getMessage());
+
+        (new ProcessInterviewAudio($recording->id_rekaman))->failed($exception);
+
+        $this->assertSame('failed', $recording->fresh()->status);
+        $this->assertSame('failed', $interview->fresh()->processing_status);
+        $this->assertNull($interview->fresh()->transkrip);
     }
 
     /**

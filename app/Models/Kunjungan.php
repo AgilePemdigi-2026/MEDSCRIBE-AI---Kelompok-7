@@ -40,7 +40,7 @@ class Kunjungan extends Model
 
     public function rekamanAudio()
     {
-        return $this->hasOne(RekamanAudio::class, 'id_kunjungan', 'id_kunjungan');
+        return $this->hasMany(RekamanAudio::class, 'id_kunjungan', 'id_kunjungan');
     }
 
     public function wawancara()

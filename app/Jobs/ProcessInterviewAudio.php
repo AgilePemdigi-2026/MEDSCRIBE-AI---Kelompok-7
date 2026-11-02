@@ -30,6 +30,11 @@ class ProcessInterviewAudio implements ShouldQueue
     {
         $recording = RekamanAudio::findOrFail($this->recordingId);
         $interview = Wawancara::findOrFail($recording->id_wawancara);
+        $startedAt = microtime(true);
+        Log::info('Interview audio job started.', [
+            'recording_id' => $recording->id_rekaman,
+            'queue' => $this->queue ?: config('medscribe.stt.queue'),
+        ]);
         $recording->update(['status' => 'transcribing', 'error_message' => null]);
         $interview->update(['processing_status' => 'transcribing', 'processing_error' => null]);
 
@@ -51,7 +56,13 @@ class ProcessInterviewAudio implements ShouldQueue
         }
 
         try {
+            Log::info('Sending interview audio to local STT.', [
+                'recording_id' => $recording->id_rekaman,
+                'language' => config('medscribe.stt.language'),
+                'endpoint' => rtrim(config('medscribe.stt.url'), '/').'/transcriptions',
+            ]);
             $response = $request->attach('audio', $stream, basename($input))
+                ->withHeaders(['X-STT-Request-ID' => 'recording-'.$recording->id_rekaman])
                 ->post(rtrim(config('medscribe.stt.url'), '/').'/transcriptions', [
                     'language' => config('medscribe.stt.language'),
                 ]);
@@ -60,15 +71,27 @@ class ProcessInterviewAudio implements ShouldQueue
         } catch (ConnectionException) {
             throw new \RuntimeException('Service transkripsi lokal tidak tersedia. Jalankan service STT dan pastikan URL-nya benar.');
         } catch (RequestException $exception) {
-            $message = $exception->response?->json('message') ?: 'Service transkripsi lokal gagal memproses audio.';
+            $message = $exception->response?->json('detail')
+                ?: $exception->response?->json('message')
+                ?: 'Service transkripsi lokal gagal memproses audio.';
             throw new \RuntimeException(mb_substr($message, 0, 500));
         } finally {
             fclose($stream);
         }
 
-        $segments = $result['segments'] ?? [];
-        if (! is_array($segments)) {
+        if (! is_array($result)) {
+            throw new \RuntimeException('Worker mengembalikan respons transkrip yang tidak valid.');
+        }
+
+        $segments = $result['segments'] ?? null;
+        if (! is_array($segments) || $segments === []) {
             throw new \RuntimeException('Worker mengembalikan segmen transkrip yang tidak valid.');
+        }
+
+        foreach ($segments as $segment) {
+            if (! is_array($segment) || ! isset($segment['text']) || ! is_string($segment['text']) || trim($segment['text']) === '') {
+                throw new \RuntimeException('Worker mengembalikan segmen transkrip yang tidak valid.');
+            }
         }
 
         $interview->update([
@@ -80,6 +103,11 @@ class ProcessInterviewAudio implements ShouldQueue
             'processing_error' => $result['diarizationError'] ?? null,
         ]);
         $recording->update(['status' => 'completed', 'processed_at' => now(), 'waktu_selesai' => now()]);
+        Log::info('Interview audio transcription completed.', [
+            'recording_id' => $recording->id_rekaman,
+            'segment_count' => count($segments),
+            'duration_ms' => (int) round((microtime(true) - $startedAt) * 1000),
+        ]);
     }
 
     public function failed(Throwable $exception): void
@@ -95,6 +123,9 @@ class ProcessInterviewAudio implements ShouldQueue
             'processing_status' => 'failed',
             'processing_error' => $message,
         ]);
-        Log::warning('Local interview audio processing failed', ['recording_id' => $recording->id_rekaman]);
+        Log::warning('Local interview audio processing failed', [
+            'recording_id' => $recording->id_rekaman,
+            'error_type' => get_class($exception),
+        ]);
     }
 }
