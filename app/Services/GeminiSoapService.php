@@ -116,7 +116,9 @@ EOT;
             // 5. Panggil Gemini API (REST Endpoint)
             $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
 
+            $caBundle = file_exists(storage_path('cacert.pem')) ? storage_path('cacert.pem') : true;
             $response = Http::timeout(60)
+                ->withOptions(['verify' => $caBundle])
                 ->withHeaders([
                     'Content-Type' => 'application/json',
                 ])

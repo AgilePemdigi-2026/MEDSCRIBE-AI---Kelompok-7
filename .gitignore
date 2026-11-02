@@ -26,3 +26,11 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 .agents/
+
+# Local Whisper model cache
+/services/audio_processor/models_cache/
+
+services/audio_processor/.venv*/
+services/audio_processor/__pycache__/
+*.pyc
+storage/cacert.pem

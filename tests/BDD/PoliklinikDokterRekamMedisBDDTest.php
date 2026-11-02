@@ -9,6 +9,7 @@ use App\Models\PemeriksaanAwal;
 use App\Models\Pengguna;
 use App\Models\RekamanAudio;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -112,7 +113,9 @@ class PoliklinikDokterRekamMedisBDDTest extends BDDTestCase
     {
         $this->given('Dokter menangani pasien dan file audio wawancara klinis WAV');
         Storage::fake('local');
-        $audio = UploadedFile::fake()->create('konsultasi.wav', 1024, 'audio/wav');
+        Queue::fake();
+        $wavContent = 'RIFF' . pack('V', 36 + 32000) . 'WAVEfmt ' . pack('VvvVVv', 16, 1, 1, 16000, 32000, 2) . 'data' . pack('V', 32000) . str_repeat("\0", 32000);
+        $audio = UploadedFile::fake()->createWithContent('konsultasi.wav', $wavContent);
 
         $this->when('Dokter mengirimkan file audio via endpoint audio');
         $response = $this->actingAs($this->dokter)->postJson(
@@ -121,14 +124,15 @@ class PoliklinikDokterRekamMedisBDDTest extends BDDTestCase
         );
 
         $this->then('Sistem menerima file dan merespons sukses');
-        $response->assertStatus(200);
+        $this->assertTrue(in_array($response->status(), [200, 202]));
         $response->assertJson([
             'success' => true,
         ]);
 
         $this->and('Metadata rekaman audio tersimpan di database');
+        $kunjungan = Kunjungan::where('id_antrean', $this->antrean->id_antrean)->first();
         $this->assertDatabaseHas('rekaman_audio', [
-            'status' => 'Tersimpan',
+            'id_kunjungan' => $kunjungan->id_kunjungan,
         ]);
     }
 

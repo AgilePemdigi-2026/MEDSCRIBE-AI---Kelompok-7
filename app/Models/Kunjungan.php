@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Kunjungan extends Model
@@ -77,9 +78,14 @@ class Kunjungan extends Model
         return $this->hasOne(PemeriksaanAwal::class, 'id_kunjungan', 'id_kunjungan');
     }
 
-    public function rekamanAudio(): HasOne
+    public function rekamanAudio(): HasMany
     {
-        return $this->hasOne(RekamanAudio::class, 'id_kunjungan', 'id_kunjungan');
+        return $this->hasMany(RekamanAudio::class, 'id_kunjungan', 'id_kunjungan');
+    }
+
+    public function wawancara(): HasOne
+    {
+        return $this->hasOne(Wawancara::class, 'id_kunjungan', 'id_kunjungan');
     }
 
     public function drafSoap(): HasOne

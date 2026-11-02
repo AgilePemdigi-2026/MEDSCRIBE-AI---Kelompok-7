@@ -4,7 +4,10 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DokterController;
 use App\Http\Controllers\ForgotPasswordController;
+use App\Http\Controllers\InterviewAudioController;
+use App\Http\Controllers\InterviewController;
 use App\Http\Controllers\PemeriksaanAwalController;
+use App\Http\Controllers\SoapReviewController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -21,6 +24,7 @@ Route::get('/', function () {
     if (Auth::check()) {
         return redirect()->route('dashboard');
     }
+
     return redirect()->route('login');
 });
 
@@ -64,6 +68,17 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
     // Area Khusus Dokter Poliklinik (Otorisasi: role dokter)
     Route::middleware('role:dokter')->group(function () {
         Route::get('/dokter/dashboard', [DashboardController::class, 'dokterDashboard'])->name('dokter.dashboard');
+        Route::get('/dokter/kunjungan/{kunjungan}/wawancara', [InterviewController::class, 'show'])->name('dokter.interview.show');
+        Route::post('/dokter/kunjungan/{kunjungan}/wawancara/mulai', [InterviewController::class, 'start'])->name('dokter.interview.start');
+        Route::post('/dokter/kunjungan/{kunjungan}/wawancara/selesai', [InterviewController::class, 'finish'])->name('dokter.interview.finish');
+        Route::post('/dokter/kunjungan/{kunjungan}/wawancara/audio', [InterviewAudioController::class, 'upload'])->name('dokter.interview.audio.upload');
+        Route::get('/dokter/kunjungan/{kunjungan}/wawancara/audio/status', [InterviewAudioController::class, 'status'])->name('dokter.interview.audio.status');
+        Route::post('/dokter/kunjungan/{kunjungan}/wawancara/audio/retry', [InterviewAudioController::class, 'retry'])->name('dokter.interview.audio.retry');
+        Route::put('/dokter/kunjungan/{kunjungan}/wawancara/transcript', [InterviewAudioController::class, 'updateTranscript'])->name('dokter.interview.transcript.update');
+        Route::get('/dokter/kunjungan/{kunjungan}/soap', [SoapReviewController::class, 'edit'])->name('dokter.soap.edit');
+        Route::post('/dokter/kunjungan/{kunjungan}/soap/generate', [SoapReviewController::class, 'generate'])->name('dokter.soap.generate');
+        Route::put('/dokter/kunjungan/{kunjungan}/soap', [SoapReviewController::class, 'save'])->name('dokter.soap.save');
+        Route::post('/dokter/kunjungan/{kunjungan}/soap/verifikasi', [SoapReviewController::class, 'verify'])->name('dokter.soap.verify');
         Route::get('/dokter/rekam-medis/{id_antrean}', [DokterController::class, 'showRekamMedis'])->name('dokter.rekam-medis');
         Route::post('/dokter/rekam-medis/{id_antrean}/audio', [DokterController::class, 'uploadAudio'])->name('dokter.rekam-medis.upload-audio');
         Route::get('/dokter/rekam-medis/{id_antrean}/audio-file', [DokterController::class, 'streamAudio'])->name('dokter.rekam-medis.stream-audio');

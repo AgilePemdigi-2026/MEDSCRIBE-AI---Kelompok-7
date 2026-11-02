@@ -112,13 +112,13 @@ class PemeriksaanAwalController extends Controller
         $daftarPasien = $pasienQuery->paginate(15)->appends($request->query());
 
         // Ambil tahun yang tersedia untuk filter dalam rumah sakit perawat
+        // Diambil di PHP agar kompatibel di SQLite maupun MySQL
         $tahunTersedia = Pasien::forHospital($hospitalId)
-            ->selectRaw('YEAR(created_at) as tahun')
             ->whereNotNull('created_at')
-            ->distinct()
-            ->orderBy('tahun', 'desc')
-            ->pluck('tahun')
-            ->filter()
+            ->pluck('created_at')
+            ->map(fn ($tanggal) => \Illuminate\Support\Carbon::parse($tanggal)->year)
+            ->unique()
+            ->sortDesc()
             ->values();
 
         // Jika tidak ada tahun tersedia, tambahkan tahun saat ini
@@ -269,6 +269,12 @@ class PemeriksaanAwalController extends Controller
                     'objective_text' => $formattedObjective,
                 ]
             );
+
+            // Perubahan TTV membuat verifikasi sebelumnya perlu ditinjau ulang.
+            \App\Models\Finalisasi::where('id_kunjungan', $kunjungan->id_kunjungan)->update([
+                'status' => 'Perlu Ditinjau',
+                'FINAL' => false,
+            ]);
 
             DB::commit();
 
