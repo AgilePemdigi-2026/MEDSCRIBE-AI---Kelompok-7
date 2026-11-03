@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\ProcessInterviewAudio;
+use App\Models\Antrean;
 use App\Models\DrafSoap;
 use App\Models\Kunjungan;
 use App\Models\Pasien;
@@ -47,7 +48,13 @@ class InterviewTest extends TestCase
             'tanggal_lahir' => '1990-01-01',
             'jenis_kelamin' => 'Laki-laki',
         ]);
+        $antrean = Antrean::create([
+            'id_pasien' => $pasien->id_pasien,
+            'tanggal_kunjungan' => '2026-10-25',
+            'status' => 'Sedang Diperiksa',
+        ]);
         $this->kunjungan = Kunjungan::create([
+            'id_antrean' => $antrean->id_antrean,
             'id_pasien' => $pasien->id_pasien,
             'id_dokter' => $this->dokter->id_pengguna,
             'tanggal' => '2026-10-25',
@@ -94,7 +101,7 @@ class InterviewTest extends TestCase
             route('dokter.interview.finish', $this->kunjungan)
         );
 
-        $response->assertRedirect(route('dokter.soap.edit', $this->kunjungan));
+        $response->assertRedirect(route('dokter.rekam-medis', $this->kunjungan->id_antrean).'#soap');
         $this->assertDatabaseHas('wawancara', [
             'id_kunjungan' => $this->kunjungan->id_kunjungan,
             'status' => 'Wawancara Selesai',
@@ -112,7 +119,7 @@ class InterviewTest extends TestCase
             ->post(route('dokter.interview.start', $this->kunjungan));
 
         $response = $this->actingAs($this->dokter)
-            ->get(route('dokter.interview.show', $this->kunjungan));
+            ->followingRedirects()->get(route('dokter.interview.show', $this->kunjungan));
 
         $response->assertOk()
             ->assertDontSee('Catatan manual')
@@ -133,7 +140,7 @@ class InterviewTest extends TestCase
             'waktu_selesai' => now(),
         ]);
 
-        $response = $this->actingAs($this->dokter)->get(route('dokter.soap.edit', $this->kunjungan));
+        $response = $this->actingAs($this->dokter)->followingRedirects()->get(route('dokter.soap.edit', $this->kunjungan));
 
         $response->assertOk()->assertSee('Nyeri saat menelan')->assertSee('120/80');
         $this->assertDatabaseHas('draf_soap', [
@@ -447,7 +454,7 @@ class InterviewTest extends TestCase
             ]],
         ]);
 
-        $response = $this->actingAs($this->dokter)->get(route('dokter.interview.show', $this->kunjungan));
+        $response = $this->actingAs($this->dokter)->followingRedirects()->get(route('dokter.interview.show', $this->kunjungan));
 
         $response->assertOk()
             ->assertSee('Review Transkrip Wawancara')
@@ -463,7 +470,7 @@ class InterviewTest extends TestCase
             'processing_status' => 'transcribing',
         ]);
 
-        $response = $this->actingAs($this->dokter)->get(route('dokter.interview.show', $this->kunjungan));
+        $response = $this->actingAs($this->dokter)->followingRedirects()->get(route('dokter.interview.show', $this->kunjungan));
 
         $response->assertOk()
             ->assertSee('Transkripsi sedang diproses')
@@ -477,7 +484,7 @@ class InterviewTest extends TestCase
             ->post(route('dokter.interview.start', $this->kunjungan));
 
         $response = $this->actingAs($this->dokter)
-            ->get(route('dokter.interview.show', $this->kunjungan));
+            ->followingRedirects()->get(route('dokter.interview.show', $this->kunjungan));
 
         $response->assertOk()
             ->assertSee('startPolling();')

@@ -21,6 +21,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use App\Services\AudioProbeException;
 use App\Services\InterviewAudioUploadException;
 use App\Services\InterviewAudioUploadService;
+use App\Services\SoapDraftPreparer;
 
 class DokterController extends Controller
 {
@@ -29,7 +30,7 @@ class DokterController extends Controller
      * Mengintegrasikan data pasien, TTV Nurse Station, perekaman audio wawancara klinis,
      * serta menerapkan pembatasan isolasi data rumah sakit (Multi-Tenancy).
      */
-    public function showRekamMedis(Request $request, int $id_antrean): View|RedirectResponse
+    public function showRekamMedis(Request $request, int $id_antrean, SoapDraftPreparer $soapDraftPreparer): View|RedirectResponse
     {
         $user = Auth::user();
         if (! $user || ! $user->isDokter()) {
@@ -93,7 +94,16 @@ class DokterController extends Controller
         $wawancara = Wawancara::where('id_kunjungan', $kunjungan->id_kunjungan)->first();
         $workflowState = $this->workflowState($kunjungan, $pemeriksaanAwal, $wawancara);
 
-        // 5. Format kode kunjungan medis spesifik rumah sakit
+        // 5. Draf SOAP baru disiapkan setelah transkrip ditinjau, agar draf kosong tidak terbentuk lebih awal
+        $soap = null;
+        if (in_array($workflowState, ['soap-ready', 'soap', 'completed'], true)) {
+            $kunjungan->setRelation('pemeriksaanAwal', $pemeriksaanAwal);
+            $kunjungan->setRelation('wawancara', $wawancara);
+            $soap = $soapDraftPreparer->prepare($kunjungan);
+        }
+        $finalisasi = $kunjungan->finalisasi()->first();
+
+        // 6. Format kode kunjungan medis spesifik rumah sakit
         $tglStr = str_replace('-', '', $kunjungan->tanggal ?: date('Ymd'));
         $prefix = $user->hospital?->hospital_code ? 'RS' . $user->hospital->hospital_code : 'RSUA';
         $idKunjunganCode = $prefix . '-' . $tglStr . '-' . str_pad($antrean->id_antrean, 3, '0', STR_PAD_LEFT);
@@ -111,7 +121,9 @@ class DokterController extends Controller
             'rekamanAudio',
             'wawancara',
             'workflowState',
-            'idKunjunganCode'
+            'idKunjunganCode',
+            'soap',
+            'finalisasi'
         ));
     }
 
@@ -300,6 +312,10 @@ class DokterController extends Controller
 
         if ($wawancara?->processing_status === 'completed' && filled($wawancara->transkrip)) {
             return 'transcript';
+        }
+
+        if ($wawancara?->processing_status === 'failed') {
+            return 'failed';
         }
 
         if (in_array($wawancara?->processing_status, ['queued', 'transcribing'], true)) {
