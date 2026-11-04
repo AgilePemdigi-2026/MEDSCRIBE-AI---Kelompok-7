@@ -21,6 +21,7 @@ class InterviewController extends Controller
     public function start(Kunjungan $kunjungan): RedirectResponse
     {
         $this->authorizeVisit($kunjungan);
+        abort_if($kunjungan->isFinalized(), 403, 'Rekam medis telah difinalisasi dan tidak dapat diubah.');
 
         $wawancara = Wawancara::firstOrCreate(
             ['id_kunjungan' => $kunjungan->id_kunjungan],
@@ -42,6 +43,8 @@ class InterviewController extends Controller
     public function finish(Kunjungan $kunjungan): RedirectResponse
     {
         $this->authorizeVisit($kunjungan);
+        abort_if($kunjungan->isFinalized(), 403, 'Rekam medis telah difinalisasi dan tidak dapat diubah.');
+
         $wawancara = Wawancara::where('id_kunjungan', $kunjungan->id_kunjungan)->firstOrFail();
         if ($wawancara->status !== 'Wawancara Berlangsung') {
             return back()->withFragment('wawancara')->with('warning', 'Sesi wawancara belum dimulai atau sudah selesai.');

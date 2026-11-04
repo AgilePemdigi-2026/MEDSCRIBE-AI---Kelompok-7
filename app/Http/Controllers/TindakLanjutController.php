@@ -48,7 +48,7 @@ class TindakLanjutController extends Controller
         }
 
         $finalisasi = $kunjungan->finalisasi()->first();
-        if ($finalisasi?->isLocked()) {
+        if ($kunjungan->isFinalized() || $finalisasi?->isLocked()) {
             return $this->failure(
                 $request,
                 'Rekam medis sudah difinalisasi dan tidak dapat diubah.',

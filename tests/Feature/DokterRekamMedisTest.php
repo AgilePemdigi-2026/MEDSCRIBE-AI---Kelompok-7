@@ -266,7 +266,7 @@ class DokterRekamMedisTest extends TestCase
         );
 
         $response->assertStatus(409);
-        $this->assertDatabaseCount('rekaman_audio', 1);
+        $this->assertEquals(1, RekamanAudio::where('id_kunjungan', $kunjungan->id_kunjungan)->count());
         Queue::assertNothingPushed();
     }
 
@@ -299,7 +299,7 @@ class DokterRekamMedisTest extends TestCase
         );
 
         $response->assertStatus(202)->assertJson(['status' => 'queued']);
-        $this->assertDatabaseCount('rekaman_audio', 2);
+        $this->assertEquals(2, RekamanAudio::where('id_kunjungan', $kunjungan->id_kunjungan)->count());
         Queue::assertPushed(ProcessInterviewAudio::class);
     }
 

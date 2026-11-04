@@ -218,6 +218,11 @@ class PemeriksaanAwalController extends Controller
                 ]
             );
 
+            if ($kunjungan->isFinalized()) {
+                DB::rollBack();
+                return back()->withInput()->with('error', 'Rekam medis untuk kunjungan ini telah difinalisasi dan tidak dapat diubah.');
+            }
+
             if (!$kunjungan->hospital_id && $hospitalId) {
                 $kunjungan->hospital_id = $hospitalId;
                 $kunjungan->save();

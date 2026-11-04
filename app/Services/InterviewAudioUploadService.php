@@ -13,14 +13,16 @@ use Illuminate\Support\Str;
 
 class InterviewAudioUploadService
 {
-    public function upload(Kunjungan $kunjungan, UploadedFile $file, bool $requireStarted): array
+    public function upload(Kunjungan $kunjungan, UploadedFile $file, bool $requireStarted, ?string $realtimeTranscript = null, ?array $realtimeSegments = null): array
     {
         $duration = app(AudioProbeService::class)->probe($file->getRealPath());
         if ($duration !== null && $duration > config('medscribe.audio.max_duration_seconds')) {
             throw new InterviewAudioUploadException('Durasi audio melebihi batas konfigurasi.', 422);
         }
 
-        $result = DB::transaction(function () use ($kunjungan, $file, $duration, $requireStarted): array {
+        $hasRealtimeTranscript = filled($realtimeTranscript);
+
+        $result = DB::transaction(function () use ($kunjungan, $file, $duration, $requireStarted, $hasRealtimeTranscript, $realtimeTranscript, $realtimeSegments): array {
             // Lock the parent first so concurrent requests serialize before creating the child interview.
             $lockedVisit = Kunjungan::whereKey($kunjungan->getKey())->lockForUpdate()->firstOrFail();
             $interview = Wawancara::where('id_kunjungan', $lockedVisit->id_kunjungan)
@@ -47,7 +49,7 @@ class InterviewAudioUploadService
                 throw new InterviewAudioUploadException('Sesi wawancara sudah selesai. Gunakan transkrip yang ada untuk melanjutkan ke draf SOAP.', 409);
             }
 
-            if ($interview->processing_status && ! in_array($interview->processing_status, ['failed', 'queued', 'transcribing'], true)) {
+            if ($interview->processing_status && ! in_array($interview->processing_status, ['failed', 'queued', 'transcribing', 'completed'], true)) {
                 throw new InterviewAudioUploadException('Status pemrosesan wawancara tidak dikenal. Upload baru dihentikan untuk menjaga konsistensi data.', 409);
             }
 
@@ -64,7 +66,7 @@ class InterviewAudioUploadService
                 ];
             }
 
-            if ($latestRecording && $latestRecording->status !== 'failed') {
+            if ($latestRecording && $latestRecording->status !== 'failed' && ! $hasRealtimeTranscript) {
                 throw new InterviewAudioUploadException(
                     'Recording sebelumnya sudah selesai atau memiliki status yang tidak dikenal. Gunakan sesi yang tersedia sebelum mengunggah ulang.',
                     409
@@ -76,6 +78,8 @@ class InterviewAudioUploadService
             }
 
             $path = $file->store('interviews/'.$lockedVisit->id_kunjungan, config('medscribe.audio.disk'));
+            $status = $hasRealtimeTranscript ? 'completed' : 'queued';
+
             $recording = RekamanAudio::create([
                 'id_kunjungan' => $lockedVisit->id_kunjungan,
                 'id_wawancara' => $interview->id_wawancara,
@@ -83,19 +87,32 @@ class InterviewAudioUploadService
                 'mime_type' => $file->getMimeType(),
                 'file_size' => $file->getSize(),
                 'duration_seconds' => $duration,
-                'status' => 'queued',
+                'status' => $status,
+                'processed_at' => $hasRealtimeTranscript ? now() : null,
             ]);
-            $interview->update(['processing_status' => 'queued', 'processing_error' => null]);
-            Log::info('Interview audio stored and queued.', [
+
+            if ($hasRealtimeTranscript) {
+                $interview->update([
+                    'transkrip' => $realtimeTranscript,
+                    'transcript_segments' => $realtimeSegments ?? [],
+                    'processing_status' => 'completed',
+                    'processing_error' => null,
+                    'sumber_transkrip' => 'realtime_streaming',
+                ]);
+            } else {
+                $interview->update(['processing_status' => 'queued', 'processing_error' => null]);
+            }
+
+            Log::info('Interview audio stored.', [
                 'visit_id' => $lockedVisit->id_kunjungan,
                 'recording_id' => $recording->id_rekaman,
-                'queue' => config('medscribe.stt.queue'),
+                'has_realtime' => $hasRealtimeTranscript,
                 'file_size' => $recording->file_size,
                 'duration_seconds' => $recording->duration_seconds,
             ]);
 
             return [
-                'outcome' => 'created',
+                'outcome' => $hasRealtimeTranscript ? 'created_realtime' : 'created',
                 'interview' => $interview->fresh(),
                 'recording' => $recording,
             ];

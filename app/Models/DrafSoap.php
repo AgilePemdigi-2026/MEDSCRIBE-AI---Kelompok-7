@@ -25,6 +25,9 @@ class DrafSoap extends Model
         'source_ttv_snapshot',
         'needs_review',
         'source_type',
+        'generation_status',
+        'generation_error',
+        'attempt_id',
     ];
 
     protected $casts = [

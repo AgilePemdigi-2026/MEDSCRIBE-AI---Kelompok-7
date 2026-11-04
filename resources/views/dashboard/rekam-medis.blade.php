@@ -15,7 +15,7 @@
         ['wawancara', 'Wawancara Klinis', $tahapWawancara],
         ['soap', 'Draf SOAP', $tahapSoap],
         ['tindak-lanjut', 'Tindak Lanjut', $tahapTindakLanjut],
-        ['finalisasi', 'Finalisasi', 'soon'],
+        ['finalisasi', 'Finalisasi', $tahapFinalisasi],
     ];
 @endphp
 
@@ -151,27 +151,8 @@
                 ])
             </section>
 
-            <section id="finalisasi" class="card scroll-mt-28 rise" style="--i: 5" aria-labelledby="judulFinalisasi">
-                @include('dashboard.rekam-medis.kepala-tahap', [
-                    'nomor' => 4,
-                    'judul' => 'Setujui & Finalisasi Rekam Medis',
-                    'keterangan' => 'Persetujuan akhir dokter sebelum rekam medis dikunci.',
-                    'keadaan' => 'soon',
-                    'statusLabel' => 'Belum tersedia',
-                    'statusClass' => 'status-muted',
-                    'idJudul' => 'judulFinalisasi',
-                ])
-                <div class="px-5 sm:px-6 pb-5 sm:pb-6">
-                    <p class="flex items-center gap-2 px-4 py-3 rounded-[16px] bg-soft-offwhite border border-dashed border-border-hover text-xs text-text-secondary">
-                        @if ($terverifikasi)
-                            <span class="w-2 h-2 rounded-full bg-success-dot flex-shrink-0" aria-hidden="true"></span>
-                            Draf SOAP kunjungan ini sudah Anda verifikasi.
-                        @else
-                            <span class="w-2 h-2 rounded-full bg-border-hover flex-shrink-0" aria-hidden="true"></span>
-                            Draf SOAP kunjungan ini belum diverifikasi.
-                        @endif
-                    </p>
-                </div>
+            <section id="finalisasi" class="card scroll-mt-28 rise {{ $tahapFinalisasi === 'active' ? 'ring-2 ring-royal-indigo/15' : '' }}" style="--i: 5" aria-labelledby="judulFinalisasi">
+                @include('dashboard.rekam-medis.finalisasi')
             </section>
         </div>
     </div>

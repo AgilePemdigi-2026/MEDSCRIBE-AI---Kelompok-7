@@ -42,11 +42,9 @@ Route::middleware('guest')->group(function () {
     Route::post('/verify-email-otp', [AuthController::class, 'verifyEmailOtp'])->name('verification.otp.verify');
     Route::post('/verify-email-otp/resend', [AuthController::class, 'resendEmailOtp'])->name('verification.otp.resend');
 
-    // 3. Google OAuth 2.0 (Phase 2 D)
+    // 3. Google OAuth 2.0 (Khusus Login Pengguna Terdaftar)
     Route::get('/auth/google', [AuthController::class, 'redirectToGoogle'])->name('auth.google');
     Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');
-    Route::get('/register/google-complete', [AuthController::class, 'showGoogleCompleteForm'])->name('register.google.complete');
-    Route::post('/register/google-complete', [AuthController::class, 'storeGoogleComplete'])->name('register.google.complete.submit');
 
     // 4. Lupa Password & Reset Password via OTP (Phase 3)
     Route::get('/forgot-password', [ForgotPasswordController::class, 'showForgotPasswordForm'])->name('password.request');
@@ -75,12 +73,16 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
         Route::post('/dokter/kunjungan/{kunjungan}/wawancara/audio', [InterviewAudioController::class, 'upload'])->name('dokter.interview.audio.upload');
         Route::get('/dokter/kunjungan/{kunjungan}/wawancara/audio/status', [InterviewAudioController::class, 'status'])->name('dokter.interview.audio.status');
         Route::post('/dokter/kunjungan/{kunjungan}/wawancara/audio/retry', [InterviewAudioController::class, 'retry'])->name('dokter.interview.audio.retry');
+        Route::post('/dokter/kunjungan/{kunjungan}/wawancara/proses', [InterviewAudioController::class, 'processRecording'])->name('dokter.interview.process');
         Route::put('/dokter/kunjungan/{kunjungan}/wawancara/transcript', [InterviewAudioController::class, 'updateTranscript'])->name('dokter.interview.transcript.update');
+        Route::post('/dokter/kunjungan/{kunjungan}/wawancara/verifikasi', [InterviewAudioController::class, 'verifyTranscript'])->name('dokter.interview.transcript.verify');
         Route::get('/dokter/kunjungan/{kunjungan}/soap', [SoapReviewController::class, 'edit'])->name('dokter.soap.edit');
+        Route::get('/dokter/kunjungan/{kunjungan}/soap/status', [SoapReviewController::class, 'status'])->name('dokter.soap.status');
         Route::post('/dokter/kunjungan/{kunjungan}/soap/generate', [SoapReviewController::class, 'generate'])->name('dokter.soap.generate');
         Route::put('/dokter/kunjungan/{kunjungan}/soap', [SoapReviewController::class, 'save'])->name('dokter.soap.save');
         Route::post('/dokter/kunjungan/{kunjungan}/soap/verifikasi', [SoapReviewController::class, 'verify'])->name('dokter.soap.verify');
         Route::post('/dokter/kunjungan/{kunjungan}/tindak-lanjut', [TindakLanjutController::class, 'store'])->name('dokter.tindak-lanjut.store');
+        Route::post('/dokter/kunjungan/{kunjungan}/finalisasi', [DokterController::class, 'finalizeRekamMedis'])->name('dokter.rekam-medis.finalisasi');
         Route::get('/dokter/rekam-medis/{id_antrean}', [DokterController::class, 'showRekamMedis'])->name('dokter.rekam-medis');
         Route::post('/dokter/rekam-medis/{id_antrean}/audio', [DokterController::class, 'uploadAudio'])->name('dokter.rekam-medis.upload-audio');
         Route::get('/dokter/rekam-medis/{id_antrean}/audio-file', [DokterController::class, 'streamAudio'])->name('dokter.rekam-medis.stream-audio');

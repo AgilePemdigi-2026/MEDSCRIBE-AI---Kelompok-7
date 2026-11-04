@@ -15,20 +15,25 @@ class Finalisasi extends Model
         'id_dokter',
         'status',
         'FINAL',
+        'finalized_at',
+        'finalized_by',
+        'catatan_finalisasi',
     ];
 
     protected $casts = [
         'FINAL' => 'boolean',
+        'finalized_at' => 'datetime',
+        'finalized_by' => 'integer',
     ];
 
     public function isLocked(): bool
     {
-        return (bool) $this->FINAL && in_array($this->status, [
+        return ((bool) $this->FINAL && in_array($this->status, [
             'Final',
             'Terkunci',
             'Terintegrasi SATUSEHAT',
             'Sinkronisasi Tertunda',
-        ], true);
+        ], true)) || $this->finalized_at !== null;
     }
 
     public function kunjungan()
@@ -39,5 +44,10 @@ class Finalisasi extends Model
     public function dokter()
     {
         return $this->belongsTo(Pengguna::class, 'id_dokter', 'id_pengguna');
+    }
+
+    public function finalizedBy()
+    {
+        return $this->belongsTo(Pengguna::class, 'finalized_by', 'id_pengguna');
     }
 }

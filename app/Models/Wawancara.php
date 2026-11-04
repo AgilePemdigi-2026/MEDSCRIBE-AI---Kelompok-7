@@ -25,6 +25,7 @@ class Wawancara extends Model
         'waktu_mulai',
         'waktu_selesai',
         'transcript_reviewed_at',
+        'transcript_verified_by',
     ];
 
     protected $casts = [
@@ -34,11 +35,17 @@ class Wawancara extends Model
         'waktu_mulai' => 'datetime',
         'waktu_selesai' => 'datetime',
         'transcript_reviewed_at' => 'datetime',
+        'transcript_verified_by' => 'integer',
     ];
 
     public function kunjungan()
     {
         return $this->belongsTo(Kunjungan::class, 'id_kunjungan', 'id_kunjungan');
+    }
+
+    public function verifiedBy()
+    {
+        return $this->belongsTo(Pengguna::class, 'transcript_verified_by', 'id_pengguna');
     }
 
     public function rekamanAudio()

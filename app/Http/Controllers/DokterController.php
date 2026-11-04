@@ -118,6 +118,12 @@ class DokterController extends Controller
             default => 'active',
         };
 
+        $tahapFinalisasi = match (true) {
+            $kunjungan->isFinalized() => 'done',
+            $kunjungan->isSoapVerified() => 'active',
+            default => 'locked',
+        };
+
         // 6. Format kode kunjungan medis spesifik rumah sakit
         $tglStr = str_replace('-', '', $kunjungan->tanggal ?: date('Ymd'));
         $prefix = $user->hospital?->hospital_code ? 'RS'.$user->hospital->hospital_code : 'RSUA';
@@ -141,6 +147,7 @@ class DokterController extends Controller
             'finalisasi',
             'tindakLanjut',
             'tahapTindakLanjut',
+            'tahapFinalisasi',
             'parameterLoinc'
         ));
     }
@@ -181,17 +188,35 @@ class DokterController extends Controller
             return $kunjungan->fresh();
         });
 
+        abort_if($kunjungan->isFinalized(), 403, 'Rekam medis telah difinalisasi dan tidak dapat diubah.');
+
         $request->validate([
             'audio' => [
                 'required', 'file', 'max:'.config('medscribe.audio.max_size_kb'),
                 'mimetypes:audio/webm,video/webm,audio/ogg,audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/x-m4a',
             ],
+            'realtime_transcript' => ['nullable', 'string'],
+            'realtime_segments' => ['nullable'],
         ]);
         $file = $request->file('audio');
         abort_if(($file->getSize() ?? 0) <= 0, 422, 'Berkas audio kosong.');
 
+        $realtimeSegments = $request->input('realtime_segments');
+        if (is_string($realtimeSegments)) {
+            $decoded = json_decode($realtimeSegments, true);
+            if (is_array($decoded)) {
+                $realtimeSegments = $decoded;
+            }
+        }
+
         try {
-            $result = app(InterviewAudioUploadService::class)->upload($kunjungan, $file, false);
+            $result = app(InterviewAudioUploadService::class)->upload(
+                $kunjungan,
+                $file,
+                false,
+                $request->input('realtime_transcript'),
+                is_array($realtimeSegments) ? $realtimeSegments : null
+            );
         } catch (AudioProbeException|InterviewAudioUploadException $exception) {
             return response()->json(['success' => false, 'message' => $exception->getMessage()], $exception->statusCode);
         } catch (\Throwable) {
@@ -205,6 +230,17 @@ class DokterController extends Controller
 
         $recording = $result['recording'];
         $isExisting = $result['outcome'] === 'existing';
+        $isRealtime = $result['outcome'] === 'created_realtime';
+
+        if ($isRealtime) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Rekaman dan transkripsi langsung berhasil disimpan.',
+                'audio_id' => $recording->id_rekaman,
+                'status' => 'completed',
+                'audio_stream' => route('dokter.rekam-medis.stream-audio', $antrean->id_antrean),
+            ], 200);
+        }
 
         return response()->json([
             'success' => true,
@@ -345,5 +381,112 @@ class DokterController extends Controller
         }
 
         return $pemeriksaanAwal ? 'interview' : 'ttv';
+    }
+
+    /**
+     * Memvalidasi persetujuan akhir dan memfinalisasi rekam medis secara permanen.
+     * Mengubah status rekam medis menjadi 'Final' dan mengunci seluruh perubahan klinis.
+     */
+    public function finalizeRekamMedis(Request $request, Kunjungan $kunjungan): RedirectResponse|JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user || ! $user->isDokter()) {
+            abort(403, 'Akses ditolak: Hanya dokter poliklinik yang berwenang memfinalisasi rekam medis.');
+        }
+
+        $this->authorizeKunjungan($kunjungan, $user->id_pengguna);
+
+        if ($user->hospital_id) {
+            $targetHospitalId = $kunjungan->hospital_id ?? $kunjungan->pasien?->hospital_id;
+            if ($targetHospitalId && (int) $targetHospitalId !== (int) $user->hospital_id) {
+                abort(403, 'Akses ditolak: Anda tidak memiliki wewenang untuk memfinalisasi rekam medis dari rumah sakit lain.');
+            }
+        }
+
+        if ($kunjungan->isFinalized()) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Rekam medis ini sudah berstatus Final.'], 409);
+            }
+
+            return redirect()
+                ->route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean])
+                ->with('info', 'Rekam medis ini sudah difinalisasi.');
+        }
+
+        $request->validate([
+            'konfirmasi_persetujuan' => ['accepted'],
+            'catatan_finalisasi' => ['nullable', 'string', 'max:1000'],
+        ], [
+            'konfirmasi_persetujuan.accepted' => 'Anda wajib mencentang pernyataan persetujuan dan verifikasi sebelum memfinalisasi rekam medis.',
+        ]);
+
+        // 1. Validasi Persyaratan A: Draf SOAP Terverifikasi & Bagian Lengkap
+        $draf = $kunjungan->drafSoap;
+        if (! $kunjungan->isSoapVerified() || ! $draf) {
+            $msg = 'Draf SOAP wajib diverifikasi oleh dokter terlebih dahulu sebelum finalisasi.';
+            if ($request->wantsJson()) return response()->json(['success' => false, 'message' => $msg], 422);
+            return redirect()->route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean])->with('error', $msg);
+        }
+
+        if (empty(trim($draf->subjective_text ?? '')) || empty(trim($draf->objective_text ?? '')) || empty(trim($draf->assessment_text ?? '')) || empty(trim($draf->plan_text ?? ''))) {
+            $msg = 'Seluruh bagian draf SOAP (Subjective, Objective, Assessment, Plan) harus terisi lengkap sebelum finalisasi.';
+            if ($request->wantsJson()) return response()->json(['success' => false, 'message' => $msg], 422);
+            return redirect()->route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean])->with('error', $msg);
+        }
+
+        // 2. Validasi Persyaratan B: TTV & Catatan Perawat
+        $pemeriksaanAwal = $kunjungan->pemeriksaanAwal;
+        if (! $pemeriksaanAwal || empty($pemeriksaanAwal->tekanan_darah) || ! $pemeriksaanAwal->nadi || ! $pemeriksaanAwal->suhu_tubuh) {
+            $msg = 'Data pemeriksaan awal TTV dan catatan perawat belum lengkap pada kunjungan ini.';
+            if ($request->wantsJson()) return response()->json(['success' => false, 'message' => $msg], 422);
+            return redirect()->route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean])->with('error', $msg);
+        }
+
+        // 3. Validasi Persyaratan C: Transkripsi Wawancara Klinis Terverifikasi
+        $wawancara = $kunjungan->wawancara;
+        if (! $wawancara || empty(trim($wawancara->transkrip ?? '')) || ! $wawancara->transcript_reviewed_at) {
+            $msg = 'Transkripsi wawancara klinis wajib diverifikasi terlebih dahulu sebelum finalisasi.';
+            if ($request->wantsJson()) return response()->json(['success' => false, 'message' => $msg], 422);
+            return redirect()->route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean])->with('error', $msg);
+        }
+
+        // 4. Validasi Persyaratan D: Tindak Lanjut Medis Tersimpan
+        if (! $kunjungan->tindakLanjut) {
+            $msg = 'Tindak lanjut medis (resep / rujukan laboratorium / selesai tanpa tindakan) wajib disimpan terlebih dahulu.';
+            if ($request->wantsJson()) return response()->json(['success' => false, 'message' => $msg], 422);
+            return redirect()->route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean])->with('error', $msg);
+        }
+
+        DB::transaction(function () use ($kunjungan, $user, $request) {
+            $kunjungan->finalisasi()->updateOrCreate(
+                ['id_kunjungan' => $kunjungan->id_kunjungan],
+                [
+                    'id_dokter' => $user->id_pengguna,
+                    'status' => 'Final',
+                    'FINAL' => true,
+                    'finalized_at' => now(),
+                    'finalized_by' => $user->id_pengguna,
+                    'catatan_finalisasi' => $request->input('catatan_finalisasi'),
+                ]
+            );
+
+            $kunjungan->update(['status' => Kunjungan::STATUS_FINALISASI]);
+
+            if ($kunjungan->antrean) {
+                $kunjungan->antrean->update(['status' => 'Selesai']);
+            }
+        });
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Rekam medis berhasil disetujui dan difinalisasi secara permanen.',
+                'redirect_url' => route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean]),
+            ]);
+        }
+
+        return redirect()
+            ->route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean])
+            ->with('status', 'Rekam medis berhasil disetujui dan difinalisasi.');
     }
 }

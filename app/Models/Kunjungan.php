@@ -22,6 +22,8 @@ class Kunjungan extends Model
 
     public const STATUS_SELESAI_TANPA_TINDAKAN_LANJUT = 'Selesai Tanpa Tindakan Lanjut';
 
+    public const STATUS_FINALISASI = 'Final';
+
     public static function soapVerifiedStatuses(): array
     {
         return [
@@ -30,12 +32,18 @@ class Kunjungan extends Model
             self::STATUS_RUJUKAN_LAB_TERSIMPAN,
             self::STATUS_RUJUKAN_LAB_RESEP_TERSIMPAN,
             self::STATUS_SELESAI_TANPA_TINDAKAN_LANJUT,
+            self::STATUS_FINALISASI,
         ];
     }
 
     public function isSoapVerified(): bool
     {
         return in_array($this->status, self::soapVerifiedStatuses(), true);
+    }
+
+    public function isFinalized(): bool
+    {
+        return (bool) ($this->finalisasi?->isLocked() || in_array($this->status, [self::STATUS_FINALISASI, 'Selesai', 'Terkunci'], true));
     }
 
     protected $table = 'kunjungan';
