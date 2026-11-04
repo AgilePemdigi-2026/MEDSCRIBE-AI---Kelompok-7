@@ -8,6 +8,7 @@ use App\Http\Controllers\InterviewAudioController;
 use App\Http\Controllers\InterviewController;
 use App\Http\Controllers\PemeriksaanAwalController;
 use App\Http\Controllers\SoapReviewController;
+use App\Http\Controllers\TindakLanjutController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -79,6 +80,7 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
         Route::post('/dokter/kunjungan/{kunjungan}/soap/generate', [SoapReviewController::class, 'generate'])->name('dokter.soap.generate');
         Route::put('/dokter/kunjungan/{kunjungan}/soap', [SoapReviewController::class, 'save'])->name('dokter.soap.save');
         Route::post('/dokter/kunjungan/{kunjungan}/soap/verifikasi', [SoapReviewController::class, 'verify'])->name('dokter.soap.verify');
+        Route::post('/dokter/kunjungan/{kunjungan}/tindak-lanjut', [TindakLanjutController::class, 'store'])->name('dokter.tindak-lanjut.store');
         Route::get('/dokter/rekam-medis/{id_antrean}', [DokterController::class, 'showRekamMedis'])->name('dokter.rekam-medis');
         Route::post('/dokter/rekam-medis/{id_antrean}/audio', [DokterController::class, 'uploadAudio'])->name('dokter.rekam-medis.upload-audio');
         Route::get('/dokter/rekam-medis/{id_antrean}/audio-file', [DokterController::class, 'streamAudio'])->name('dokter.rekam-medis.stream-audio');

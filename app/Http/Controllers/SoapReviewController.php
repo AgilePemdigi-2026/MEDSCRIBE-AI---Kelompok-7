@@ -54,7 +54,11 @@ class SoapReviewController extends Controller
                 collect($validated)->only(['subjective_text', 'objective_text', 'assessment_text', 'plan_text', 'kode_icd10'])->all(),
                 $this->sourceMetadata($kunjungan)
             ));
-            $kunjungan->update(['status' => 'SOAP Belum Diverifikasi']);
+            Finalisasi::where('id_kunjungan', $kunjungan->id_kunjungan)->update([
+                'status' => 'Perlu Ditinjau',
+                'FINAL' => false,
+            ]);
+            $kunjungan->update(['status' => Kunjungan::STATUS_SOAP_BELUM_DIVERIFIKASI]);
         });
 
         return back()->withFragment('soap')->with('status', 'Perubahan draf SOAP berhasil disimpan.');
@@ -114,9 +118,13 @@ class SoapReviewController extends Controller
             ));
             Finalisasi::updateOrCreate(
                 ['id_kunjungan' => $kunjungan->id_kunjungan],
-                ['id_dokter' => $request->user()->id_pengguna, 'status' => 'Terverifikasi', 'FINAL' => true]
+                ['id_dokter' => $request->user()->id_pengguna, 'status' => 'Terverifikasi', 'FINAL' => false]
             );
-            $kunjungan->update(['status' => 'SOAP Terverifikasi']);
+
+            $tindakLanjut = $kunjungan->tindakLanjut()->first();
+            $kunjungan->update([
+                'status' => $tindakLanjut?->statusKunjungan() ?? Kunjungan::STATUS_SOAP_TERVERIFIKASI,
+            ]);
         });
 
         return back()->withFragment('soap')->with('status', 'Draf SOAP berhasil diverifikasi oleh dokter.');

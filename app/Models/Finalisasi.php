@@ -21,6 +21,16 @@ class Finalisasi extends Model
         'FINAL' => 'boolean',
     ];
 
+    public function isLocked(): bool
+    {
+        return (bool) $this->FINAL && in_array($this->status, [
+            'Final',
+            'Terkunci',
+            'Terintegrasi SATUSEHAT',
+            'Sinkronisasi Tertunda',
+        ], true);
+    }
+
     public function kunjungan()
     {
         return $this->belongsTo(Kunjungan::class, 'id_kunjungan', 'id_kunjungan');

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EResep extends Model
 {
@@ -21,8 +22,19 @@ class EResep extends Model
         'status',
     ];
 
-    public function pasien()
+    protected $casts = [
+        'id_pasien' => 'integer',
+        'id_tindak_lanjut' => 'integer',
+        'jumlah' => 'integer',
+    ];
+
+    public function pasien(): BelongsTo
     {
         return $this->belongsTo(Pasien::class, 'id_pasien', 'id_pasien');
+    }
+
+    public function tindakLanjut(): BelongsTo
+    {
+        return $this->belongsTo(TindakLanjut::class, 'id_tindak_lanjut', 'id_tindak_lanjut');
     }
 }

@@ -14,7 +14,7 @@
     $navigasi = [
         ['wawancara', 'Wawancara Klinis', $tahapWawancara],
         ['soap', 'Draf SOAP', $tahapSoap],
-        ['tindak-lanjut', 'Tindak Lanjut', 'soon'],
+        ['tindak-lanjut', 'Tindak Lanjut', $tahapTindakLanjut],
         ['finalisasi', 'Finalisasi', 'soon'],
     ];
 @endphp
@@ -143,15 +143,11 @@
                 @include('dashboard.rekam-medis.soap')
             </section>
 
-            <section id="tindak-lanjut" class="card scroll-mt-28 rise" style="--i: 4" aria-labelledby="judulTindakLanjut">
-                @include('dashboard.rekam-medis.kepala-tahap', [
-                    'nomor' => 3,
-                    'judul' => 'Kelola Tindak Lanjut Medis',
-                    'keterangan' => 'Resep, rujukan, dan jadwal kontrol pasien.',
-                    'keadaan' => 'soon',
-                    'statusLabel' => 'Belum tersedia',
-                    'statusClass' => 'status-muted',
-                    'idJudul' => 'judulTindakLanjut',
+            <section id="tindak-lanjut" class="card scroll-mt-28 rise {{ $tahapTindakLanjut === 'active' ? 'ring-2 ring-royal-indigo/15' : '' }}" style="--i: 4" aria-labelledby="judulTindakLanjut">
+                @include('dashboard.rekam-medis.tindak-lanjut', [
+                    'tahapTindakLanjut' => $tahapTindakLanjut,
+                    'tindakLanjut' => $tindakLanjut,
+                    'parameterLoinc' => $parameterLoinc,
                 ])
             </section>
 

@@ -276,6 +276,10 @@ class PemeriksaanAwalController extends Controller
                 'FINAL' => false,
             ]);
 
+            if ($kunjungan->isSoapVerified()) {
+                $kunjungan->update(['status' => Kunjungan::STATUS_SOAP_BELUM_DIVERIFIKASI]);
+            }
+
             DB::commit();
 
             return redirect()

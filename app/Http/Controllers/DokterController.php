@@ -4,10 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Antrean;
 use App\Models\Kunjungan;
+use App\Models\ParameterLoinc;
 use App\Models\PemeriksaanAwal;
 use App\Models\Pengguna;
 use App\Models\RekamanAudio;
 use App\Models\Wawancara;
+use App\Services\AudioProbeException;
+use App\Services\InterviewAudioUploadException;
+use App\Services\InterviewAudioUploadService;
+use App\Services\SoapDraftPreparer;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -18,10 +23,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
-use App\Services\AudioProbeException;
-use App\Services\InterviewAudioUploadException;
-use App\Services\InterviewAudioUploadService;
-use App\Services\SoapDraftPreparer;
 
 class DokterController extends Controller
 {
@@ -54,10 +55,10 @@ class DokterController extends Controller
             ['id_antrean' => $antrean->id_antrean],
             [
                 'hospital_id' => $user->hospital_id ?? $antrean->hospital_id,
-                'id_pasien'   => $antrean->id_pasien,
-                'id_dokter'   => $user->id_pengguna,
-                'tanggal'     => $antrean->tanggal_kunjungan ?: Carbon::today()->toDateString(),
-                'status'      => 'Sedang Diperiksa',
+                'id_pasien' => $antrean->id_pasien,
+                'id_dokter' => $user->id_pengguna,
+                'tanggal' => $antrean->tanggal_kunjungan ?: Carbon::today()->toDateString(),
+                'status' => 'Sedang Diperiksa',
             ]
         );
 
@@ -102,11 +103,25 @@ class DokterController extends Controller
             $soap = $soapDraftPreparer->prepare($kunjungan);
         }
         $finalisasi = $kunjungan->finalisasi()->first();
+        $tindakLanjut = $kunjungan->tindakLanjut()
+            ->with(['eResep', 'rujukanLab.parameter'])
+            ->first();
+        $parameterLoinc = ParameterLoinc::query()
+            ->where('is_active', true)
+            ->orderBy('nama_pemeriksaan')
+            ->get();
+
+        $tahapTindakLanjut = match (true) {
+            $tindakLanjut !== null => 'done',
+            $finalisasi?->isLocked() === true => 'locked',
+            $workflowState !== 'completed' => 'locked',
+            default => 'active',
+        };
 
         // 6. Format kode kunjungan medis spesifik rumah sakit
         $tglStr = str_replace('-', '', $kunjungan->tanggal ?: date('Ymd'));
-        $prefix = $user->hospital?->hospital_code ? 'RS' . $user->hospital->hospital_code : 'RSUA';
-        $idKunjunganCode = $prefix . '-' . $tglStr . '-' . str_pad($antrean->id_antrean, 3, '0', STR_PAD_LEFT);
+        $prefix = $user->hospital?->hospital_code ? 'RS'.$user->hospital->hospital_code : 'RSUA';
+        $idKunjunganCode = $prefix.'-'.$tglStr.'-'.str_pad($antrean->id_antrean, 3, '0', STR_PAD_LEFT);
 
         $pasien = $antrean->pasien;
         $umur = $pasien->umur ?: ($pasien->tanggal_lahir ? Carbon::parse($pasien->tanggal_lahir)->age : null);
@@ -123,7 +138,10 @@ class DokterController extends Controller
             'workflowState',
             'idKunjunganCode',
             'soap',
-            'finalisasi'
+            'finalisasi',
+            'tindakLanjut',
+            'tahapTindakLanjut',
+            'parameterLoinc'
         ));
     }
 
@@ -152,10 +170,10 @@ class DokterController extends Controller
                 ['id_antrean' => $lockedAntrean->id_antrean],
                 [
                     'hospital_id' => $user->hospital_id ?? $lockedAntrean->hospital_id,
-                    'id_pasien'   => $lockedAntrean->id_pasien,
-                    'id_dokter'   => $user->id_pengguna,
-                    'tanggal'     => $lockedAntrean->tanggal_kunjungan ?: Carbon::today()->toDateString(),
-                    'status'      => 'Sedang Diperiksa',
+                    'id_pasien' => $lockedAntrean->id_pasien,
+                    'id_dokter' => $user->id_pengguna,
+                    'tanggal' => $lockedAntrean->tanggal_kunjungan ?: Carbon::today()->toDateString(),
+                    'status' => 'Sedang Diperiksa',
                 ]
             );
             $this->authorizeKunjungan($kunjungan, $user->id_pengguna);
@@ -248,7 +266,7 @@ class DokterController extends Controller
      */
     protected function authorizeHospitalAccess(Pengguna $user, Antrean $antrean): void
     {
-        if (!$user->hospital_id) {
+        if (! $user->hospital_id) {
             return; // Akun legacy tanpa pembatasan rumah sakit spesifik
         }
 
@@ -298,7 +316,7 @@ class DokterController extends Controller
 
     private function workflowState(Kunjungan $kunjungan, ?PemeriksaanAwal $pemeriksaanAwal, ?Wawancara $wawancara): string
     {
-        if ($kunjungan->status === 'SOAP Terverifikasi') {
+        if ($kunjungan->isSoapVerified()) {
             return 'completed';
         }
 
