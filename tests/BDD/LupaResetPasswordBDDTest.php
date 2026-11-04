@@ -14,6 +14,7 @@ class LupaResetPasswordBDDTest extends BDDTestCase
 {
     /**
      * Skenario: Permintaan reset password mengirimkan OTP ke email terdaftar
+     * @scenario Request Password Reset Success
      */
     public function test_skenario_permintaan_reset_password_mengirim_otp(): void
     {
@@ -33,10 +34,12 @@ class LupaResetPasswordBDDTest extends BDDTestCase
 
         $this->and('Pengguna diarahkan ke halaman input verifikasi OTP');
         $response->assertRedirect(route('password.otp.show', ['email' => $dokter->email]));
+        $response->assertSessionHas('status', 'Jika alamat email terdaftar di sistem, kode verifikasi 6 digit telah dikirimkan.');
     }
 
     /**
      * Skenario: Permintaan reset password dengan email yang tidak terdaftar
+     * @scenario Request Password Reset With Unregistered Email
      */
     public function test_skenario_permintaan_reset_password_email_tidak_terdaftar(): void
     {
@@ -50,6 +53,7 @@ class LupaResetPasswordBDDTest extends BDDTestCase
 
         $this->then('Sistem merespons secara aman (anti user-enumeration) mengarahkan ke halaman OTP');
         $response->assertRedirect(route('password.otp.show', ['email' => $fakeEmail]));
+        $response->assertSessionHas('status', 'Jika alamat email terdaftar di sistem, kode verifikasi 6 digit telah dikirimkan.');
 
         $this->and('Tidak ada OTP yang dibuat untuk email fiktif tersebut');
         $this->assertDatabaseMissing('email_otps', [
@@ -59,6 +63,7 @@ class LupaResetPasswordBDDTest extends BDDTestCase
 
     /**
      * Skenario: Verifikasi kode OTP reset password berhasil dan memberikan token sesi
+     * @scenario Verify Password Reset OTP Success
      */
     public function test_skenario_verifikasi_otp_reset_password_berhasil(): void
     {
@@ -91,10 +96,12 @@ class LupaResetPasswordBDDTest extends BDDTestCase
         $location = $response->headers->get('Location');
         $this->assertStringContainsString('/reset-password', $location);
         $this->assertStringContainsString('token=', $location);
+        $response->assertSessionHas('status', 'Verifikasi berhasil. Silakan tentukan kata sandi baru Anda.');
     }
 
     /**
      * Skenario: Verifikasi kode OTP reset password gagal jika kode salah
+     * @scenario Failed Verify Password Reset OTP (wrong code)
      */
     public function test_skenario_verifikasi_otp_reset_password_gagal_jika_salah(): void
     {
@@ -118,11 +125,12 @@ class LupaResetPasswordBDDTest extends BDDTestCase
         ]);
 
         $this->then('Sistem menolak verifikasi dengan error pada session');
-        $response->assertSessionHasErrors('otp');
+        $response->assertSessionHasErrors(['otp' => 'Kode verifikasi tidak valid. Sisa percobaan: 4 kali.']);
     }
 
     /**
      * Skenario: Pengguna berhasil menyetel kata sandi baru dan dapat login kembali
+     * @scenario Reset Password Success
      */
     public function test_skenario_pengguna_berhasil_set_kata_sandi_baru(): void
     {
@@ -164,7 +172,7 @@ class LupaResetPasswordBDDTest extends BDDTestCase
 
         $this->and('Pengguna diarahkan ke login dengan notifikasi sukses');
         $response->assertRedirect(route('login'));
-        $response->assertSessionHas('status');
+        $response->assertSessionHas('status', 'Password berhasil diperbarui. Silakan login menggunakan password baru Anda.');
 
         $this->and('Pengguna berhasil login menggunakan kata sandi baru tersebut');
         $loginRes = $this->post('/login', [

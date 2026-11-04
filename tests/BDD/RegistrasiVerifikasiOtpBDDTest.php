@@ -14,6 +14,7 @@ class RegistrasiVerifikasiOtpBDDTest extends BDDTestCase
 {
     /**
      * Skenario: Registrasi berhasil menyimpan data sementara dan mengirimkan OTP 6-digit ke email
+     * @scenario Register Success
      */
     public function test_skenario_registrasi_berhasil_menyimpan_data_pending_dan_mengirim_otp(): void
     {
@@ -41,10 +42,12 @@ class RegistrasiVerifikasiOtpBDDTest extends BDDTestCase
 
         $this->and('Calon pengguna diarahkan ke halaman verifikasi OTP');
         $response->assertRedirect(route('verification.otp.show', ['email' => $email]));
+        $response->assertSessionHas('status', 'Registrasi berhasil dimulai. Silakan periksa email Anda dan masukkan kode OTP untuk menyelesaikan pendaftaran.');
     }
 
     /**
      * Skenario: Registrasi ditolak jika email sudah terdaftar pada akun aktif
+     * @scenario Failed Register (email already registered)
      */
     public function test_skenario_registrasi_ditolak_jika_email_sudah_terdaftar(): void
     {
@@ -62,11 +65,12 @@ class RegistrasiVerifikasiOtpBDDTest extends BDDTestCase
         ]);
 
         $this->then('Sistem menolak registrasi dengan error validasi email');
-        $response->assertSessionHasErrors('email');
+        $response->assertSessionHasErrors(['email' => 'Email ini sudah terdaftar. Silakan login menggunakan akun Anda atau gunakan fitur Lupa Password jika Anda tidak dapat mengakses akun.']);
     }
 
     /**
      * Skenario: Registrasi ditolak jika konfirmasi password tidak cocok
+     * @scenario Failed Register (passwords do not match)
      */
     public function test_skenario_registrasi_ditolak_jika_konfirmasi_password_tidak_cocok(): void
     {
@@ -84,11 +88,12 @@ class RegistrasiVerifikasiOtpBDDTest extends BDDTestCase
         ]);
 
         $this->then('Sistem mengembalikan error konfirmasi password');
-        $response->assertSessionHasErrors('password');
+        $response->assertSessionHasErrors(['password' => 'Konfirmasi kata sandi tidak cocok.']);
     }
 
     /**
      * Skenario: Verifikasi OTP berhasil mengaktifkan akun dan membuat record pengguna
+     * @scenario Verify Email OTP Success
      */
     public function test_skenario_verifikasi_otp_berhasil_mengaktifkan_akun(): void
     {
@@ -128,11 +133,12 @@ class RegistrasiVerifikasiOtpBDDTest extends BDDTestCase
 
         $this->and('Pengguna diarahkan ke login dengan notifikasi sukses');
         $response->assertRedirect('/login');
-        $response->assertSessionHas('status');
+        $response->assertSessionHas('status', 'Verifikasi email berhasil. Akun Anda telah berhasil didaftarkan. Silakan login untuk melanjutkan.');
     }
 
     /**
      * Skenario: Verifikasi OTP gagal jika kode yang dimasukkan salah
+     * @scenario Failed Verify Email OTP (wrong code)
      */
     public function test_skenario_verifikasi_otp_gagal_jika_kode_salah(): void
     {
@@ -158,7 +164,7 @@ class RegistrasiVerifikasiOtpBDDTest extends BDDTestCase
         ]);
 
         $this->then('Sistem menolak verifikasi');
-        $response->assertSessionHasErrors('otp');
+        $response->assertSessionHasErrors(['otp' => 'Kode verifikasi tidak valid. Sisa percobaan: 4 kali.']);
 
         $this->and('Record pengguna belum dibuat');
         $this->assertDatabaseMissing('pengguna', ['email' => $email]);
@@ -166,6 +172,7 @@ class RegistrasiVerifikasiOtpBDDTest extends BDDTestCase
 
     /**
      * Skenario: Verifikasi OTP gagal jika kode OTP telah kedaluwarsa
+     * @scenario Failed Verify Email OTP (expired code)
      */
     public function test_skenario_verifikasi_otp_gagal_jika_kedaluwarsa(): void
     {
@@ -193,11 +200,12 @@ class RegistrasiVerifikasiOtpBDDTest extends BDDTestCase
         ]);
 
         $this->then('Sistem menolak verifikasi karena OTP telah kedaluwarsa');
-        $response->assertSessionHasErrors('otp');
+        $response->assertSessionHasErrors(['otp' => 'Kode verifikasi telah kedaluwarsa. Silakan minta kode verifikasi baru.']);
     }
 
     /**
      * Skenario: Pengguna dapat meminta pengiriman ulang kode OTP baru
+     * @scenario Resend Email OTP Success
      */
     public function test_skenario_pengguna_dapat_meminta_pengiriman_ulang_otp(): void
     {
@@ -222,7 +230,7 @@ class RegistrasiVerifikasiOtpBDDTest extends BDDTestCase
         ]);
 
         $this->then('Sistem berhasil memperbarui masa aktif OTP dan mengembalikan status sukses');
-        $response->assertSessionHas('status');
+        $response->assertSessionHas('status', 'Kode verifikasi baru telah dikirimkan ke email Anda.');
 
         $this->and('Masa berlaku expires_at diperpanjang ke masa depan');
         $pending->refresh();

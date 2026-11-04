@@ -25,6 +25,7 @@ class NurseStationPemeriksaanAwalBDDTest extends BDDTestCase
 
     /**
      * Skenario: Perawat mendaftarkan pasien baru ke antrean poliklinik
+     * @scenario Register New Patient and Initial Vital Signs Success
      */
     public function test_skenario_perawat_mendaftarkan_pasien_baru(): void
     {
@@ -50,6 +51,7 @@ class NurseStationPemeriksaanAwalBDDTest extends BDDTestCase
         $pasien = Pasien::where('nama_pasien', $namaPasien)->first();
         $this->assertNotNull($pasien);
         $this->assertNotEmpty($pasien->no_rekam_medis);
+        $response->assertSessionHas('status', 'Pasien berhasil didaftarkan dengan ID: ' . $pasien->no_rekam_medis);
 
         $this->and('Antrean baru terbuat dengan status "Siap Periksa"');
         $antrean = Antrean::where('id_pasien', $pasien->id_pasien)->first();
@@ -59,6 +61,7 @@ class NurseStationPemeriksaanAwalBDDTest extends BDDTestCase
 
     /**
      * Skenario: Perawat mencari pasien pada daftar antrean
+     * @scenario Search Patient in Queue
      */
     public function test_skenario_perawat_mencari_pasien_pada_antrean(): void
     {
@@ -102,6 +105,7 @@ class NurseStationPemeriksaanAwalBDDTest extends BDDTestCase
 
     /**
      * Skenario: Perawat berhasil menginput TTV lengkap dan status antrean berubah menjadi Siap Periksa
+     * @scenario Record Vital Signs (TTV) for Waiting Patient
      */
     public function test_skenario_perawat_input_ttv_dan_status_menjadi_siap_periksa(): void
     {
@@ -134,6 +138,8 @@ class NurseStationPemeriksaanAwalBDDTest extends BDDTestCase
 
         $this->then('Data pemeriksaan awal tersimpan dengan nilai yang sesuai');
         $response->assertSessionDoesntHaveErrors();
+        $response->assertRedirect(route('perawat.dashboard', ['antrean_id' => $antrean->id_antrean]));
+        $response->assertSessionHas('status', 'Data berhasil disimpan!');
         $this->assertDatabaseHas('pemeriksaan_awal', [
             'tekanan_darah' => '120/80',
             'nadi'          => 80,
@@ -156,6 +162,7 @@ class NurseStationPemeriksaanAwalBDDTest extends BDDTestCase
 
     /**
      * Skenario: Sistem menandai peringatan demam jika suhu tubuh pasien di atas 37.5 derajat Celsius
+     * @scenario High Fever Warning Indicator
      */
     public function test_skenario_peringatan_demam_jika_suhu_tinggi(): void
     {
@@ -196,10 +203,13 @@ class NurseStationPemeriksaanAwalBDDTest extends BDDTestCase
         $viewRes = $this->actingAs($this->perawat)->get('/perawat/dashboard?antrean_id=' . $antrean->id_antrean);
         $viewRes->assertStatus(200);
         $viewRes->assertSee('38.8');
+        $viewRes->assertSee('Peringatan klinis: Suhu di atas rentang normal');
+        $viewRes->assertSee('id="suhuWarning" class="field-error flex items-center gap-1.5 "', false);
     }
 
     /**
      * Skenario: Perawat membatalkan pemeriksaan pasien dengan alasan yang valid
+     * @scenario Cancel Patient Registration
      */
     public function test_skenario_perawat_membatalkan_pemeriksaan_pasien(): void
     {
@@ -218,7 +228,8 @@ class NurseStationPemeriksaanAwalBDDTest extends BDDTestCase
         ]);
 
         $this->when('Perawat mengirimkan aksi delete pembatalan dengan alasan');
-        $alasan = 'Pasien pulang sebelum dilakukan pemeriksaan TTV';
+        // Nilai tetap yang dikirim dialog "Hapus Registrasi Pasien?" pada Nurse Station.
+        $alasan = 'Pasien tidak hadir / pembatalan registrasi oleh perawat';
         $response = $this->actingAs($this->perawat)->delete('/perawat/pasien/' . $pasien->id_pasien, [
             'alasan' => $alasan,
         ]);
@@ -226,6 +237,7 @@ class NurseStationPemeriksaanAwalBDDTest extends BDDTestCase
         $this->then('Record pasien ter-soft delete (deleted_at tidak null)');
         $response->assertRedirect(route('perawat.dashboard', ['tab' => 'pasien']));
         $pasien->refresh();
+        $response->assertSessionHas('status', "Registrasi pasien {$pasien->nama_pasien} ({$pasien->no_rekam_medis}) berhasil dibatalkan.");
         $this->assertNotNull($pasien->deleted_at);
 
         $this->and('Metadata audit tersimpan dengan alasan pembatalan dan ID perawat');
