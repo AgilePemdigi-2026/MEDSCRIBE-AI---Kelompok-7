@@ -481,12 +481,98 @@ class DokterController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Rekam medis berhasil disetujui dan difinalisasi secara permanen.',
-                'redirect_url' => route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean]),
+                'redirect_url' => route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean]) . '#finalisasi',
             ]);
         }
 
         return redirect()
             ->route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean])
             ->with('status', 'Rekam medis berhasil disetujui dan difinalisasi.');
+    }
+
+    /**
+     * Menampilkan Pratinjau Dokumen SOAP Final dalam format cetak A4 Portrait.
+     * Hanya dapat diakses setelah rekam medis berhasil difinalisasi.
+     */
+    public function previewSoap(Request $request, Kunjungan $kunjungan): View|RedirectResponse
+    {
+        $user = Auth::user();
+        if (! $user || ! $user->isDokter()) {
+            abort(403, 'Akses ditolak: Hanya dokter poliklinik yang berwenang melihat preview rekam medis.');
+        }
+
+        $this->authorizeKunjungan($kunjungan, $user->id_pengguna);
+
+        if ($user->hospital_id) {
+            $targetHospitalId = $kunjungan->hospital_id ?? $kunjungan->pasien?->hospital_id;
+            if ($targetHospitalId && (int) $targetHospitalId !== (int) $user->hospital_id) {
+                abort(403, 'Akses ditolak: Anda tidak memiliki wewenang untuk mengakses rekam medis dari rumah sakit lain.');
+            }
+        }
+
+        // Ketentuan Keamanan & Konsistensi: Dokumen SOAP hanya dapat dipratinjau jika sudah final
+        if (! $kunjungan->isFinalized()) {
+            return redirect()
+                ->to(route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean]) . '#finalisasi')
+                ->with('warning', 'Pratinjau SOAP hanya tersedia setelah rekam medis berhasil disetujui dan difinalisasi.');
+        }
+
+        $kunjungan->load([
+            'pasien',
+            'hospital',
+            'dokter',
+            'pemeriksaanAwal.perawat',
+            'drafSoap',
+            'tindakLanjut.eResep',
+            'tindakLanjut.rujukanLab.parameter',
+            'finalisasi.finalizedBy',
+            'antrean',
+        ]);
+
+        $pasien = $kunjungan->pasien;
+        $antrean = $kunjungan->antrean;
+        $draf = $kunjungan->drafSoap;
+        $pemeriksaanAwal = $kunjungan->pemeriksaanAwal;
+        $tindakLanjut = $kunjungan->tindakLanjut;
+        $finalisasi = $kunjungan->finalisasi;
+
+        $dokterPemeriksa = $kunjungan->dokter ?? $user;
+        $finalizedDoctor = $finalisasi?->finalizedBy ?? $dokterPemeriksa;
+        $waktuFinal = $finalisasi?->finalized_at
+            ? Carbon::parse($finalisasi->finalized_at)->locale('id')->isoFormat('D MMMM Y, HH:mm') . ' WIB'
+            : Carbon::now()->locale('id')->isoFormat('D MMMM Y, HH:mm') . ' WIB';
+
+        $tanggalPemeriksaan = $kunjungan->tanggal
+            ? Carbon::parse($kunjungan->tanggal)->locale('id')->isoFormat('D MMMM Y')
+            : Carbon::now()->locale('id')->isoFormat('D MMMM Y');
+
+        $tglStr = str_replace('-', '', $kunjungan->tanggal ?: date('Ymd'));
+        $prefix = $kunjungan->hospital?->hospital_code ? 'RS'.$kunjungan->hospital->hospital_code : 'RSUA';
+        $idKunjunganCode = $prefix.'-'.$tglStr.'-'.str_pad($antrean?->id_antrean ?? $kunjungan->id_kunjungan, 3, '0', STR_PAD_LEFT);
+
+        $umur = $pasien->umur ?: ($pasien->tanggal_lahir ? Carbon::parse($pasien->tanggal_lahir)->age : null);
+
+        $icdDescription = null;
+        if ($draf?->kode_icd10) {
+            $icdDescription = \App\Services\SoapDraftPreparer::ICD10_OPTIONS[$draf->kode_icd10] ?? null;
+        }
+
+        return view('dashboard.rekam-medis.preview-soap', compact(
+            'kunjungan',
+            'pasien',
+            'antrean',
+            'draf',
+            'pemeriksaanAwal',
+            'tindakLanjut',
+            'finalisasi',
+            'dokterPemeriksa',
+            'finalizedDoctor',
+            'waktuFinal',
+            'tanggalPemeriksaan',
+            'idKunjunganCode',
+            'umur',
+            'icdDescription',
+            'user'
+        ));
     }
 }

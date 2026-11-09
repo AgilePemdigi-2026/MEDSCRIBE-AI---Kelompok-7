@@ -438,4 +438,131 @@ class RealTimeTranscriptionAndFinalizationTest extends TestCase
         $response->assertStatus(422);
         $response->assertJsonValidationErrors('realtime_transcript');
     }
+
+    /**
+     * Rekomendasi Conditional Action Button:
+     * Sebelum finalisasi berhasil -> Tombol "Setujui & Finalisasi Rekam Medis" muncul,
+     * tombol "Preview SOAP (PDF)" tidak boleh muncul.
+     */
+    public function test_sebelum_finalisasi_tombol_finalisasi_muncul_dan_preview_soap_tidak_muncul(): void
+    {
+        $this->kunjungan->update(['status' => Kunjungan::STATUS_SOAP_TERVERIFIKASI]);
+
+        $response = $this->actingAs($this->dokter)->get(
+            route('dokter.rekam-medis', $this->antrean->id_antrean)
+        );
+
+        $response->assertStatus(200);
+        $response->assertSee('Setujui & Finalisasi Rekam Medis');
+        $response->assertDontSee('Preview SOAP (PDF)');
+    }
+
+    /**
+     * Rekomendasi Conditional Action Button:
+     * Setelah finalisasi berhasil -> Status menjadi "Final",
+     * tombol "Setujui & Finalisasi Rekam Medis" dinonaktifkan/hilang,
+     * tombol "Preview SOAP (PDF)" tampil sebagai aksi utama.
+     */
+    public function test_setelah_finalisasi_tombol_preview_soap_muncul_dan_tombol_finalisasi_hilang(): void
+    {
+        Finalisasi::create([
+            'id_kunjungan' => $this->kunjungan->id_kunjungan,
+            'id_dokter' => $this->dokter->id_pengguna,
+            'status' => 'Final',
+            'FINAL' => 1,
+            'finalized_at' => now(),
+            'finalized_by' => $this->dokter->id_pengguna,
+            'catatan_finalisasi' => 'Kondisi stabil. Pasien rawat jalan.',
+        ]);
+        $this->kunjungan->update(['status' => Kunjungan::STATUS_FINALISASI]);
+
+        $response = $this->actingAs($this->dokter)->get(
+            route('dokter.rekam-medis', $this->antrean->id_antrean)
+        );
+
+        $response->assertStatus(200);
+        $response->assertSee('Preview SOAP (PDF)');
+        $response->assertSee(route('dokter.soap.preview', $this->kunjungan));
+        $response->assertDontSee('id="btn-finalisasi-action"', false);
+    }
+
+    /**
+     * Perilaku Halaman Preview SOAP:
+     * Menampilkan dokumen format A4 portrait, identitas pasien, isi SOAP, TTV,
+     * area tanda tangan dokter, tombol Download PDF dan Kembali.
+     */
+    public function test_halaman_preview_soap_menampilkan_dokumen_lengkap_dan_tombol_aksi(): void
+    {
+        PemeriksaanAwal::create([
+            'id_kunjungan' => $this->kunjungan->id_kunjungan,
+            'id_perawat' => $this->dokter->id_pengguna,
+            'tekanan_darah' => '120/80',
+            'nadi' => 80,
+            'suhu_tubuh' => 36.6,
+            'laju_pernapasan' => 20,
+        ]);
+
+        DrafSoap::create([
+            'id_kunjungan' => $this->kunjungan->id_kunjungan,
+            'id_pengguna' => $this->dokter->id_pengguna,
+            'subjective_text' => 'Keluhan pusing dan lemas.',
+            'objective_text' => 'TTV stabil, konjungtiva anemis negatif.',
+            'assessment_text' => 'Cephalea tension type.',
+            'plan_text' => 'Edukasi istirahat teratur.',
+            'kode_icd10' => 'G44.2',
+        ]);
+
+        TindakLanjut::create([
+            'id_kunjungan' => $this->kunjungan->id_kunjungan,
+            'jenis_tindak_lanjut' => TindakLanjut::JENIS_TANPA_TINDAKAN,
+            'status' => 'Selesai Tanpa Tindakan Lanjut',
+        ]);
+
+        Finalisasi::create([
+            'id_kunjungan' => $this->kunjungan->id_kunjungan,
+            'id_dokter' => $this->dokter->id_pengguna,
+            'status' => 'Final',
+            'FINAL' => 1,
+            'finalized_at' => now(),
+            'finalized_by' => $this->dokter->id_pengguna,
+            'catatan_finalisasi' => 'Klinis terkendali baik.',
+        ]);
+        $this->kunjungan->update(['status' => Kunjungan::STATUS_FINALISASI]);
+
+        $response = $this->actingAs($this->dokter)->get(
+            route('dokter.soap.preview', $this->kunjungan)
+        );
+
+        $response->assertStatus(200);
+        // Format & Header
+        $response->assertSee('Catatan Perkembangan Pasien Terintegrasi (CPPT) - SOAP');
+        $response->assertSee('Download PDF');
+        $response->assertSee('Kembali');
+        // Identitas Pasien
+        $response->assertSee($this->pasien->nama_pasien);
+        $response->assertSee($this->pasien->no_rekam_medis);
+        // Konten SOAP
+        $response->assertSee('Keluhan pusing dan lemas.');
+        $response->assertSee('Cephalea tension type.');
+        $response->assertSee('G44.2');
+        // Tanda tangan & legalisasi dokter
+        $response->assertSee($this->dokter->nama_lengkap);
+        $response->assertSee('Tanda Tangan Digital Terverifikasi');
+    }
+
+    /**
+     * Ketentuan Keamanan & Konsistensi:
+     * Pratinjau SOAP ditolak dan dialihkan jika rekam medis belum berstatus Final.
+     */
+    public function test_pratinjau_soap_ditolak_jika_rekam_medis_belum_final(): void
+    {
+        $this->kunjungan->update(['status' => 'Sedang Diperiksa']);
+
+        $response = $this->actingAs($this->dokter)->get(
+            route('dokter.soap.preview', $this->kunjungan)
+        );
+
+        $response->assertRedirect(route('dokter.rekam-medis', $this->antrean->id_antrean) . '#finalisasi');
+        $response->assertSessionHas('warning');
+    }
 }

@@ -83,6 +83,7 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
         Route::post('/dokter/kunjungan/{kunjungan}/soap/verifikasi', [SoapReviewController::class, 'verify'])->name('dokter.soap.verify');
         Route::post('/dokter/kunjungan/{kunjungan}/tindak-lanjut', [TindakLanjutController::class, 'store'])->name('dokter.tindak-lanjut.store');
         Route::post('/dokter/kunjungan/{kunjungan}/finalisasi', [DokterController::class, 'finalizeRekamMedis'])->name('dokter.rekam-medis.finalisasi');
+        Route::get('/dokter/kunjungan/{kunjungan}/soap/preview', [DokterController::class, 'previewSoap'])->name('dokter.soap.preview');
         Route::get('/dokter/rekam-medis/{id_antrean}', [DokterController::class, 'showRekamMedis'])->name('dokter.rekam-medis');
         Route::post('/dokter/rekam-medis/{id_antrean}/audio', [DokterController::class, 'uploadAudio'])->name('dokter.rekam-medis.upload-audio');
         Route::get('/dokter/rekam-medis/{id_antrean}/audio-file', [DokterController::class, 'streamAudio'])->name('dokter.rekam-medis.stream-audio');

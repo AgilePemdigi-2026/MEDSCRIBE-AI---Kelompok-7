@@ -350,6 +350,7 @@
                 const pilihan = [opsiResep, opsiRujukan, opsiTanpa].filter((checkbox) => checkbox.checked && !checkbox.disabled);
                 if (pilihan.length === 0) {
                     showClientError('Pilih minimal satu jenis tindak lanjut.');
+                    clientError?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     return;
                 }
 
@@ -358,18 +359,22 @@
                 setLoading(true);
 
                 try {
+                    const formData = new FormData(form);
                     const response = await fetch(form.action, {
                         method: 'POST',
-                        body: new FormData(form),
+                        body: formData,
                         headers: {
                             'Accept': 'application/json',
                             'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || formData.get('_token') || '',
                         },
                     });
                     const data = await response.json().catch(() => ({}));
 
                     if (response.ok) {
-                        window.location.href = data.redirect || window.location.href;
+                        const targetUrl = data.redirect || (window.location.pathname + '#finalisasi');
+                        window.location.href = targetUrl;
+                        window.location.reload();
                         return;
                     }
 

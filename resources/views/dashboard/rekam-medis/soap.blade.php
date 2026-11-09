@@ -150,7 +150,7 @@
         @unless ($isFinalized)
             <div class="flex flex-col-reverse sm:flex-row sm:items-center gap-3 pt-2">
                 @if ($pakaiOpenRouter)
-                    <button type="submit" form="soap-generate-form" id="regenerate-button" class="btn btn-ai sm:mr-auto">
+                    <button type="button" id="regenerate-button" class="btn btn-ai sm:mr-auto">
                         <svg xmlns="http://www.w3.org/2000/svg" class="ai-spark w-4 h-4 mr-1.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-icon><path d="M12 2.5l1.9 5.6 5.6 1.9-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.9L12 2.5z" /><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z" opacity=".6" /></svg>
                         <svg xmlns="http://www.w3.org/2000/svg" class="hidden w-4 h-4 animate-spin mr-1.5" fill="none" viewBox="0 0 24 24" aria-hidden="true" data-spinner><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" opacity=".25" /><path d="M21 12a9 9 0 00-9-9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" /></svg>
                         <span data-label>Buat Ulang Draf AI</span>
@@ -175,29 +175,121 @@
         <form id="soap-generate-form" method="POST" action="{{ route('dokter.soap.generate', $kunjungan) }}" hidden>
             @csrf
         </form>
+
+        {{-- Modal Konfirmasi Buat Ulang Draf SOAP AI (Format Standar Desain MedScribe AI) --}}
+        <div id="modalRegenerateSoap" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="modalRegenerateSoapTitle">
+            <div class="dialog-backdrop" onclick="tutupModalRegenerateSoap()"></div>
+            <div class="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+                <div class="dialog w-full max-w-sm p-6 pointer-events-auto animate-dialog text-center">
+                    <span class="mx-auto avatar w-12 h-12 bg-indigo-50 text-royal-indigo border border-royal-indigo/20" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-royal-indigo" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2.5l1.9 5.6 5.6 1.9-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.9L12 2.5z" />
+                            <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z" opacity=".6" />
+                        </svg>
+                    </span>
+                    <h2 id="modalRegenerateSoapTitle" class="mt-4 text-lg font-semibold text-medical-navy">Konfirmasi Buat Ulang</h2>
+                    <p class="mt-1.5 text-sm text-text-secondary leading-relaxed">Apakah Anda yakin ingin membuat ulang draf SOAP dengan AI? Seluruh isi draf saat ini akan diperbarui dari transkrip dan TTV.</p>
+                    <div class="mt-6 grid grid-cols-2 gap-2">
+                        <button type="button" onclick="tutupModalRegenerateSoap()" class="btn btn-secondary">Batal</button>
+                        <button type="button" id="btnKonfirmasiRegenerateSoap" onclick="konfirmasiRegenerateSoap()" class="btn btn-primary w-full">Buat Ulang</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     @endif
+
+    @unless ($isFinalized)
+        {{-- Modal Konfirmasi Verifikasi SOAP (Format Standar Desain MedScribe AI) --}}
+        <div id="modalVerifySoap" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="modalVerifySoapTitle">
+            <div class="dialog-backdrop" onclick="tutupModalVerifySoap()"></div>
+            <div class="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+                <div class="dialog w-full max-w-sm p-6 pointer-events-auto animate-dialog text-center">
+                    <span class="mx-auto avatar w-12 h-12 bg-emerald-50 text-emerald-600 border border-emerald-200" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </span>
+                    <h2 id="modalVerifySoapTitle" class="mt-4 text-lg font-semibold text-medical-navy">Konfirmasi Verifikasi</h2>
+                    <p class="mt-1.5 text-sm text-text-secondary leading-relaxed">Apakah Anda yakin ingin memverifikasi draf SOAP dengan data yang sedang ditampilkan? Anda akan dapat melanjutkan ke tindak lanjut dan finalisasi.</p>
+                    <div class="mt-6 grid grid-cols-2 gap-2">
+                        <button type="button" onclick="tutupModalVerifySoap()" class="btn btn-secondary">Batal</button>
+                        <button type="button" id="btnKonfirmasiVerifySoap" onclick="konfirmasiVerifySoap()" class="btn btn-primary w-full">Verifikasi</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endunless
+
     <script>
-    document.getElementById('soap-generate-form')?.addEventListener('submit', function (event) {
+    function bukaModalRegenerateSoap() {
+        const modal = document.getElementById('modalRegenerateSoap');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function tutupModalRegenerateSoap() {
+        const modal = document.getElementById('modalRegenerateSoap');
+        if (!modal || modal.classList.contains('hidden')) return;
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    function konfirmasiRegenerateSoap() {
+        tutupModalRegenerateSoap();
         const button = document.getElementById('regenerate-button');
-        if (button.dataset.busy === 'true' || !confirm('Buat ulang draf SOAP dengan AI? Seluruh isi draf saat ini akan diperbarui dari transkrip dan TTV.')) {
-            event.preventDefault();
-            return;
-        }
+        if (!button) return;
         button.dataset.busy = 'true';
         button.disabled = true;
         button.setAttribute('aria-busy', 'true');
-        button.querySelector('[data-icon]').classList.add('hidden');
-        button.querySelector('[data-spinner]').classList.remove('hidden');
-        button.querySelector('[data-label]').textContent = 'Menyusun ulang draf...';
+        button.querySelector('[data-icon]')?.classList.add('hidden');
+        button.querySelector('[data-spinner]')?.classList.remove('hidden');
+        const label = button.querySelector('[data-label]');
+        if (label) label.textContent = 'Menyusun ulang draf...';
+        document.getElementById('soap-generate-form')?.submit();
+    }
+
+    function bukaModalVerifySoap() {
+        const modal = document.getElementById('modalVerifySoap');
+        if (!modal) return;
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function tutupModalVerifySoap() {
+        const modal = document.getElementById('modalVerifySoap');
+        if (!modal || modal.classList.contains('hidden')) return;
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    function konfirmasiVerifySoap() {
+        tutupModalVerifySoap();
+        const form = document.getElementById('soap-form');
+        if (!form) return;
+        form.action = @json(route('dokter.soap.verify', $kunjungan));
+        form.querySelector('input[name="_method"]')?.remove();
+        form.submit();
+    }
+
+    document.getElementById('regenerate-button')?.addEventListener('click', function (event) {
+        event.preventDefault();
+        const button = document.getElementById('regenerate-button');
+        if (button.dataset.busy === 'true') return;
+        bukaModalRegenerateSoap();
     });
 
     document.getElementById('verify-button')?.addEventListener('click', function () {
         const form = document.getElementById('soap-form');
-        if (!form.reportValidity()) return;
-        if (!confirm('Verifikasi draf SOAP dengan data yang sedang ditampilkan? Anda akan dapat melanjutkan ke tindak lanjut dan finalisasi.')) return;
-        form.action = @json(route('dokter.soap.verify', $kunjungan));
-        form.querySelector('input[name="_method"]')?.remove();
-        form.submit();
+        if (!form || !form.reportValidity()) return;
+        bukaModalVerifySoap();
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            tutupModalRegenerateSoap();
+            tutupModalVerifySoap();
+        }
     });
 
     // Polling jika status draf SOAP masih 'processing'

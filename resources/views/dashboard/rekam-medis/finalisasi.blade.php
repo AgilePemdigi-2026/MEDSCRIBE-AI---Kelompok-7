@@ -89,6 +89,56 @@
             @endif
         </div>
 
+        {{-- Pertahankan Informasi Hasil Pemeriksaan Kelengkapan sebagai Bukti Finalisasi --}}
+        <div>
+            <h4 class="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">Hasil Pemeriksaan Kelayakan Pra-Finalisasi</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {{-- Syarat A: Draf SOAP --}}
+                <div class="flex items-center gap-3 p-3.5 rounded-[16px] bg-emerald-50/70 border border-emerald-200 text-xs">
+                    <span class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    </span>
+                    <div>
+                        <span class="font-semibold text-emerald-950 block">Draf SOAP Terverifikasi</span>
+                        <span class="text-emerald-800">SOAP telah disetujui dokter</span>
+                    </div>
+                </div>
+
+                {{-- Syarat B: TTV & Catatan Perawat --}}
+                <div class="flex items-center gap-3 p-3.5 rounded-[16px] bg-emerald-50/70 border border-emerald-200 text-xs">
+                    <span class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    </span>
+                    <div>
+                        <span class="font-semibold text-emerald-950 block">TTV & Catatan Perawat</span>
+                        <span class="text-emerald-800">Telah diisi lengkap oleh perawat</span>
+                    </div>
+                </div>
+
+                {{-- Syarat C: Transkripsi Wawancara --}}
+                <div class="flex items-center gap-3 p-3.5 rounded-[16px] bg-emerald-50/70 border border-emerald-200 text-xs">
+                    <span class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    </span>
+                    <div>
+                        <span class="font-semibold text-emerald-950 block">Transkripsi Wawancara</span>
+                        <span class="text-emerald-800">Transkrip telah diverifikasi</span>
+                    </div>
+                </div>
+
+                {{-- Syarat D: Tindak Lanjut Medis --}}
+                <div class="flex items-center gap-3 p-3.5 rounded-[16px] bg-emerald-50/70 border border-emerald-200 text-xs">
+                    <span class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    </span>
+                    <div>
+                        <span class="font-semibold text-emerald-950 block">Tindak Lanjut Medis</span>
+                        <span class="text-emerald-800">{{ $tindakLanjut ? ($tindakLanjut->status ?: 'Tersimpan') : 'Tersimpan' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {{-- Ringkasan Komprehensif Rekam Medis Terfinalisasi --}}
         <div class="space-y-5">
             <h4 class="text-xs font-semibold uppercase tracking-wider text-text-secondary">Arsip Rekam Medis Lengkap</h4>
@@ -176,6 +226,23 @@
                     @endif
                 </div>
             @endif
+        </div>
+
+        {{-- Conditional Action Buttons Setelah Finalisasi (Section 2 & 4: Tombol Preview SOAP (PDF) & Kembali ke SOAP) --}}
+        <div class="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-border-subtle">
+            <a href="#soap" class="btn btn-secondary min-h-11 px-5 text-center flex items-center justify-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+                <span>Kembali ke SOAP</span>
+            </a>
+            <a href="{{ route('dokter.soap.preview', $kunjungan) }}" id="btn-preview-soap"
+               class="btn min-h-11 px-6 bg-royal-indigo hover:bg-royal-indigo/90 text-white font-semibold rounded-[14px] shadow-sm flex items-center justify-center gap-2 transition-transform hover:scale-[1.01] active:scale-[0.99]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>Preview SOAP (PDF)</span>
+            </a>
         </div>
     </div>
 
@@ -322,6 +389,65 @@
             </div>
         </div>
 
+        {{-- Modal Alert: Persyaratan Pra-Finalisasi Belum Lengkap (Format Standar Desain MedScribe AI) --}}
+        <div id="modalSyaratBelumLengkap" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="modalSyaratBelumLengkapTitle">
+            <div class="dialog-backdrop" onclick="tutupModalSyaratBelumLengkap()"></div>
+            <div class="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+                <div class="dialog w-full max-w-sm p-6 pointer-events-auto animate-dialog text-center">
+                    <span class="mx-auto avatar w-12 h-12 bg-amber-50 text-amber-600 border border-amber-200" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </span>
+                    <h2 id="modalSyaratBelumLengkapTitle" class="mt-4 text-lg font-semibold text-medical-navy">Persyaratan Belum Lengkap</h2>
+                    <p class="mt-1.5 text-xs text-text-secondary leading-relaxed">Mohon lengkapi persyaratan berikut sebelum memfinalisasi rekam medis:</p>
+                    <div id="listSyaratBelumLengkap" class="mt-3 p-3 rounded-[14px] bg-amber-50/70 border border-amber-200/80 text-left text-xs text-amber-950 space-y-1.5">
+                    </div>
+                    <div class="mt-6">
+                        <button type="button" onclick="tutupModalSyaratBelumLengkap()" class="btn btn-primary w-full">Mengerti</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Modal Alert: Persetujuan Klinis Wajib Dicentang (Format Standar Desain MedScribe AI) --}}
+        <div id="modalPersetujuanWajib" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="modalPersetujuanWajibTitle">
+            <div class="dialog-backdrop" onclick="tutupModalPersetujuanWajib()"></div>
+            <div class="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+                <div class="dialog w-full max-w-sm p-6 pointer-events-auto animate-dialog text-center">
+                    <span class="mx-auto avatar w-12 h-12 bg-amber-50 text-amber-600 border border-amber-200" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                    </span>
+                    <h2 id="modalPersetujuanWajibTitle" class="mt-4 text-lg font-semibold text-medical-navy">Persetujuan Diperlukan</h2>
+                    <p class="mt-1.5 text-sm text-text-secondary leading-relaxed">Anda wajib mencentang pernyataan persetujuan klinis sebelum memfinalisasi rekam medis.</p>
+                    <div class="mt-6">
+                        <button type="button" onclick="tutupModalPersetujuanWajib()" class="btn btn-primary w-full">Mengerti</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Modal Alert: Gagal Memfinalisasi Rekam Medis (Format Standar Desain MedScribe AI) --}}
+        <div id="modalGagalFinalisasi" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="modalGagalFinalisasiTitle">
+            <div class="dialog-backdrop" onclick="tutupModalGagalFinalisasi()"></div>
+            <div class="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+                <div class="dialog w-full max-w-sm p-6 pointer-events-auto animate-dialog text-center">
+                    <span class="mx-auto avatar w-12 h-12 bg-danger-bg text-danger-solid border border-danger-border" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </span>
+                    <h2 id="modalGagalFinalisasiTitle" class="mt-4 text-lg font-semibold text-medical-navy">Gagal Finalisasi</h2>
+                    <p id="pesanGagalFinalisasi" class="mt-1.5 text-sm text-text-secondary leading-relaxed">Gagal memfinalisasi rekam medis. Periksa kembali kelengkapan seluruh data klinis.</p>
+                    <div class="mt-6">
+                        <button type="button" onclick="tutupModalGagalFinalisasi()" class="btn btn-secondary w-full">Tutup</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     {{-- Script Inline Mandiri (Bebas dari masalah konflik Blade section) --}}
@@ -334,21 +460,84 @@
         tindakLanjutSelesai: @json($tindakLanjutSelesai),
     };
 
+    function bukaModalSyaratBelumLengkap(items) {
+        const container = document.getElementById('listSyaratBelumLengkap');
+        if (container) {
+            container.innerHTML = items.map(item => `
+                <div class="flex items-start gap-2">
+                    <svg class="w-3.5 h-3.5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>${item}</span>
+                </div>
+            `).join('');
+        }
+        const modal = document.getElementById('modalSyaratBelumLengkap');
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function tutupModalSyaratBelumLengkap() {
+        const modal = document.getElementById('modalSyaratBelumLengkap');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+    }
+
+    function bukaModalPersetujuanWajib() {
+        const modal = document.getElementById('modalPersetujuanWajib');
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function tutupModalPersetujuanWajib() {
+        const modal = document.getElementById('modalPersetujuanWajib');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+        document.getElementById('konfirmasi_persetujuan')?.focus();
+    }
+
+    function bukaModalGagalFinalisasi(pesan) {
+        const p = document.getElementById('pesanGagalFinalisasi');
+        if (p && pesan) {
+            p.textContent = pesan;
+        }
+        const modal = document.getElementById('modalGagalFinalisasi');
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function tutupModalGagalFinalisasi() {
+        const modal = document.getElementById('modalGagalFinalisasi');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+    }
+
     function bukaModalFinalisasi() {
         if (!finalisasiState.semuaSyaratTerpenuhi) {
-            let pesan = 'Mohon lengkapi persyaratan sebelum finalisasi:';
-            if (!finalisasiState.soapSelesai) pesan += '\n- Draf SOAP belum diverifikasi lengkap';
-            if (!finalisasiState.ttvSelesai) pesan += '\n- Data TTV perawat belum lengkap';
-            if (!finalisasiState.wawancaraSelesai) pesan += '\n- Transkripsi wawancara belum diverifikasi';
-            if (!finalisasiState.tindakLanjutSelesai) pesan += '\n- Tindak lanjut medis belum disimpan';
-            alert(pesan);
+            const items = [];
+            if (!finalisasiState.soapSelesai) items.push('Draf SOAP belum diverifikasi lengkap');
+            if (!finalisasiState.ttvSelesai) items.push('Data TTV perawat belum lengkap');
+            if (!finalisasiState.wawancaraSelesai) items.push('Transkripsi wawancara belum diverifikasi');
+            if (!finalisasiState.tindakLanjutSelesai) items.push('Tindak lanjut medis belum disimpan');
+            bukaModalSyaratBelumLengkap(items);
             return;
         }
 
         const checkbox = document.getElementById('konfirmasi_persetujuan');
         if (!checkbox || !checkbox.checked) {
-            alert('Anda wajib mencentang pernyataan persetujuan klinis sebelum memfinalisasi rekam medis.');
-            checkbox?.focus();
+            bukaModalPersetujuanWajib();
             return;
         }
 
@@ -367,10 +556,13 @@
         }
     }
 
-    function eksekusiFinalisasi() {
+    async function eksekusiFinalisasi() {
         const form = document.getElementById('form-finalisasi');
         const btn = document.getElementById('btn-konfirmasi-finalisasi');
         const label = document.getElementById('btn-konfirmasi-label');
+        const mainBtn = document.getElementById('btn-finalisasi-action');
+
+        if (!form || btn?.disabled) return;
 
         if (btn) {
             btn.disabled = true;
@@ -378,10 +570,56 @@
             btn.style.cursor = 'not-allowed';
         }
         if (label) {
-            label.textContent = 'Memproses Finalisasi...';
+            label.innerHTML = `
+                <span class="inline-flex items-center gap-2">
+                    <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Memproses Finalisasi...</span>
+                </span>
+            `;
+        }
+        if (mainBtn) {
+            mainBtn.disabled = true;
         }
 
-        if (form) {
+        try {
+            const formData = new FormData(form);
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || formData.get('_token'),
+                },
+                body: formData,
+            });
+
+            const result = await response.json().catch(() => ({}));
+
+            if (response.ok && result.success) {
+                // Backend konfirmasi berhasil: arahkan ke tampilan rekam medis final
+                window.location.href = result.redirect_url || (window.location.pathname + '#finalisasi');
+                window.location.reload();
+            } else {
+                // Backend validasi gagal: tutup modal, tampilkan pesan kesalahan, dan pulihkan tombol
+                tutupModalFinalisasi();
+                bukaModalGagalFinalisasi(result.message || 'Gagal memfinalisasi rekam medis. Periksa kembali kelengkapan seluruh data klinis.');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                }
+                if (label) {
+                    label.textContent = 'Ya, Setujui & Finalisasi';
+                }
+                if (mainBtn) {
+                    mainBtn.disabled = false;
+                }
+            }
+        } catch (error) {
+            // Fallback ke form submit konvensional jika terjadi kendala jaringan/script
             form.submit();
         }
     }
@@ -389,6 +627,9 @@
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
             tutupModalFinalisasi();
+            tutupModalSyaratBelumLengkap();
+            tutupModalPersetujuanWajib();
+            tutupModalGagalFinalisasi();
         }
     });
     </script>
