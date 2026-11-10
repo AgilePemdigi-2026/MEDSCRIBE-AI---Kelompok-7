@@ -318,6 +318,32 @@
         color: #122056;
     }
 
+    /* Aksi yang memanggil AI: pil lavender berbingkai gradien indigo, ikon kilau berputar saat hover. */
+    .btn-ai {
+        color: #4854C9;
+        background:
+            linear-gradient(#F5F5FE, #F5F5FE) padding-box,
+            linear-gradient(120deg, #CBD1EA, #5865DC 50%, #CBD1EA) border-box;
+        background-size: 100% 100%, 200% 100%;
+        background-position: 0 0, 100% 0;
+        border: 1px solid transparent;
+        transition: background-position 600ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 220ms ease, color 180ms ease, transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .btn-ai:hover:not(:disabled) {
+        color: #3D47B0;
+        background-position: 0 0, 0 0;
+        box-shadow: 0 8px 22px -10px rgba(88, 101, 220, 0.55);
+    }
+
+    .btn-ai .ai-spark {
+        transition: transform 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .btn-ai:hover:not(:disabled) .ai-spark {
+        transform: rotate(72deg) scale(1.1);
+    }
+
     .btn-danger {
         background-color: #DC2626;
         color: #FFFFFF;
@@ -790,8 +816,11 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
+    /* Fill-mode `backwards`, bukan `both`: frame akhir tidak ditahan, jadi kartu tidak
+       menyimpan transform setelah animasi. Transform yang tertahan menjadikan kartu acuan
+       bagi anak `position: fixed`, sehingga modal di dalam kartu terkurung di kartu itu. */
     .rise {
-        animation: riseIn 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: riseIn 560ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
         animation-delay: calc(var(--i, 0) * 70ms);
     }
 }

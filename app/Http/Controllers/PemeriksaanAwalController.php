@@ -218,6 +218,11 @@ class PemeriksaanAwalController extends Controller
                 ]
             );
 
+            if ($kunjungan->isFinalized()) {
+                DB::rollBack();
+                return back()->withInput()->with('error', 'Rekam medis untuk kunjungan ini telah difinalisasi dan tidak dapat diubah.');
+            }
+
             if (!$kunjungan->hospital_id && $hospitalId) {
                 $kunjungan->hospital_id = $hospitalId;
                 $kunjungan->save();
@@ -275,6 +280,10 @@ class PemeriksaanAwalController extends Controller
                 'status' => 'Perlu Ditinjau',
                 'FINAL' => false,
             ]);
+
+            if ($kunjungan->isSoapVerified()) {
+                $kunjungan->update(['status' => Kunjungan::STATUS_SOAP_BELUM_DIVERIFIKASI]);
+            }
 
             DB::commit();
 

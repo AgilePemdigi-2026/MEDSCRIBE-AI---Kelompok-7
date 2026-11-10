@@ -10,7 +10,6 @@ use App\Services\MockSoapDraftService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\View\View;
 use Throwable;
 
 class SoapReviewController extends Controller
@@ -20,77 +19,28 @@ class SoapReviewController extends Controller
         private SoapGenerationService $soapGenerationService,
     ) {}
 
-    public function edit(Kunjungan $kunjungan): View
+    /**
+     * Review SOAP kini menjadi bagian halaman rekam medis; URL lama diarahkan ke sana.
+     */
+    public function edit(Kunjungan $kunjungan): RedirectResponse
     {
         $this->authorizeVisit($kunjungan);
-        $kunjungan->load(['pasien', 'dokter', 'pemeriksaanAwal', 'drafSoap', 'finalisasi', 'wawancara']);
-        $transcript = $kunjungan->wawancara?->transkrip ?: '';
-        $sourceHash = hash('sha256', $transcript);
-        $ttvSnapshot = $this->draftService->vitalsSnapshot($kunjungan->pemeriksaanAwal);
-        $draf = $kunjungan->drafSoap;
-        $generationError = null;
-        $requiresTranscriptReview = filled($transcript) && ! $kunjungan->wawancara?->transcript_reviewed_at;
 
-        if (! $draf && ! filled($transcript)) {
-            $generationError = 'Transkrip wawancara yang sudah ditinjau belum tersedia. Draf SOAP belum dibuat.';
-            $draf = new DrafSoap([
-                'subjective_text' => '', 'objective_text' => '', 'assessment_text' => '', 'plan_text' => '',
-                'needs_review' => true, 'icd10_suggestions' => [], 'missing_information' => ['Transkrip wawancara'], 'review_warnings' => [],
-            ]);
-        } elseif (! $draf) {
-            try {
-                if ($requiresTranscriptReview) {
-                    throw new \RuntimeException('Tinjau dan simpan koreksi transkrip serta label speaker sebelum membuat draf SOAP.');
-                }
-                $generated = $this->soapGenerationService->generate($kunjungan, $transcript);
-                $draf = DrafSoap::create(array_merge($generated, [
-                    'id_kunjungan' => $kunjungan->id_kunjungan,
-                    'id_pengguna' => $kunjungan->id_dokter,
-                    'source_transcript_hash' => $sourceHash,
-                    'source_ttv_snapshot' => $ttvSnapshot,
-                    'needs_review' => false,
-                ]));
-            } catch (Throwable $exception) {
-                report($exception);
-                $generationError = $exception->getMessage();
-                $draf = DrafSoap::create([
-                    'id_kunjungan' => $kunjungan->id_kunjungan,
-                    'id_pengguna' => $kunjungan->id_dokter,
-                    'subjective_text' => '',
-                    'objective_text' => '',
-                    'assessment_text' => '',
-                    'plan_text' => '',
-                    'source_transcript_hash' => $sourceHash,
-                    'source_ttv_snapshot' => $ttvSnapshot,
-                    'needs_review' => true,
-                    'icd10_suggestions' => [],
-                    'missing_information' => [],
-                    'review_warnings' => [],
-                    'source_type' => 'manual',
-                ]);
-            }
-        } else {
-            $needsReview = $draf->source_transcript_hash !== $sourceHash
-                || $draf->source_ttv_snapshot !== $ttvSnapshot;
-            if ($needsReview && ! $draf->needs_review) {
-                $draf->update(['needs_review' => true]);
-            }
+        if (! $kunjungan->id_antrean) {
+            return redirect()->route('dokter.dashboard')
+                ->with('warning', 'Kunjungan ini tidak terhubung ke antrean pasien.');
         }
 
-        return view('soap.review', [
-            'kunjungan' => $kunjungan,
-            'draf' => $draf,
-            'transcript' => $transcript,
-            'icd10Options' => ['J02.9' => 'Faringitis akut, tidak spesifik (simulasi)', 'R07.0' => 'Nyeri tenggorokan (simulasi)'],
-            'generationError' => $generationError,
-        ]);
+        return redirect()->to(route('dokter.rekam-medis', $kunjungan->id_antrean).'#soap');
     }
 
     public function save(Request $request, Kunjungan $kunjungan): RedirectResponse
     {
         $this->authorizeVisit($kunjungan);
+        abort_if($kunjungan->isFinalized(), 403, 'Rekam medis telah difinalisasi dan tidak dapat diubah.');
+
         if (! $this->transcriptIsReviewed($kunjungan)) {
-            return back()->with('warning', 'Tinjau dan simpan transkrip sebelum menyimpan SOAP.');
+            return back()->withFragment('soap')->with('warning', 'Tinjau dan simpan transkrip sebelum menyimpan SOAP.');
         }
         $validated = $this->validateDraft($request);
 
@@ -106,49 +56,66 @@ class SoapReviewController extends Controller
                 collect($validated)->only(['subjective_text', 'objective_text', 'assessment_text', 'plan_text', 'kode_icd10'])->all(),
                 $this->sourceMetadata($kunjungan)
             ));
-            $kunjungan->update(['status' => 'SOAP Belum Diverifikasi']);
+            Finalisasi::where('id_kunjungan', $kunjungan->id_kunjungan)->update([
+                'status' => 'Perlu Ditinjau',
+                'FINAL' => false,
+            ]);
+            $kunjungan->update(['status' => Kunjungan::STATUS_SOAP_BELUM_DIVERIFIKASI]);
         });
 
-        return back()->with('status', 'Perubahan draf SOAP berhasil disimpan.');
+        return back()->withFragment('soap')->with('status', 'Perubahan draf SOAP berhasil disimpan.');
     }
 
     public function generate(Kunjungan $kunjungan): RedirectResponse
     {
         $this->authorizeVisit($kunjungan);
+        abort_if($kunjungan->isFinalized(), 403, 'Rekam medis telah difinalisasi dan tidak dapat diubah.');
+
         $kunjungan->load(['pemeriksaanAwal', 'wawancara']);
         $transcript = $kunjungan->wawancara?->transkrip ?: '';
 
         if (! filled($transcript)) {
-            return back()->with('warning', 'Draf SOAP tidak dapat dibuat tanpa transkrip wawancara yang sudah ditinjau.');
+            return back()->withFragment('soap')->with('warning', 'Draf SOAP tidak dapat dibuat tanpa transkrip wawancara yang sudah ditinjau.');
         }
 
         if (! $kunjungan->wawancara?->transcript_reviewed_at) {
-            return back()->with('warning', 'Tinjau dan simpan transkrip serta label speaker sebelum membuat draf SOAP.');
+            return back()->withFragment('soap')->with('warning', 'Tinjau dan simpan transkrip serta label speaker sebelum membuat draf SOAP.');
         }
 
-        try {
-            $generated = $this->soapGenerationService->generate($kunjungan, $transcript);
-            DrafSoap::updateOrCreate(
-                ['id_kunjungan' => $kunjungan->id_kunjungan],
-                array_merge($generated, [
-                    'id_pengguna' => $kunjungan->id_dokter,
-                    ...$this->sourceMetadata($kunjungan),
-                ])
-            );
-        } catch (Throwable $exception) {
-            report($exception);
-
-            return back()->with('warning', $exception->getMessage());
+        $result = app(\App\Services\SoapDraftPreparer::class)->generateAndSave($kunjungan, $transcript);
+        if ($result['generationError']) {
+            return back()->withFragment('soap')->with('warning', $result['generationError']);
         }
 
-        return back()->with('status', 'Draf SOAP berhasil dibuat ulang menggunakan Nemotron melalui OpenRouter.');
+        return back()->withFragment('soap')->with('status', 'Draf SOAP berhasil dibuat ulang menggunakan OpenRouter AI.');
+    }
+
+    public function status(Kunjungan $kunjungan): \Illuminate\Http\JsonResponse
+    {
+        $this->authorizeVisit($kunjungan);
+        $draf = $kunjungan->drafSoap;
+
+        return response()->json([
+            'status' => $draf?->generation_status ?? 'completed',
+            'error' => $draf?->generation_error,
+            'draf' => $draf ? [
+                'subjective' => $draf->subjective_text,
+                'objective' => $draf->objective_text,
+                'assessment' => $draf->assessment_text,
+                'plan' => $draf->plan_text,
+                'kode_icd10' => $draf->kode_icd10,
+                'needs_review' => $draf->needs_review,
+            ] : null,
+        ]);
     }
 
     public function verify(Request $request, Kunjungan $kunjungan): RedirectResponse
     {
         $this->authorizeVisit($kunjungan);
+        abort_if($kunjungan->isFinalized(), 403, 'Rekam medis telah difinalisasi dan tidak dapat diubah.');
+
         if (! $this->transcriptIsReviewed($kunjungan)) {
-            return back()->with('warning', 'Tinjau dan simpan transkrip sebelum memverifikasi SOAP.');
+            return back()->withFragment('soap')->with('warning', 'Tinjau dan simpan transkrip sebelum memverifikasi SOAP.');
         }
         $validated = $this->validateDraft($request);
 
@@ -166,12 +133,16 @@ class SoapReviewController extends Controller
             ));
             Finalisasi::updateOrCreate(
                 ['id_kunjungan' => $kunjungan->id_kunjungan],
-                ['id_dokter' => $request->user()->id_pengguna, 'status' => 'Terverifikasi', 'FINAL' => true]
+                ['id_dokter' => $request->user()->id_pengguna, 'status' => 'Terverifikasi', 'FINAL' => false]
             );
-            $kunjungan->update(['status' => 'SOAP Terverifikasi']);
+
+            $tindakLanjut = $kunjungan->tindakLanjut()->first();
+            $kunjungan->update([
+                'status' => $tindakLanjut?->statusKunjungan() ?? Kunjungan::STATUS_SOAP_TERVERIFIKASI,
+            ]);
         });
 
-        return back()->with('status', 'Draf SOAP berhasil diverifikasi oleh dokter.');
+        return back()->withFragment('soap')->with('status', 'Draf SOAP berhasil diverifikasi oleh dokter.');
     }
 
     private function validateDraft(Request $request): array

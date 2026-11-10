@@ -4,6 +4,7 @@ namespace Tests\BDD;
 
 use App\Models\Antrean;
 use App\Models\Hospital;
+use App\Models\Kunjungan;
 use App\Models\Pasien;
 use App\Models\Pengguna;
 use Illuminate\Http\UploadedFile;
@@ -70,6 +71,7 @@ class IsolasiMultiTenancyBDDTest extends BDDTestCase
 
     /**
      * Skenario: Perawat Rumah Sakit A hanya dapat melihat antrean pasien Rumah Sakit A
+     * @scenario Nurse Only Sees Patients from Assigned Hospital
      */
     public function test_skenario_perawat_hanya_melihat_antrean_rumah_sakitnya(): void
     {
@@ -87,6 +89,7 @@ class IsolasiMultiTenancyBDDTest extends BDDTestCase
 
     /**
      * Skenario: Dokter Rumah Sakit A ditolak saat mengakses rekam medis pasien Rumah Sakit B
+     * @scenario Doctor Blocked from Accessing Other Hospital Records
      */
     public function test_skenario_dokter_rs_a_dilarang_akses_rekam_medis_rs_b(): void
     {
@@ -96,28 +99,41 @@ class IsolasiMultiTenancyBDDTest extends BDDTestCase
 
         $this->then('Sistem menolak akses dengan kode HTTP 403 Forbidden');
         $response->assertStatus(403);
+        $response->assertSee('Akses ditolak: Anda tidak memiliki wewenang untuk mengakses rekam medis dari rumah sakit lain.');
     }
 
     /**
      * Skenario: Dokter Rumah Sakit A dilarang mengunggah audio konsultasi untuk pasien Rumah Sakit B
+     * @scenario Doctor Blocked from Uploading Interview Audio for Other Hospital Patient
      */
     public function test_skenario_dokter_rs_a_dilarang_unggah_audio_untuk_pasien_rs_b(): void
     {
-        $this->given('Dokter yang bertugas di RS A dan file audio');
-        Storage::fake('public');
-        $audioFile = UploadedFile::fake()->create('rekaman.wav', 200, 'audio/wav');
+        $this->given('Kunjungan pasien RS B sedang ditangani dokter RS B, dan dokter RS A memegang file audio');
+        Storage::fake('local');
+        $kunjunganB = Kunjungan::create([
+            'hospital_id' => $this->hospitalB->id,
+            'id_antrean'  => $this->antreanB->id_antrean,
+            'id_pasien'   => $this->pasienB->id_pasien,
+            'id_dokter'   => $this->dokterB->id_pengguna,
+            'tanggal'     => now()->toDateString(),
+            'status'      => 'Sedang Diperiksa',
+        ]);
+        $audioFile = UploadedFile::fake()->create('rekaman.webm', 200, 'audio/webm');
 
-        $this->when('Dokter RS A mengirim unggahan audio ke antrean milik RS B');
-        $response = $this->actingAs($this->dokterA)->postJson('/dokter/rekam-medis/' . $this->antreanB->id_antrean . '/audio', [
+        $this->when('Dokter RS A mengirim unggahan audio wawancara ke kunjungan milik RS B');
+        $response = $this->actingAs($this->dokterA)->postJson(route('dokter.interview.audio.upload', $kunjunganB), [
             'audio' => $audioFile,
         ]);
 
         $this->then('Sistem menolak unggahan dengan status 403 Forbidden');
         $response->assertStatus(403);
+        $response->assertJson(['message' => 'Akses ditolak: Anda tidak memiliki wewenang untuk mengakses rekam medis dari rumah sakit lain.']);
+        $this->assertDatabaseMissing('rekaman_audio', ['id_kunjungan' => $kunjunganB->id_kunjungan]);
     }
 
     /**
      * Skenario: Dokter Rumah Sakit A dilarang streaming audio konsultasi pasien Rumah Sakit B
+     * @scenario Doctor Blocked from Streaming Audio of Other Hospital Patient
      */
     public function test_skenario_dokter_rs_a_dilarang_streaming_audio_pasien_rs_b(): void
     {
@@ -131,6 +147,7 @@ class IsolasiMultiTenancyBDDTest extends BDDTestCase
 
     /**
      * Skenario: Perawat Rumah Sakit A dilarang membatalkan pasien antrean Rumah Sakit B
+     * @scenario Nurse Blocked from Cancelling Other Hospital Patient
      */
     public function test_skenario_perawat_rs_a_dilarang_membatalkan_pasien_rs_b(): void
     {
@@ -140,6 +157,7 @@ class IsolasiMultiTenancyBDDTest extends BDDTestCase
 
         $this->then('Sistem menolak aksi dengan kode 403 Forbidden');
         $response->assertStatus(403);
+        $response->assertSee('Akses ditolak: Anda tidak berwenang membatalkan registrasi pasien rumah sakit lain.');
 
         $this->and('Data pasien RS B tetap utuh di database');
         $this->assertDatabaseHas('pasien', [
@@ -149,6 +167,7 @@ class IsolasiMultiTenancyBDDTest extends BDDTestCase
 
     /**
      * Skenario: Registrasi pasien baru otomatis terikat dengan rumah sakit perawat yang bertugas
+     * @scenario New Patient Automatically Bound to the Nurse's Hospital
      */
     public function test_skenario_registrasi_pasien_baru_otomatis_terikat_ke_rumah_sakit_perawat(): void
     {

@@ -102,14 +102,15 @@ class DokterRekamMedisTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee($this->pasien->nama_pasien);
         $response->assertSee('TTV & Catatan Perawat', false);
-        $response->assertSee('Status Kunjungan');
+        $response->assertSee('Rekam Wawancara Klinis');
+        $response->assertSee('Review dan Edit Draf SOAP');
 
         // Pastikan draf SOAP dan kontrol AI tidak tampil di halaman
         $response->assertDontSee('Draf Catatan Medis (SOAP)');
         $response->assertDontSee('Proses AI Ulang');
     }
 
-    public function test_rekam_medis_mengarahkan_ke_wawancara_dengan_kunjungan_yang_sama_dan_tidak_memiliki_recorder(): void
+    public function test_rekam_medis_menawarkan_mulai_wawancara_untuk_kunjungan_yang_sama_sebelum_sesi_dimulai(): void
     {
         PemeriksaanAwal::create([
             'id_kunjungan' => Kunjungan::firstOrCreate(
@@ -127,7 +128,7 @@ class DokterRekamMedisTest extends TestCase
         $kunjungan = Kunjungan::where('id_antrean', $this->antrean->id_antrean)->firstOrFail();
 
         $response->assertOk()
-            ->assertSee(route('dokter.interview.show', $kunjungan), false)
+            ->assertSee(route('dokter.interview.start', $kunjungan), false)
             ->assertDontSee('recording-console')
             ->assertDontSee('startClinicalRecording');
     }
@@ -148,9 +149,13 @@ class DokterRekamMedisTest extends TestCase
 
         $this->actingAs($this->dokter)
             ->get(route('dokter.interview.show', $kunjungan))
+            ->assertRedirect(route('dokter.rekam-medis', $this->antrean->id_antrean).'#wawancara');
+
+        $this->actingAs($this->dokter)
+            ->get(route('dokter.rekam-medis', $this->antrean->id_antrean))
             ->assertOk()
-            ->assertSee('Wawancara Audio')
-            ->assertSee('KJ-'.str_pad($kunjungan->id_kunjungan, 4, '0', STR_PAD_LEFT));
+            ->assertSee('id="recording-console"', false)
+            ->assertSee('Mulai Rekaman');
 
         $this->assertSame($interview->id_wawancara, Wawancara::where('id_kunjungan', $kunjungan->id_kunjungan)->value('id_wawancara'));
         $this->assertSame(1, Wawancara::where('id_kunjungan', $kunjungan->id_kunjungan)->count());
@@ -261,7 +266,7 @@ class DokterRekamMedisTest extends TestCase
         );
 
         $response->assertStatus(409);
-        $this->assertDatabaseCount('rekaman_audio', 1);
+        $this->assertEquals(1, RekamanAudio::where('id_kunjungan', $kunjungan->id_kunjungan)->count());
         Queue::assertNothingPushed();
     }
 
@@ -294,7 +299,7 @@ class DokterRekamMedisTest extends TestCase
         );
 
         $response->assertStatus(202)->assertJson(['status' => 'queued']);
-        $this->assertDatabaseCount('rekaman_audio', 2);
+        $this->assertEquals(2, RekamanAudio::where('id_kunjungan', $kunjungan->id_kunjungan)->count());
         Queue::assertPushed(ProcessInterviewAudio::class);
     }
 

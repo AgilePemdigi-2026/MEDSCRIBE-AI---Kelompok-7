@@ -1,11 +1,15 @@
 <?php
 
 use App\Models\Hospital;
+use Dotenv\Dotenv;
+use Illuminate\Support\Env;
 use App\Models\Pengguna;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use App\Models\RekamanAudio;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\Console\Formatter\OutputFormatter;
+use Symfony\Component\Process\Process;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -70,35 +74,136 @@ Artisan::command('test:bdd {--filter= : Filter skenario atau kelas pengujian BDD
     $featureFiles = glob($featuresDir . '/*.feature');
     $filter = $this->option('filter');
 
-    $this->info("Ditemukan " . count($featureFiles) . " file spesifikasi fitur Gherkin (BDD):");
+    // Baca judul Feature dan daftar Scenario dari setiap file Gherkin.
+    $features = [];
     foreach ($featureFiles as $file) {
-        $filename = basename($file);
-        $lines = file($file, FILE_IGNORE_NEW_LINES);
-        $featureTitle = '';
-        $scenarios = [];
-        foreach ($lines as $line) {
+        $feature = ['title' => basename($file), 'scenarios' => []];
+        foreach (file($file, FILE_IGNORE_NEW_LINES) as $line) {
             $trimmed = trim($line);
-            if (str_starts_with($trimmed, 'Fitur:') || str_starts_with($trimmed, 'Feature:')) {
-                $featureTitle = $trimmed;
-            } elseif (str_starts_with($trimmed, 'Skenario:') || str_starts_with($trimmed, 'Scenario:')) {
-                $scenarios[] = $trimmed;
+            if (preg_match('/^(Fitur|Feature):\s*(.+)$/', $trimmed, $m)) {
+                $feature['title'] = $m[2];
+            } elseif (preg_match('/^(Skenario|Scenario):\s*(.+)$/', $trimmed, $m)) {
+                $feature['scenarios'][] = $m[2];
             }
         }
-        $this->line(" <fg=yellow>▶</> <fg=white;options=bold>{$filename}</> - <fg=gray>{$featureTitle}</>");
-        $this->line("   <fg=cyan>•</> " . count($scenarios) . " Skenario BDD");
+        $features[basename($file)] = $feature;
     }
 
-    $this->newLine();
-    $this->info("Menjalankan eksekusi otomasi BDD test suite" . ($filter ? " [Filter: {$filter}]" : "") . "...");
+    $totalSkenario = array_sum(array_map(fn ($f) => count($f['scenarios']), $features));
+    $this->info('Ditemukan ' . count($features) . " file fitur Gherkin dengan {$totalSkenario} skenario.");
+    $this->line('<fg=gray>Menjalankan skenario' . ($filter ? " [Filter: {$filter}]" : '') . '...</>');
     $this->newLine();
 
-    $params = ['--testsuite' => 'BDD'];
+    // Artisan::call('test') tidak meneruskan --testsuite/--filter ke PHPUnit (ia membaca argv proses),
+    // sehingga seluruh suite ikut berjalan. Jalankan sebagai proses terpisah agar hanya suite BDD yang dieksekusi.
+    $command = [PHP_BINARY, base_path('artisan'), 'test', '--testsuite=BDD'];
     if ($filter) {
-        $params['--filter'] = $filter;
+        $command[] = '--filter=' . $filter;
     }
 
-    $exitCode = Artisan::call('test', $params);
-    $this->line(Artisan::output());
+    // Bersihkan variabel .env dev yang sudah dimuat proses ini supaya tidak diwariskan ke proses test
+    // (sama seperti yang dilakukan `php artisan test`), sehingga phpunit.xml dan .env.testing yang berlaku.
+    $envFile = app()->environmentFilePath();
+    if (is_file($envFile)) {
+        foreach (array_keys(Dotenv::parse(file_get_contents($envFile))) as $name) {
+            Env::getRepository()->clear($name);
+        }
+    }
+
+    // Setiap test BDD menulis langkah dan hasilnya ke file ini (lihat Tests\BDD\BDDTestCase::recordBddScenario).
+    $reportFile = storage_path('framework/testing/bdd-report.jsonl');
+    @unlink($reportFile);
+
+    $startedAt = microtime(true);
+    $process = new Process($command, base_path(), ['BDD_REPORT_FILE' => $reportFile], null, null);
+    $exitCode = $process->run();
+    $totalDurasi = microtime(true) - $startedAt;
+
+    $hasil = [];
+    foreach (is_file($reportFile) ? file($reportFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) : [] as $line) {
+        $row = json_decode($line, true);
+        if (is_array($row)) {
+            $hasil[$row['feature'] ?? $row['class']][$row['scenario']] = $row;
+        }
+    }
+    @unlink($reportFile);
+
+    $esc = fn (string $text) => OutputFormatter::escape($text);
+    $hitung = ['fitur_lulus' => 0, 'fitur_gagal' => 0, 'skenario_lulus' => 0, 'skenario_gagal' => 0,
+        'skenario_lewat' => 0, 'tanpa_test' => 0, 'langkah_lulus' => 0, 'langkah_gagal' => 0];
+
+    foreach ($features as $file => $feature) {
+        $skenarioFitur = $hasil[$file] ?? [];
+        if ($skenarioFitur === [] && $filter) {
+            continue; // Fitur ini tidak tersaring oleh --filter.
+        }
+
+        $this->line("<options=bold>Feature: {$esc($feature['title'])}</>  <fg=gray># features/{$file}</>");
+
+        // Urutkan sesuai file .feature; skenario yang tidak ditemukan di file ditaruh di akhir.
+        $judulUrut = array_values(array_unique(array_merge($feature['scenarios'], array_keys($skenarioFitur))));
+        $fiturGagal = false;
+
+        foreach ($judulUrut as $judul) {
+            $row = $skenarioFitur[$judul] ?? null;
+
+            if ($row === null) {
+                if (! $filter) {
+                    $hitung['tanpa_test']++;
+                    $this->line("  <fg=yellow>Scenario: {$esc($judul)}  (belum ada test)</>");
+                }
+                continue;
+            }
+
+            $durasi = sprintf('%.2fs', $row['duration']);
+            $warna = match ($row['status']) { 'passed' => 'green', 'skipped' => 'yellow', default => 'red' };
+            $this->line("  <fg={$warna};options=bold>Scenario: {$esc($judul)}</>  <fg=gray>{$durasi}</>");
+
+            $langkah = $row['steps'] ?: [['Then', '(skenario tidak mencatat langkah)']];
+            foreach ($langkah as $i => [$kataKunci, $deskripsi]) {
+                // Langkah terakhir yang tercatat adalah langkah tempat skenario berhenti saat gagal.
+                $gagalDiSini = $row['status'] === 'failed' && $i === array_key_last($langkah);
+                $simbol = $gagalDiSini ? '<fg=red>✗</>' : ($row['status'] === 'skipped' ? '<fg=yellow>-</>' : '<fg=green>✓</>');
+                $teks = $gagalDiSini ? "<fg=red>{$kataKunci} {$esc($deskripsi)}</>" : "<fg=cyan>{$kataKunci}</> {$esc($deskripsi)}";
+                $this->line("    {$simbol} {$teks}");
+                $gagalDiSini ? $hitung['langkah_gagal']++ : $hitung['langkah_lulus']++;
+            }
+
+            if ($row['status'] === 'failed') {
+                $fiturGagal = true;
+                $hitung['skenario_gagal']++;
+                $pesan = trim((string) $row['message']);
+                $pesan = mb_strlen($pesan) > 600 ? mb_substr($pesan, 0, 600) . ' …' : $pesan;
+                foreach (array_slice(explode("\n", $pesan), 0, 8) as $baris) {
+                    $this->line("      <fg=red>{$esc($baris)}</>");
+                }
+            } elseif ($row['status'] === 'skipped') {
+                $hitung['skenario_lewat']++;
+            } else {
+                $hitung['skenario_lulus']++;
+            }
+        }
+
+        $fiturGagal ? $hitung['fitur_gagal']++ : $hitung['fitur_lulus']++;
+        $this->newLine();
+    }
+
+    $jumlahTercatat = array_sum(array_map('count', $hasil));
+    if ($exitCode !== 0 && $hitung['skenario_gagal'] === 0) {
+        // PHPUnit gagal di luar skenario (mis. error PHP/koneksi database), tampilkan keluaran aslinya.
+        $this->line('<fg=red>PHPUnit berhenti sebelum semua skenario tercatat. Keluaran asli:</>');
+        $this->line($process->getOutput() . $process->getErrorOutput());
+    }
+
+    $this->line(sprintf('%d fitur lulus, %d gagal', $hitung['fitur_lulus'], $hitung['fitur_gagal']));
+    $this->line(sprintf(
+        '%d skenario lulus, %d gagal, %d dilewati%s',
+        $hitung['skenario_lulus'], $hitung['skenario_gagal'], $hitung['skenario_lewat'],
+        $hitung['tanpa_test'] ? ", {$hitung['tanpa_test']} belum ada test" : ''
+    ));
+    $this->line(sprintf('%d langkah lulus, %d gagal', $hitung['langkah_lulus'], $hitung['langkah_gagal']));
+    $this->line(sprintf('<fg=gray>%d skenario dijalankan dalam %.1fs</>', $jumlahTercatat, $totalDurasi));
+    $this->newLine();
 
     if ($exitCode === 0) {
         $this->line('<fg=green;options=bold>✓ SEMUA SKENARIO BDD (BEHAVIOR DRIVEN DEVELOPMENT) BERHASIL DIUJI!</>');

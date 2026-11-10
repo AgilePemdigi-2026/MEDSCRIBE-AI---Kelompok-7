@@ -268,9 +268,20 @@ class AuthController extends Controller
 
     /**
      * Menangani callback autentikasi Google OAuth.
+     * Sesuai ketentuan Phase 4:
+     * - Google Login HANYA untuk pengguna yang SUDAH terdaftar resmi di MedScribe AI.
+     * - Tidak membuat akun otomatis bagi email yang belum terdaftar.
      */
     public function handleGoogleCallback(Request $request): RedirectResponse
     {
+        // Tangani jika otorisasi dibatalkan oleh pengguna pada Google consent
+        if ($request->has('error')) {
+            return redirect()->route('login')
+                ->withErrors([
+                    'email' => 'Otorisasi login Google dibatalkan atau ditolak.',
+                ]);
+        }
+
         if (empty(config('services.google.client_id')) || empty(config('services.google.client_secret'))) {
             return redirect()->route('login')
                 ->withErrors([
@@ -300,127 +311,91 @@ class AuthController extends Controller
         }
 
         $email = Str::lower(trim($googleUser->getEmail()));
+        $googleId = (string) $googleUser->getId();
+
+        // Cari akun resmi di MedScribe AI
         $user = Pengguna::where('email', $email)->first();
 
-        if ($user) {
-            // Akun sudah ada: tautkan Google ID jika belum ada
-            if (!$user->google_id) {
-                $user->google_id = $googleUser->getId();
-            }
-            if (!$user->email_verified_at) {
-                $user->email_verified_at = now();
-            }
-            if ($googleUser->getAvatar() && !$user->avatar) {
-                $user->avatar = $googleUser->getAvatar();
-            }
-            $user->save();
+        // Case B & Case C: Akun belum terdaftar resmi
+        if (!$user) {
+            // Cek apakah email terdaftar dalam proses registrasi tertunda (Pending Registration)
+            $pendingRegistration = PendingRegistration::where('email', $email)
+                ->where('expires_at', '>', now())
+                ->first();
 
-            // Cek apakah akun memiliki rumah sakit dan peran valid
-            if (!$user->hospital_id || !$user->role) {
-                session(['google_complete_user_id' => $user->id_pengguna]);
-                return redirect()->route('register.google.complete');
+            if ($pendingRegistration) {
+                // Case C: Email hanya ada di pending registration
+                return redirect()->route('verification.otp.show', ['email' => $email])
+                    ->with('info', 'Pendaftaran Anda belum selesai diverifikasi. Masukkan kode OTP yang telah dikirim ke email Anda.');
             }
 
-            Auth::login($user);
-            $request->session()->regenerate();
-
-            return $this->redirectBasedOnRole($user)
-                ->with('status', 'Berhasil masuk dengan akun Google.');
-        }
-
-        // Pengguna baru via Google: Simpan data sementara di session dan minta peran + rumah sakit
-        session([
-            'google_register_data' => [
-                'google_id'    => $googleUser->getId(),
-                'email'        => $email,
-                'nama_lengkap' => $googleUser->getName(),
-                'avatar'       => $googleUser->getAvatar(),
-            ]
-        ]);
-
-        return redirect()->route('register.google.complete');
-    }
-
-    /**
-     * Menampilkan form pelengkapan profil Google (Pilihan Peran & Rumah Sakit).
-     */
-    public function showGoogleCompleteForm(): View|RedirectResponse
-    {
-        $googleData = session('google_register_data');
-        $incompleteUserId = session('google_complete_user_id');
-
-        if (!$googleData && !$incompleteUserId) {
-            return redirect()->route('register');
-        }
-
-        $hospitals = $this->hospitalService->getActiveHospitals();
-        $email = $googleData['email'] ?? Pengguna::find($incompleteUserId)?->email;
-        $name = $googleData['nama_lengkap'] ?? Pengguna::find($incompleteUserId)?->nama_lengkap;
-
-        return view('auth.register-google-complete', compact('hospitals', 'email', 'name'));
-    }
-
-    /**
-     * Memproses pelengkapan profil Google.
-     * Sesuai ketentuan Phase 2 D: Pengguna diarahkan ke login page setelah pendaftaran pertama.
-     */
-    public function storeGoogleComplete(Request $request): RedirectResponse
-    {
-        $googleData = session('google_register_data');
-        $incompleteUserId = session('google_complete_user_id');
-
-        if (!$googleData && !$incompleteUserId) {
-            return redirect()->route('register');
-        }
-
-        $validated = $request->validate([
-            'role'        => ['required', 'string', 'in:dokter,perawat,Dokter,Perawat'],
-            'hospital_id' => ['required', 'integer', 'exists:hospitals,id'],
-        ], [
-            'role.required'        => 'Peran tenaga medis wajib dipilih.',
-            'role.in'              => 'Peran yang diperbolehkan hanya Dokter atau Perawat.',
-            'hospital_id.required' => 'Rumah sakit wajib dipilih.',
-            'hospital_id.exists'   => 'Rumah sakit tidak valid atau tidak aktif.',
-        ]);
-
-        try {
-            DB::beginTransaction();
-
-            if ($incompleteUserId) {
-                $user = Pengguna::findOrFail($incompleteUserId);
-                $user->role = Str::lower($validated['role']);
-                $user->hospital_id = (int) $validated['hospital_id'];
-                $user->save();
-            } else {
-                $user = Pengguna::create([
-                    'nama_lengkap'      => $googleData['nama_lengkap'],
-                    'email'             => $googleData['email'],
-                    'email_verified_at' => now(), // Terverifikasi via Google OAuth
-                    'role'              => Str::lower($validated['role']),
-                    'hospital_id'       => (int) $validated['hospital_id'],
-                    'approval_status'   => 'approved',
-                    'password'          => Hash::make(Str::random(32)),
-                    'google_id'         => $googleData['google_id'],
-                    'avatar'            => $googleData['avatar'] ?? null,
-                ]);
-            }
-
-            DB::commit();
-
-            session()->forget(['google_register_data', 'google_complete_user_id']);
-
-            // Sesuai ketentuan Phase 2 D: Redirect ke LOGIN PAGE setelah pendaftaran berhasil
+            // Case B: Email belum terdaftar sama sekali di MedScribe AI
             return redirect()->route('login')
-                ->with('status', 'Pendaftaran akun dengan Google berhasil. Silakan login menggunakan akun Anda.');
-
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('Kesalahan pelengkapan akun Google: ' . $e->getMessage());
-
-            return back()->withInput()->withErrors([
-                'role' => 'Terjadi kesalahan sistem saat menyimpan profil akun.',
-            ]);
+                ->with('warning', 'Mohon maaf, email Google ini belum terdaftar di MedScribe AI. Silakan lakukan registrasi terlebih dahulu menggunakan formulir pendaftaran.')
+                ->withErrors([
+                    'email' => 'Mohon maaf, email Google ini belum terdaftar di MedScribe AI. Silakan lakukan registrasi terlebih dahulu menggunakan formulir pendaftaran.',
+                ]);
         }
+
+        // Case D: Akun ditemukan tetapi belum memiliki peran medis yang sah
+        if (empty($user->role) || !in_array(Str::lower($user->role), ['dokter', 'perawat', 'admin'], true)) {
+            return redirect()->route('login')
+                ->withErrors([
+                    'email' => 'Akun Anda belum memiliki peran medis yang sah. Silakan hubungi administrator sistem.',
+                ]);
+        }
+
+        // Case E: Akun tidak aktif atau belum disetujui
+        if (!$user->isApproved()) {
+            return redirect()->route('login')
+                ->withErrors([
+                    'email' => 'Akun Anda sedang dalam proses peninjauan persetujuan administratif rumah sakit.',
+                ]);
+        }
+
+        // Keamanan: Cegah konflik penautan identitas Google
+        if ($user->google_id && (string) $user->google_id !== $googleId) {
+            return redirect()->route('login')
+                ->withErrors([
+                    'email' => 'Akun ini telah ditautkan dengan identitas Google lain.',
+                ]);
+        }
+
+        $conflictUser = Pengguna::where('google_id', $googleId)
+            ->where('id_pengguna', '!=', $user->id_pengguna)
+            ->exists();
+
+        if ($conflictUser) {
+            return redirect()->route('login')
+                ->withErrors([
+                    'email' => 'Identitas Google ini telah ditautkan dengan akun lain.',
+                ]);
+        }
+
+        // Case A: Akun valid & terdaftar resmi - Tautkan Google ID jika belum terpasang
+        $updated = false;
+        if (!$user->google_id) {
+            $user->google_id = $googleId;
+            $updated = true;
+        }
+        if (!$user->avatar && $googleUser->getAvatar()) {
+            $user->avatar = $googleUser->getAvatar();
+            $updated = true;
+        }
+        if (!$user->email_verified_at) {
+            $user->email_verified_at = now();
+            $updated = true;
+        }
+        if ($updated) {
+            $user->save();
+        }
+
+        // Login dan regenerasi sesi
+        Auth::login($user, true);
+        $request->session()->regenerate();
+
+        return $this->redirectBasedOnRole($user)
+            ->with('status', 'Selamat datang kembali, ' . $user->nama_lengkap . '! Berhasil masuk dengan akun Google.');
     }
 
     /**

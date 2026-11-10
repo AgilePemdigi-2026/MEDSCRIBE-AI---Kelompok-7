@@ -12,14 +12,31 @@ abstract class BDDTestCase extends TestCase
 {
     use DatabaseTransactions;
 
+    /** @var array<int, array{0: string, 1: string}> Langkah yang sudah dijalankan: [kata kunci, deskripsi] */
     protected array $bddStepLog = [];
+
+    protected int $bddStartedAt = 0;
+
+    protected function setUp(): void
+    {
+        $this->bddStartedAt = hrtime(true);
+
+        parent::setUp();
+    }
+
+    protected function tearDown(): void
+    {
+        $this->recordBddScenario();
+
+        parent::tearDown();
+    }
 
     /**
      * BDD Step: Given (Dengan/Diberikan)
      */
     protected function given(string $description): static
     {
-        $this->bddStepLog[] = "GIVEN: {$description}";
+        $this->bddStepLog[] = ['Given', $description];
         return $this;
     }
 
@@ -28,7 +45,7 @@ abstract class BDDTestCase extends TestCase
      */
     protected function when(string $description): static
     {
-        $this->bddStepLog[] = "WHEN: {$description}";
+        $this->bddStepLog[] = ['When', $description];
         return $this;
     }
 
@@ -37,7 +54,7 @@ abstract class BDDTestCase extends TestCase
      */
     protected function then(string $description): static
     {
-        $this->bddStepLog[] = "THEN: {$description}";
+        $this->bddStepLog[] = ['Then', $description];
         return $this;
     }
 
@@ -46,8 +63,41 @@ abstract class BDDTestCase extends TestCase
      */
     protected function and(string $description): static
     {
-        $this->bddStepLog[] = "AND: {$description}";
+        $this->bddStepLog[] = ['And', $description];
         return $this;
+    }
+
+    /**
+     * Tulis hasil skenario (langkah, status, durasi) ke file laporan yang dibaca `php artisan test:bdd`.
+     * Hanya aktif jika runner menyetel BDD_REPORT_FILE, sehingga `php artisan test` biasa tidak terpengaruh.
+     */
+    private function recordBddScenario(): void
+    {
+        $reportFile = getenv('BDD_REPORT_FILE');
+        if (! $reportFile) {
+            return;
+        }
+
+        $class = new \ReflectionClass($this);
+        $method = $class->getMethod($this->name());
+        preg_match('/features\/([\w\-]+\.feature)/', (string) $class->getDocComment(), $feature);
+        preg_match('/@scenario\s+(.+)/', (string) $method->getDocComment(), $scenario);
+
+        $status = $this->status();
+
+        file_put_contents($reportFile, json_encode([
+            'feature'  => $feature[1] ?? null,
+            'class'    => $class->getShortName(),
+            'scenario' => isset($scenario[1]) ? trim($scenario[1]) : $this->name(),
+            'status'   => match (true) {
+                $status->isSuccess() => 'passed',
+                $status->isSkipped(), $status->isIncomplete() => 'skipped',
+                default => 'failed',
+            },
+            'message'  => $status->isSuccess() ? null : $status->message(),
+            'steps'    => $this->bddStepLog,
+            'duration' => (hrtime(true) - $this->bddStartedAt) / 1e9,
+        ], JSON_UNESCAPED_UNICODE) . PHP_EOL, FILE_APPEND | LOCK_EX);
     }
 
     /**

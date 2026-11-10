@@ -4,10 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\Antrean;
 use App\Models\Kunjungan;
+use App\Models\ParameterLoinc;
 use App\Models\PemeriksaanAwal;
 use App\Models\Pengguna;
 use App\Models\RekamanAudio;
 use App\Models\Wawancara;
+use App\Services\AudioProbeException;
+use App\Services\InterviewAudioUploadException;
+use App\Services\InterviewAudioUploadService;
+use App\Services\SoapDraftPreparer;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -18,9 +23,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
-use App\Services\AudioProbeException;
-use App\Services\InterviewAudioUploadException;
-use App\Services\InterviewAudioUploadService;
 
 class DokterController extends Controller
 {
@@ -29,7 +31,7 @@ class DokterController extends Controller
      * Mengintegrasikan data pasien, TTV Nurse Station, perekaman audio wawancara klinis,
      * serta menerapkan pembatasan isolasi data rumah sakit (Multi-Tenancy).
      */
-    public function showRekamMedis(Request $request, int $id_antrean): View|RedirectResponse
+    public function showRekamMedis(Request $request, int $id_antrean, SoapDraftPreparer $soapDraftPreparer): View|RedirectResponse
     {
         $user = Auth::user();
         if (! $user || ! $user->isDokter()) {
@@ -53,10 +55,10 @@ class DokterController extends Controller
             ['id_antrean' => $antrean->id_antrean],
             [
                 'hospital_id' => $user->hospital_id ?? $antrean->hospital_id,
-                'id_pasien'   => $antrean->id_pasien,
-                'id_dokter'   => $user->id_pengguna,
-                'tanggal'     => $antrean->tanggal_kunjungan ?: Carbon::today()->toDateString(),
-                'status'      => 'Sedang Diperiksa',
+                'id_pasien' => $antrean->id_pasien,
+                'id_dokter' => $user->id_pengguna,
+                'tanggal' => $antrean->tanggal_kunjungan ?: Carbon::today()->toDateString(),
+                'status' => 'Sedang Diperiksa',
             ]
         );
 
@@ -93,10 +95,39 @@ class DokterController extends Controller
         $wawancara = Wawancara::where('id_kunjungan', $kunjungan->id_kunjungan)->first();
         $workflowState = $this->workflowState($kunjungan, $pemeriksaanAwal, $wawancara);
 
-        // 5. Format kode kunjungan medis spesifik rumah sakit
+        // 5. Draf SOAP baru disiapkan setelah transkrip ditinjau, agar draf kosong tidak terbentuk lebih awal
+        $soap = null;
+        if (in_array($workflowState, ['soap-ready', 'soap', 'completed'], true)) {
+            $kunjungan->setRelation('pemeriksaanAwal', $pemeriksaanAwal);
+            $kunjungan->setRelation('wawancara', $wawancara);
+            $soap = $soapDraftPreparer->prepare($kunjungan);
+        }
+        $finalisasi = $kunjungan->finalisasi()->first();
+        $tindakLanjut = $kunjungan->tindakLanjut()
+            ->with(['eResep', 'rujukanLab.parameter'])
+            ->first();
+        $parameterLoinc = ParameterLoinc::query()
+            ->where('is_active', true)
+            ->orderBy('nama_pemeriksaan')
+            ->get();
+
+        $tahapTindakLanjut = match (true) {
+            $tindakLanjut !== null => 'done',
+            $finalisasi?->isLocked() === true => 'locked',
+            $workflowState !== 'completed' => 'locked',
+            default => 'active',
+        };
+
+        $tahapFinalisasi = match (true) {
+            $kunjungan->isFinalized() => 'done',
+            $kunjungan->isSoapVerified() => 'active',
+            default => 'locked',
+        };
+
+        // 6. Format kode kunjungan medis spesifik rumah sakit
         $tglStr = str_replace('-', '', $kunjungan->tanggal ?: date('Ymd'));
-        $prefix = $user->hospital?->hospital_code ? 'RS' . $user->hospital->hospital_code : 'RSUA';
-        $idKunjunganCode = $prefix . '-' . $tglStr . '-' . str_pad($antrean->id_antrean, 3, '0', STR_PAD_LEFT);
+        $prefix = $user->hospital?->hospital_code ? 'RS'.$user->hospital->hospital_code : 'RSUA';
+        $idKunjunganCode = $prefix.'-'.$tglStr.'-'.str_pad($antrean->id_antrean, 3, '0', STR_PAD_LEFT);
 
         $pasien = $antrean->pasien;
         $umur = $pasien->umur ?: ($pasien->tanggal_lahir ? Carbon::parse($pasien->tanggal_lahir)->age : null);
@@ -111,7 +142,13 @@ class DokterController extends Controller
             'rekamanAudio',
             'wawancara',
             'workflowState',
-            'idKunjunganCode'
+            'idKunjunganCode',
+            'soap',
+            'finalisasi',
+            'tindakLanjut',
+            'tahapTindakLanjut',
+            'tahapFinalisasi',
+            'parameterLoinc'
         ));
     }
 
@@ -140,10 +177,10 @@ class DokterController extends Controller
                 ['id_antrean' => $lockedAntrean->id_antrean],
                 [
                     'hospital_id' => $user->hospital_id ?? $lockedAntrean->hospital_id,
-                    'id_pasien'   => $lockedAntrean->id_pasien,
-                    'id_dokter'   => $user->id_pengguna,
-                    'tanggal'     => $lockedAntrean->tanggal_kunjungan ?: Carbon::today()->toDateString(),
-                    'status'      => 'Sedang Diperiksa',
+                    'id_pasien' => $lockedAntrean->id_pasien,
+                    'id_dokter' => $user->id_pengguna,
+                    'tanggal' => $lockedAntrean->tanggal_kunjungan ?: Carbon::today()->toDateString(),
+                    'status' => 'Sedang Diperiksa',
                 ]
             );
             $this->authorizeKunjungan($kunjungan, $user->id_pengguna);
@@ -151,17 +188,35 @@ class DokterController extends Controller
             return $kunjungan->fresh();
         });
 
+        abort_if($kunjungan->isFinalized(), 403, 'Rekam medis telah difinalisasi dan tidak dapat diubah.');
+
         $request->validate([
             'audio' => [
                 'required', 'file', 'max:'.config('medscribe.audio.max_size_kb'),
                 'mimetypes:audio/webm,video/webm,audio/ogg,audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/x-m4a',
             ],
+            'realtime_transcript' => ['nullable', 'string'],
+            'realtime_segments' => ['nullable'],
         ]);
         $file = $request->file('audio');
         abort_if(($file->getSize() ?? 0) <= 0, 422, 'Berkas audio kosong.');
 
+        $realtimeSegments = $request->input('realtime_segments');
+        if (is_string($realtimeSegments)) {
+            $decoded = json_decode($realtimeSegments, true);
+            if (is_array($decoded)) {
+                $realtimeSegments = $decoded;
+            }
+        }
+
         try {
-            $result = app(InterviewAudioUploadService::class)->upload($kunjungan, $file, false);
+            $result = app(InterviewAudioUploadService::class)->upload(
+                $kunjungan,
+                $file,
+                false,
+                $request->input('realtime_transcript'),
+                is_array($realtimeSegments) ? $realtimeSegments : null
+            );
         } catch (AudioProbeException|InterviewAudioUploadException $exception) {
             return response()->json(['success' => false, 'message' => $exception->getMessage()], $exception->statusCode);
         } catch (\Throwable) {
@@ -175,6 +230,17 @@ class DokterController extends Controller
 
         $recording = $result['recording'];
         $isExisting = $result['outcome'] === 'existing';
+        $isRealtime = $result['outcome'] === 'created_realtime';
+
+        if ($isRealtime) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Rekaman dan transkripsi langsung berhasil disimpan.',
+                'audio_id' => $recording->id_rekaman,
+                'status' => 'completed',
+                'audio_stream' => route('dokter.rekam-medis.stream-audio', $antrean->id_antrean),
+            ], 200);
+        }
 
         return response()->json([
             'success' => true,
@@ -236,7 +302,7 @@ class DokterController extends Controller
      */
     protected function authorizeHospitalAccess(Pengguna $user, Antrean $antrean): void
     {
-        if (!$user->hospital_id) {
+        if (! $user->hospital_id) {
             return; // Akun legacy tanpa pembatasan rumah sakit spesifik
         }
 
@@ -286,7 +352,7 @@ class DokterController extends Controller
 
     private function workflowState(Kunjungan $kunjungan, ?PemeriksaanAwal $pemeriksaanAwal, ?Wawancara $wawancara): string
     {
-        if ($kunjungan->status === 'SOAP Terverifikasi') {
+        if ($kunjungan->isSoapVerified()) {
             return 'completed';
         }
 
@@ -302,6 +368,10 @@ class DokterController extends Controller
             return 'transcript';
         }
 
+        if ($wawancara?->processing_status === 'failed') {
+            return 'failed';
+        }
+
         if (in_array($wawancara?->processing_status, ['queued', 'transcribing'], true)) {
             return 'processing';
         }
@@ -311,5 +381,198 @@ class DokterController extends Controller
         }
 
         return $pemeriksaanAwal ? 'interview' : 'ttv';
+    }
+
+    /**
+     * Memvalidasi persetujuan akhir dan memfinalisasi rekam medis secara permanen.
+     * Mengubah status rekam medis menjadi 'Final' dan mengunci seluruh perubahan klinis.
+     */
+    public function finalizeRekamMedis(Request $request, Kunjungan $kunjungan): RedirectResponse|JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user || ! $user->isDokter()) {
+            abort(403, 'Akses ditolak: Hanya dokter poliklinik yang berwenang memfinalisasi rekam medis.');
+        }
+
+        $this->authorizeKunjungan($kunjungan, $user->id_pengguna);
+
+        if ($user->hospital_id) {
+            $targetHospitalId = $kunjungan->hospital_id ?? $kunjungan->pasien?->hospital_id;
+            if ($targetHospitalId && (int) $targetHospitalId !== (int) $user->hospital_id) {
+                abort(403, 'Akses ditolak: Anda tidak memiliki wewenang untuk memfinalisasi rekam medis dari rumah sakit lain.');
+            }
+        }
+
+        if ($kunjungan->isFinalized()) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Rekam medis ini sudah berstatus Final.'], 409);
+            }
+
+            return redirect()
+                ->route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean])
+                ->with('info', 'Rekam medis ini sudah difinalisasi.');
+        }
+
+        $request->validate([
+            'konfirmasi_persetujuan' => ['accepted'],
+            'catatan_finalisasi' => ['nullable', 'string', 'max:1000'],
+        ], [
+            'konfirmasi_persetujuan.accepted' => 'Anda wajib mencentang pernyataan persetujuan dan verifikasi sebelum memfinalisasi rekam medis.',
+        ]);
+
+        // 1. Validasi Persyaratan A: Draf SOAP Terverifikasi & Bagian Lengkap
+        $draf = $kunjungan->drafSoap;
+        if (! $kunjungan->isSoapVerified() || ! $draf) {
+            $msg = 'Draf SOAP wajib diverifikasi oleh dokter terlebih dahulu sebelum finalisasi.';
+            if ($request->wantsJson()) return response()->json(['success' => false, 'message' => $msg], 422);
+            return redirect()->route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean])->with('error', $msg);
+        }
+
+        if (empty(trim($draf->subjective_text ?? '')) || empty(trim($draf->objective_text ?? '')) || empty(trim($draf->assessment_text ?? '')) || empty(trim($draf->plan_text ?? ''))) {
+            $msg = 'Seluruh bagian draf SOAP (Subjective, Objective, Assessment, Plan) harus terisi lengkap sebelum finalisasi.';
+            if ($request->wantsJson()) return response()->json(['success' => false, 'message' => $msg], 422);
+            return redirect()->route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean])->with('error', $msg);
+        }
+
+        // 2. Validasi Persyaratan B: TTV & Catatan Perawat
+        $pemeriksaanAwal = $kunjungan->pemeriksaanAwal;
+        if (! $pemeriksaanAwal || empty($pemeriksaanAwal->tekanan_darah) || ! $pemeriksaanAwal->nadi || ! $pemeriksaanAwal->suhu_tubuh) {
+            $msg = 'Data pemeriksaan awal TTV dan catatan perawat belum lengkap pada kunjungan ini.';
+            if ($request->wantsJson()) return response()->json(['success' => false, 'message' => $msg], 422);
+            return redirect()->route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean])->with('error', $msg);
+        }
+
+        // 3. Validasi Persyaratan C: Transkripsi Wawancara Klinis Terverifikasi
+        $wawancara = $kunjungan->wawancara;
+        if (! $wawancara || empty(trim($wawancara->transkrip ?? '')) || ! $wawancara->transcript_reviewed_at) {
+            $msg = 'Transkripsi wawancara klinis wajib diverifikasi terlebih dahulu sebelum finalisasi.';
+            if ($request->wantsJson()) return response()->json(['success' => false, 'message' => $msg], 422);
+            return redirect()->route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean])->with('error', $msg);
+        }
+
+        // 4. Validasi Persyaratan D: Tindak Lanjut Medis Tersimpan
+        if (! $kunjungan->tindakLanjut) {
+            $msg = 'Tindak lanjut medis (resep / rujukan laboratorium / selesai tanpa tindakan) wajib disimpan terlebih dahulu.';
+            if ($request->wantsJson()) return response()->json(['success' => false, 'message' => $msg], 422);
+            return redirect()->route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean])->with('error', $msg);
+        }
+
+        DB::transaction(function () use ($kunjungan, $user, $request) {
+            $kunjungan->finalisasi()->updateOrCreate(
+                ['id_kunjungan' => $kunjungan->id_kunjungan],
+                [
+                    'id_dokter' => $user->id_pengguna,
+                    'status' => 'Final',
+                    'FINAL' => true,
+                    'finalized_at' => now(),
+                    'finalized_by' => $user->id_pengguna,
+                    'catatan_finalisasi' => $request->input('catatan_finalisasi'),
+                ]
+            );
+
+            $kunjungan->update(['status' => Kunjungan::STATUS_FINALISASI]);
+
+            if ($kunjungan->antrean) {
+                $kunjungan->antrean->update(['status' => 'Selesai']);
+            }
+        });
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Rekam medis berhasil disetujui dan difinalisasi secara permanen.',
+                'redirect_url' => route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean]) . '#finalisasi',
+            ]);
+        }
+
+        return redirect()
+            ->route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean])
+            ->with('status', 'Rekam medis berhasil disetujui dan difinalisasi.');
+    }
+
+    /**
+     * Menampilkan Pratinjau Dokumen SOAP Final dalam format cetak A4 Portrait.
+     * Hanya dapat diakses setelah rekam medis berhasil difinalisasi.
+     */
+    public function previewSoap(Request $request, Kunjungan $kunjungan): View|RedirectResponse
+    {
+        $user = Auth::user();
+        if (! $user || ! $user->isDokter()) {
+            abort(403, 'Akses ditolak: Hanya dokter poliklinik yang berwenang melihat preview rekam medis.');
+        }
+
+        $this->authorizeKunjungan($kunjungan, $user->id_pengguna);
+
+        if ($user->hospital_id) {
+            $targetHospitalId = $kunjungan->hospital_id ?? $kunjungan->pasien?->hospital_id;
+            if ($targetHospitalId && (int) $targetHospitalId !== (int) $user->hospital_id) {
+                abort(403, 'Akses ditolak: Anda tidak memiliki wewenang untuk mengakses rekam medis dari rumah sakit lain.');
+            }
+        }
+
+        // Ketentuan Keamanan & Konsistensi: Dokumen SOAP hanya dapat dipratinjau jika sudah final
+        if (! $kunjungan->isFinalized()) {
+            return redirect()
+                ->to(route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean]) . '#finalisasi')
+                ->with('warning', 'Pratinjau SOAP hanya tersedia setelah rekam medis berhasil disetujui dan difinalisasi.');
+        }
+
+        $kunjungan->load([
+            'pasien',
+            'hospital',
+            'dokter',
+            'pemeriksaanAwal.perawat',
+            'drafSoap',
+            'tindakLanjut.eResep',
+            'tindakLanjut.rujukanLab.parameter',
+            'finalisasi.finalizedBy',
+            'antrean',
+        ]);
+
+        $pasien = $kunjungan->pasien;
+        $antrean = $kunjungan->antrean;
+        $draf = $kunjungan->drafSoap;
+        $pemeriksaanAwal = $kunjungan->pemeriksaanAwal;
+        $tindakLanjut = $kunjungan->tindakLanjut;
+        $finalisasi = $kunjungan->finalisasi;
+
+        $dokterPemeriksa = $kunjungan->dokter ?? $user;
+        $finalizedDoctor = $finalisasi?->finalizedBy ?? $dokterPemeriksa;
+        // finalized_at disimpan dalam zona aplikasi (UTC); label "WIB" butuh konversi ke Asia/Jakarta.
+        $waktuFinal = ($finalisasi?->finalized_at ? Carbon::parse($finalisasi->finalized_at) : Carbon::now())
+            ->timezone('Asia/Jakarta')->locale('id')->isoFormat('D MMMM Y, HH:mm') . ' WIB';
+
+        $tanggalPemeriksaan = $kunjungan->tanggal
+            ? Carbon::parse($kunjungan->tanggal)->locale('id')->isoFormat('D MMMM Y')
+            : Carbon::now('Asia/Jakarta')->locale('id')->isoFormat('D MMMM Y');
+
+        $tglStr = str_replace('-', '', $kunjungan->tanggal ?: date('Ymd'));
+        $prefix = $kunjungan->hospital?->hospital_code ? 'RS'.$kunjungan->hospital->hospital_code : 'RSUA';
+        $idKunjunganCode = $prefix.'-'.$tglStr.'-'.str_pad($antrean?->id_antrean ?? $kunjungan->id_kunjungan, 3, '0', STR_PAD_LEFT);
+
+        $umur = $pasien->umur ?: ($pasien->tanggal_lahir ? Carbon::parse($pasien->tanggal_lahir)->age : null);
+
+        $icdDescription = null;
+        if ($draf?->kode_icd10) {
+            $icdDescription = \App\Services\SoapDraftPreparer::ICD10_OPTIONS[$draf->kode_icd10] ?? null;
+        }
+
+        return view('dashboard.rekam-medis.preview-soap', compact(
+            'kunjungan',
+            'pasien',
+            'antrean',
+            'draf',
+            'pemeriksaanAwal',
+            'tindakLanjut',
+            'finalisasi',
+            'dokterPemeriksa',
+            'finalizedDoctor',
+            'waktuFinal',
+            'tanggalPemeriksaan',
+            'idKunjunganCode',
+            'umur',
+            'icdDescription',
+            'user'
+        ));
     }
 }

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\ProcessInterviewAudio;
+use App\Models\Antrean;
 use App\Models\DrafSoap;
 use App\Models\Kunjungan;
 use App\Models\Pasien;
@@ -47,7 +48,13 @@ class InterviewTest extends TestCase
             'tanggal_lahir' => '1990-01-01',
             'jenis_kelamin' => 'Laki-laki',
         ]);
+        $antrean = Antrean::create([
+            'id_pasien' => $pasien->id_pasien,
+            'tanggal_kunjungan' => '2026-10-25',
+            'status' => 'Sedang Diperiksa',
+        ]);
         $this->kunjungan = Kunjungan::create([
+            'id_antrean' => $antrean->id_antrean,
             'id_pasien' => $pasien->id_pasien,
             'id_dokter' => $this->dokter->id_pengguna,
             'tanggal' => '2026-10-25',
@@ -94,7 +101,7 @@ class InterviewTest extends TestCase
             route('dokter.interview.finish', $this->kunjungan)
         );
 
-        $response->assertRedirect(route('dokter.soap.edit', $this->kunjungan));
+        $response->assertRedirect(route('dokter.rekam-medis', $this->kunjungan->id_antrean).'#soap');
         $this->assertDatabaseHas('wawancara', [
             'id_kunjungan' => $this->kunjungan->id_kunjungan,
             'status' => 'Wawancara Selesai',
@@ -112,7 +119,7 @@ class InterviewTest extends TestCase
             ->post(route('dokter.interview.start', $this->kunjungan));
 
         $response = $this->actingAs($this->dokter)
-            ->get(route('dokter.interview.show', $this->kunjungan));
+            ->followingRedirects()->get(route('dokter.interview.show', $this->kunjungan));
 
         $response->assertOk()
             ->assertDontSee('Catatan manual')
@@ -133,7 +140,7 @@ class InterviewTest extends TestCase
             'waktu_selesai' => now(),
         ]);
 
-        $response = $this->actingAs($this->dokter)->get(route('dokter.soap.edit', $this->kunjungan));
+        $response = $this->actingAs($this->dokter)->followingRedirects()->get(route('dokter.soap.edit', $this->kunjungan));
 
         $response->assertOk()->assertSee('Nyeri saat menelan')->assertSee('120/80');
         $this->assertDatabaseHas('draf_soap', [
@@ -281,7 +288,7 @@ class InterviewTest extends TestCase
             ['audio' => UploadedFile::fake()->create('interview.webm', 100, 'audio/webm')]
         )->assertStatus(202)->assertJsonFragment(['message' => 'Rekaman ini sedang diproses. Tidak dibuat rekaman baru.']);
 
-        $this->assertDatabaseCount('rekaman_audio', 1);
+        $this->assertEquals(1, RekamanAudio::where('id_kunjungan', $this->kunjungan->id_kunjungan)->count());
     }
 
     public function test_upload_baru_ditolak_setelah_recording_completed(): void
@@ -302,7 +309,7 @@ class InterviewTest extends TestCase
         );
 
         $response->assertStatus(409);
-        $this->assertDatabaseCount('rekaman_audio', 1);
+        $this->assertEquals(1, RekamanAudio::where('id_kunjungan', $this->kunjungan->id_kunjungan)->count());
         Queue::assertNothingPushed();
     }
 
@@ -447,47 +454,47 @@ class InterviewTest extends TestCase
             ]],
         ]);
 
-        $response = $this->actingAs($this->dokter)->get(route('dokter.interview.show', $this->kunjungan));
+        $response = $this->actingAs($this->dokter)->followingRedirects()->get(route('dokter.interview.show', $this->kunjungan));
 
         $response->assertOk()
             ->assertSee('Review Transkrip Wawancara')
-            ->assertSee('Simpan Review Transkrip')
+            ->assertSee('Simpan Koreksi')
             ->assertDontSee('id="recording-console"');
     }
 
-    public function test_audio_sedang_diproses_tidak_menawarkan_rekaman_baru(): void
+    public function test_transkrip_diverifikasi_menampilkan_teks_terkunci(): void
     {
         Wawancara::create([
             'id_kunjungan' => $this->kunjungan->id_kunjungan,
-            'status' => 'Wawancara Berlangsung',
-            'processing_status' => 'transcribing',
+            'status' => 'Wawancara Selesai',
+            'processing_status' => 'completed',
+            'transkrip' => 'Pasien batuk berdahak 3 hari.',
+            'transcript_reviewed_at' => now(),
+            'transcript_segments' => [],
         ]);
 
-        $response = $this->actingAs($this->dokter)->get(route('dokter.interview.show', $this->kunjungan));
+        $response = $this->actingAs($this->dokter)->followingRedirects()->get(route('dokter.interview.show', $this->kunjungan));
 
         $response->assertOk()
-            ->assertSee('Transkripsi sedang diproses')
-            ->assertDontSee('Mulai Rekaman')
+            ->assertSee('Transkrip yang telah diverifikasi')
+            ->assertSee('Pasien batuk berdahak 3 hari.')
             ->assertDontSee('id="recording-console"');
     }
 
-    public function test_frontend_menangani_polling_setelah_upload_dan_error_jaringan(): void
+    public function test_frontend_menampilkan_konsol_rekaman_real_time(): void
     {
         $this->actingAs($this->dokter)
             ->post(route('dokter.interview.start', $this->kunjungan));
 
         $response = $this->actingAs($this->dokter)
-            ->get(route('dokter.interview.show', $this->kunjungan));
+            ->followingRedirects()->get(route('dokter.interview.show', $this->kunjungan));
 
         $response->assertOk()
-            ->assertSee('startPolling();')
-            ->assertSee('new AbortController()', false)
-            ->assertSee('pollGeneration')
-            ->assertSee('signal: controller.signal', false)
-            ->assertSee("error.name === 'AbortError'", false)
-            ->assertSee("window.addEventListener('pagehide', stopPolling)", false)
-            ->assertSee('Upload audio gagal karena koneksi ke server terputus.')
-            ->assertSee('Status belum dapat diperbarui. Mencoba kembali...');
+            ->assertSee('Transkripsi Langsung (Real-Time)')
+            ->assertSee('Web Speech API')
+            ->assertSee('id="process-button"', false)
+            ->assertSee('id="resume-button"', false)
+            ->assertSee('id="retry-button"', false);
     }
 
     public function test_dokter_lain_tidak_dapat_membaca_halaman_soap(): void

@@ -54,33 +54,5 @@
         Belum memiliki akun tenaga medis?
         <a href="{{ route('register') }}" class="link ml-1">Daftar Akun Baru</a>
     </p>
-
-    <section class="mt-6 p-4 rounded-[20px] bg-pale-lavender border border-border-hover" aria-labelledby="demoTitle">
-        <div class="flex items-center justify-between mb-3">
-            <h2 id="demoTitle" class="text-xs font-semibold text-medical-navy">Akun Uji Coba Demo</h2>
-            <span class="text-[11px] text-text-secondary">Klik untuk isi</span>
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-            @foreach ([['rina@medscribe.id', 'dr. Rina Anggraini', 'Dokter Poliklinik', 'RA'], ['dewi@medscribe.id', 'Dewi Pratiwi', 'Perawat Nurse Station', 'DP']] as [$mail, $nama, $peran, $ini])
-                <button type="button" onclick="fillCredentials('{{ $mail }}', 'password123')"
-                        class="group flex items-center gap-2.5 text-left p-2.5 rounded-[16px] bg-white border border-border-subtle transition-all duration-200 hover:border-royal-indigo hover:-translate-y-0.5 hover:shadow-[0_8px_18px_-10px_rgba(88,101,220,0.6)]">
-                    <span class="avatar w-8 h-8 bg-pale-lavender text-royal-indigo-hover text-[11px] transition-colors group-hover:bg-royal-indigo group-hover:text-white" aria-hidden="true">{{ $ini }}</span>
-                    <span class="min-w-0">
-                        <span class="block text-xs font-semibold text-medical-navy truncate">{{ $nama }}</span>
-                        <span class="block text-[11px] text-text-secondary truncate">{{ $peran }}</span>
-                    </span>
-                </button>
-            @endforeach
-        </div>
-    </section>
 </div>
-@endsection
-
-@section('scripts')
-<script>
-    function fillCredentials(email, password) {
-        document.getElementById('email').value = email;
-        document.getElementById('password').value = password;
-    }
-</script>
 @endsection

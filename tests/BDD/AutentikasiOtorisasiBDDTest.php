@@ -14,6 +14,7 @@ class AutentikasiOtorisasiBDDTest extends BDDTestCase
 {
     /**
      * Skenario: Dokter berhasil login dengan kredensial valid dan diarahkan ke dashboard dokter
+     * @scenario Doctor Login Success
      */
     public function test_skenario_dokter_berhasil_login_dengan_kredensial_valid(): void
     {
@@ -36,10 +37,12 @@ class AutentikasiOtorisasiBDDTest extends BDDTestCase
 
         $this->and('Dokter diarahkan menuju dashboard dokter');
         $response->assertRedirect('/dokter/dashboard');
+        $response->assertSessionHas('status', 'Selamat datang kembali, ' . $dokter->nama_lengkap . '!');
     }
 
     /**
      * Skenario: Perawat berhasil login dengan kredensial valid dan diarahkan ke dashboard perawat
+     * @scenario Nurse Login Success
      */
     public function test_skenario_perawat_berhasil_login_dengan_kredensial_valid(): void
     {
@@ -66,6 +69,7 @@ class AutentikasiOtorisasiBDDTest extends BDDTestCase
 
     /**
      * Skenario: Login ditolak jika password yang dimasukkan salah
+     * @scenario Failed Login (wrong password)
      */
     public function test_skenario_login_ditolak_jika_password_salah(): void
     {
@@ -86,11 +90,12 @@ class AutentikasiOtorisasiBDDTest extends BDDTestCase
         $this->assertGuest();
 
         $this->and('Sistem mengembalikan error kredensial pada session');
-        $response->assertSessionHasErrors(['email']);
+        $response->assertSessionHasErrors(['email' => 'Email atau kata sandi tidak valid.']);
     }
 
     /**
      * Skenario: Login ditolak jika email belum terdaftar
+     * @scenario Failed Login (email not registered)
      */
     public function test_skenario_login_ditolak_jika_email_belum_terdaftar(): void
     {
@@ -105,11 +110,12 @@ class AutentikasiOtorisasiBDDTest extends BDDTestCase
 
         $this->then('Autentikasi gagal dan tetap berstatus tamu');
         $this->assertGuest();
-        $response->assertSessionHasErrors(['email']);
+        $response->assertSessionHasErrors(['email' => 'Email atau kata sandi tidak valid.']);
     }
 
     /**
      * Skenario: Login ditolak jika status akun belum disetujui (pending approval)
+     * @scenario Failed Login (account pending approval)
      */
     public function test_skenario_login_ditolak_jika_approval_status_pending(): void
     {
@@ -129,11 +135,12 @@ class AutentikasiOtorisasiBDDTest extends BDDTestCase
 
         $this->then('Sistem menolak login');
         $this->assertGuest();
-        $response->assertSessionHasErrors(['email']);
+        $response->assertSessionHasErrors(['email' => 'Akun Anda sedang dalam proses peninjauan persetujuan administratif rumah sakit.']);
     }
 
     /**
      * Skenario: Pengguna yang sudah login diarahkan ke dashboard saat mengakses halaman login
+     * @scenario Authenticated User Redirected From Login Page
      */
     public function test_skenario_pengguna_terautentikasi_diarahkan_dari_halaman_login(): void
     {
@@ -149,6 +156,7 @@ class AutentikasiOtorisasiBDDTest extends BDDTestCase
 
     /**
      * Skenario: Dokter dibatasi mengakses rute Nurse Station perawat
+     * @scenario Doctor Blocked from Nurse Station Pages
      */
     public function test_skenario_dokter_dilarang_mengakses_rute_perawat(): void
     {
@@ -164,11 +172,12 @@ class AutentikasiOtorisasiBDDTest extends BDDTestCase
         $this->and('Pada permintaan browser diarahkan kembali ke dashboard dokter dengan pesan peringatan');
         $webResponse = $this->actingAs($dokter)->get('/perawat/dashboard');
         $webResponse->assertRedirect('/dokter/dashboard');
-        $webResponse->assertSessionHas('warning');
+        $webResponse->assertSessionHas('warning', 'Akses ditolak: Anda tidak memiliki akses ke halaman Nurse Station/Perawat.');
     }
 
     /**
      * Skenario: Perawat dibatasi mengakses rute poliklinik dokter
+     * @scenario Nurse Blocked from Doctor Pages
      */
     public function test_skenario_perawat_dilarang_mengakses_rute_dokter(): void
     {
@@ -184,11 +193,12 @@ class AutentikasiOtorisasiBDDTest extends BDDTestCase
         $this->and('Pada permintaan browser diarahkan kembali ke dashboard perawat dengan pesan peringatan');
         $webResponse = $this->actingAs($perawat)->get('/dokter/dashboard');
         $webResponse->assertRedirect('/perawat/dashboard');
-        $webResponse->assertSessionHas('warning');
+        $webResponse->assertSessionHas('warning', 'Akses ditolak: Anda tidak memiliki akses ke halaman Dokter.');
     }
 
     /**
      * Skenario: Pengguna berhasil logout dan sesi dibersihkan
+     * @scenario Logout Success
      */
     public function test_skenario_pengguna_berhasil_logout(): void
     {
@@ -203,5 +213,6 @@ class AutentikasiOtorisasiBDDTest extends BDDTestCase
 
         $this->and('Pengguna diarahkan kembali ke halaman login');
         $response->assertRedirect('/login');
+        $response->assertSessionHas('status', 'Anda telah berhasil keluar dari sistem MedScribe AI.');
     }
 }

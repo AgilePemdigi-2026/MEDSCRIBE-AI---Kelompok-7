@@ -10,6 +10,42 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Kunjungan extends Model
 {
+    public const STATUS_SOAP_BELUM_DIVERIFIKASI = 'SOAP Belum Diverifikasi';
+
+    public const STATUS_SOAP_TERVERIFIKASI = 'SOAP Terverifikasi';
+
+    public const STATUS_RESEP_TERSIMPAN = 'Resep Tersimpan';
+
+    public const STATUS_RUJUKAN_LAB_TERSIMPAN = 'Rujukan Lab Tersimpan';
+
+    public const STATUS_RUJUKAN_LAB_RESEP_TERSIMPAN = 'Rujukan Lab & Resep Tersimpan';
+
+    public const STATUS_SELESAI_TANPA_TINDAKAN_LANJUT = 'Selesai Tanpa Tindakan Lanjut';
+
+    public const STATUS_FINALISASI = 'Final';
+
+    public static function soapVerifiedStatuses(): array
+    {
+        return [
+            self::STATUS_SOAP_TERVERIFIKASI,
+            self::STATUS_RESEP_TERSIMPAN,
+            self::STATUS_RUJUKAN_LAB_TERSIMPAN,
+            self::STATUS_RUJUKAN_LAB_RESEP_TERSIMPAN,
+            self::STATUS_SELESAI_TANPA_TINDAKAN_LANJUT,
+            self::STATUS_FINALISASI,
+        ];
+    }
+
+    public function isSoapVerified(): bool
+    {
+        return in_array($this->status, self::soapVerifiedStatuses(), true);
+    }
+
+    public function isFinalized(): bool
+    {
+        return (bool) ($this->finalisasi?->isLocked() || in_array($this->status, [self::STATUS_FINALISASI, 'Selesai', 'Terkunci'], true));
+    }
+
     protected $table = 'kunjungan';
     protected $primaryKey = 'id_kunjungan';
     public $timestamps = false;
@@ -96,5 +132,10 @@ class Kunjungan extends Model
     public function finalisasi(): HasOne
     {
         return $this->hasOne(Finalisasi::class, 'id_kunjungan', 'id_kunjungan');
+    }
+
+    public function tindakLanjut(): HasOne
+    {
+        return $this->hasOne(TindakLanjut::class, 'id_kunjungan', 'id_kunjungan');
     }
 }

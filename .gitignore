@@ -34,3 +34,4 @@ services/audio_processor/.venv*/
 services/audio_processor/__pycache__/
 *.pyc
 storage/cacert.pem
+/storage/backups/*.sql
