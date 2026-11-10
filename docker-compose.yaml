@@ -85,6 +85,17 @@ services:
       - --tries=2
       - --timeout=7200
       - --verbose
+    healthcheck:
+      test:
+        - CMD
+        - php
+        - -r
+        - >-
+          $$self=getmypid(); foreach (glob("/proc/[0-9]*/cmdline") as $$path) { $$pid=(int) basename(dirname($$path)); if ($$pid === $$self) continue; $$cmd=@file_get_contents($$path); if ($$cmd !== false) { $$cmd=str_replace(chr(0), " ", $$cmd); if (str_contains($$cmd, "artisan queue:work") && str_contains($$cmd, "--queue=stt")) { exit(0); } } } exit(1);
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
     environment:
       APP_ENV: ${APP_ENV:-production}
       APP_DEBUG: ${APP_DEBUG:-false}
