@@ -10,11 +10,13 @@ COPY public ./public
 COPY vite.config.js .
 RUN npm run build
 
-FROM php:8.3-cli AS php-dependencies
+FROM php:8.4-cli AS php-dependencies
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
+
+RUN php -r 'if (!version_compare(PHP_VERSION, "8.4.1", ">=")) { fwrite(STDERR, "PHP ".PHP_VERSION." is below the required 8.4.1\n"); exit(1); }'
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -41,11 +43,13 @@ RUN composer install \
     --no-scripts \
     --optimize-autoloader
 
-FROM php:8.3-apache
+FROM php:8.4-apache
 
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public \
     APP_ENV=production \
     APP_DEBUG=false
+
+RUN php -r 'if (!version_compare(PHP_VERSION, "8.4.1", ">=")) { fwrite(STDERR, "PHP ".PHP_VERSION." is below the required 8.4.1\n"); exit(1); }'
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
