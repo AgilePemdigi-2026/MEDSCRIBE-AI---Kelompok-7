@@ -1,0 +1,206 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: medscribe-app:local
+    restart: unless-stopped
+    init: true
+    expose:
+      - "80"
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_URL: ${APP_URL:?APP_URL must be set in Coolify}
+      APP_KEY: ${APP_KEY:?APP_KEY must be set in Coolify}
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: ${MYSQL_DATABASE:?MYSQL_DATABASE must be set in Coolify}
+      DB_USERNAME: ${MYSQL_USER:?MYSQL_USER must be set in Coolify}
+      DB_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set in Coolify}
+      QUEUE_CONNECTION: database
+      MEDSCRIBE_STT_QUEUE: stt
+      SESSION_DRIVER: database
+      CACHE_STORE: database
+      FILESYSTEM_DISK: local
+      MEDSCRIBE_AUDIO_DISK: local
+      MEDSCRIBE_FFPROBE_PATH: ffprobe
+      MEDSCRIBE_STT_URL: http://stt:8765
+      MEDSCRIBE_STT_DEVICE: cpu
+      MEDSCRIBE_STT_DTYPE: float32
+      MEDSCRIBE_STT_CACHE_DIR: /cache/huggingface
+      MEDSCRIBE_STT_API_TOKEN: ${MEDSCRIBE_STT_API_TOKEN:-}
+      MEDSCRIBE_STT_MODEL: ${MEDSCRIBE_STT_MODEL:-openai/whisper-small}
+      MEDSCRIBE_STT_LANGUAGE: ${MEDSCRIBE_STT_LANGUAGE:-indonesian}
+      MEDSCRIBE_STT_BEAM_SIZE: ${MEDSCRIBE_STT_BEAM_SIZE:-5}
+      MEDSCRIBE_STT_TIMEOUT_SECONDS: ${MEDSCRIBE_STT_TIMEOUT_SECONDS:-7200}
+      MEDSCRIBE_AUDIO_MAX_SIZE_KB: ${MEDSCRIBE_AUDIO_MAX_SIZE_KB:-102400}
+      MEDSCRIBE_AUDIO_MAX_DURATION_SECONDS: ${MEDSCRIBE_AUDIO_MAX_DURATION_SECONDS:-3600}
+      MEDSCRIBE_AUDIO_RETENTION_HOURS: ${MEDSCRIBE_AUDIO_RETENTION_HOURS:-24}
+      MEDSCRIBE_DIARIZATION_ENABLED: ${MEDSCRIBE_DIARIZATION_ENABLED:-false}
+      MEDSCRIBE_SOAP_DRIVER: ${MEDSCRIBE_SOAP_DRIVER:-mock}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-nvidia/nemotron-3-ultra-550b-a55b:free}
+      OPENROUTER_TIMEOUT_SECONDS: ${OPENROUTER_TIMEOUT_SECONDS:-120}
+      OPENROUTER_VERIFY_SSL: ${OPENROUTER_VERIFY_SSL:-true}
+      MAIL_MAILER: ${MAIL_MAILER:-log}
+      MAIL_SCHEME: ${MAIL_SCHEME:-}
+      MAIL_URL: ${MAIL_URL:-}
+      MAIL_HOST: ${MAIL_HOST:-127.0.0.1}
+      MAIL_PORT: ${MAIL_PORT:-2525}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_EHLO_DOMAIN: ${MAIL_EHLO_DOMAIN:-}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-MedScribe AI}
+      MAIL_REPLY_TO_ADDRESS: ${MAIL_REPLY_TO_ADDRESS:-}
+      MAIL_REPLY_TO_NAME: ${MAIL_REPLY_TO_NAME:-MedScribe AI Support}
+      MAIL_LOG_CHANNEL: ${MAIL_LOG_CHANNEL:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+    volumes:
+      - laravel_storage:/var/www/html/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - medscribe_internal
+    mem_limit: 1g
+    cpus: 1.5
+
+  queue:
+    image: medscribe-app:local
+    restart: unless-stopped
+    init: true
+    command:
+      - php
+      - artisan
+      - queue:work
+      - database
+      - --queue=stt
+      - --sleep=3
+      - --tries=2
+      - --timeout=7200
+      - --verbose
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_KEY: ${APP_KEY:?APP_KEY must be set in Coolify}
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: ${MYSQL_DATABASE:?MYSQL_DATABASE must be set in Coolify}
+      DB_USERNAME: ${MYSQL_USER:?MYSQL_USER must be set in Coolify}
+      DB_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set in Coolify}
+      QUEUE_CONNECTION: database
+      MEDSCRIBE_STT_QUEUE: stt
+      SESSION_DRIVER: database
+      CACHE_STORE: database
+      FILESYSTEM_DISK: local
+      MEDSCRIBE_AUDIO_DISK: local
+      MEDSCRIBE_FFPROBE_PATH: ffprobe
+      MEDSCRIBE_STT_URL: http://stt:8765
+      MEDSCRIBE_STT_DEVICE: cpu
+      MEDSCRIBE_STT_DTYPE: float32
+      MEDSCRIBE_STT_API_TOKEN: ${MEDSCRIBE_STT_API_TOKEN:-}
+      MEDSCRIBE_STT_MODEL: ${MEDSCRIBE_STT_MODEL:-openai/whisper-small}
+      MEDSCRIBE_STT_LANGUAGE: ${MEDSCRIBE_STT_LANGUAGE:-indonesian}
+      MEDSCRIBE_STT_BEAM_SIZE: ${MEDSCRIBE_STT_BEAM_SIZE:-5}
+      MEDSCRIBE_STT_TIMEOUT_SECONDS: ${MEDSCRIBE_STT_TIMEOUT_SECONDS:-7200}
+      MEDSCRIBE_AUDIO_MAX_SIZE_KB: ${MEDSCRIBE_AUDIO_MAX_SIZE_KB:-102400}
+      MEDSCRIBE_AUDIO_MAX_DURATION_SECONDS: ${MEDSCRIBE_AUDIO_MAX_DURATION_SECONDS:-3600}
+      MEDSCRIBE_DIARIZATION_ENABLED: ${MEDSCRIBE_DIARIZATION_ENABLED:-false}
+      MAIL_MAILER: ${MAIL_MAILER:-log}
+      MAIL_SCHEME: ${MAIL_SCHEME:-}
+      MAIL_URL: ${MAIL_URL:-}
+      MAIL_HOST: ${MAIL_HOST:-127.0.0.1}
+      MAIL_PORT: ${MAIL_PORT:-2525}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_EHLO_DOMAIN: ${MAIL_EHLO_DOMAIN:-}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-MedScribe AI}
+      MAIL_REPLY_TO_ADDRESS: ${MAIL_REPLY_TO_ADDRESS:-}
+      MAIL_REPLY_TO_NAME: ${MAIL_REPLY_TO_NAME:-MedScribe AI Support}
+      MAIL_LOG_CHANNEL: ${MAIL_LOG_CHANNEL:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+    volumes:
+      - laravel_storage:/var/www/html/storage
+    depends_on:
+      app:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      stt:
+        condition: service_healthy
+    networks:
+      - medscribe_internal
+    mem_limit: 1536m
+    cpus: 2
+
+  stt:
+    build:
+      context: .
+      dockerfile: services/audio_processor/Dockerfile
+    image: medscribe-stt:local
+    restart: unless-stopped
+    init: true
+    expose:
+      - "8765"
+    environment:
+      MEDSCRIBE_STT_HOST: 0.0.0.0
+      MEDSCRIBE_STT_PORT: "8765"
+      MEDSCRIBE_STT_DEVICE: cpu
+      MEDSCRIBE_STT_DTYPE: float32
+      MEDSCRIBE_STT_CACHE_DIR: /cache/huggingface
+      HF_HOME: /cache/huggingface
+      MEDSCRIBE_STT_MODEL: ${MEDSCRIBE_STT_MODEL:-openai/whisper-small}
+      MEDSCRIBE_STT_LANGUAGE: ${MEDSCRIBE_STT_LANGUAGE:-indonesian}
+      MEDSCRIBE_STT_BEAM_SIZE: ${MEDSCRIBE_STT_BEAM_SIZE:-5}
+      MEDSCRIBE_STT_API_TOKEN: ${MEDSCRIBE_STT_API_TOKEN:-}
+      MEDSCRIBE_AUDIO_MAX_SIZE_KB: ${MEDSCRIBE_AUDIO_MAX_SIZE_KB:-102400}
+      MEDSCRIBE_DIARIZATION_ENABLED: ${MEDSCRIBE_DIARIZATION_ENABLED:-false}
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes:
+      - whisper_model_cache:/cache/huggingface
+    networks:
+      - medscribe_internal
+    mem_limit: 5632m
+    cpus: 8
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?MYSQL_DATABASE must be set in Coolify}
+      MYSQL_USER: ${MYSQL_USER:?MYSQL_USER must be set in Coolify}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set in Coolify}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set in Coolify}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - medscribe_internal
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'mysqladmin ping --protocol=TCP --host=127.0.0.1 --user=root --password="$${MYSQL_ROOT_PASSWORD}" --silent'
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    mem_limit: 1536m
+    cpus: 2
+
+volumes:
+  laravel_storage:
+  mysql_data:
+  whisper_model_cache:
+
+networks:
+  medscribe_internal:
+    driver: bridge
