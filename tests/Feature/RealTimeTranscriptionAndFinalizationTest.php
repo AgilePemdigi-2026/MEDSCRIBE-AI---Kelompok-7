@@ -489,7 +489,7 @@ class RealTimeTranscriptionAndFinalizationTest extends TestCase
     /**
      * Perilaku Halaman Preview SOAP:
      * Menampilkan dokumen format A4 portrait, identitas pasien, isi SOAP, TTV,
-     * area tanda tangan dokter, tombol Download PDF dan Kembali.
+     * area tanda tangan dokter, tombol Cetak / Simpan PDF dan Kembali.
      */
     public function test_halaman_preview_soap_menampilkan_dokumen_lengkap_dan_tombol_aksi(): void
     {
@@ -535,8 +535,8 @@ class RealTimeTranscriptionAndFinalizationTest extends TestCase
 
         $response->assertStatus(200);
         // Format & Header
-        $response->assertSee('Catatan Perkembangan Pasien Terintegrasi (CPPT) - SOAP');
-        $response->assertSee('Download PDF');
+        $response->assertSee('Catatan SOAP rawat jalan');
+        $response->assertSee('Cetak / Simpan PDF');
         $response->assertSee('Kembali');
         // Identitas Pasien
         $response->assertSee($this->pasien->nama_pasien);
@@ -545,9 +545,37 @@ class RealTimeTranscriptionAndFinalizationTest extends TestCase
         $response->assertSee('Keluhan pusing dan lemas.');
         $response->assertSee('Cephalea tension type.');
         $response->assertSee('G44.2');
-        // Tanda tangan & legalisasi dokter
+        // Tanda tangan dokter: hanya fakta finalisasi, tanpa klaim tanda tangan digital atau SIP karangan
         $response->assertSee($this->dokter->nama_lengkap);
-        $response->assertSee('Tanda Tangan Digital Terverifikasi');
+        $response->assertSee('Disetujui dan difinalisasi secara elektronik di MedScribe AI');
+        $response->assertDontSee('Tanda Tangan Digital Terverifikasi');
+        $response->assertDontSee('503/0124/SIP-D/2023');
+    }
+
+    /**
+     * Waktu finalisasi disimpan dalam UTC dan harus tampil dalam WIB (UTC+7),
+     * termasuk saat konversi melewati tengah malam dan mengubah tanggal.
+     */
+    public function test_waktu_finalisasi_ditampilkan_dalam_wib(): void
+    {
+        Finalisasi::create([
+            'id_kunjungan' => $this->kunjungan->id_kunjungan,
+            'id_dokter' => $this->dokter->id_pengguna,
+            'status' => 'Final',
+            'FINAL' => 1,
+            'finalized_at' => '2026-11-09 18:30:00',
+            'finalized_by' => $this->dokter->id_pengguna,
+        ]);
+        $this->kunjungan->update(['status' => Kunjungan::STATUS_FINALISASI]);
+
+        $preview = $this->actingAs($this->dokter)->get(route('dokter.soap.preview', $this->kunjungan));
+        $preview->assertStatus(200);
+        $preview->assertSee('10 November 2026, 01:30 WIB');
+        $preview->assertDontSee('9 November 2026, 18:30 WIB');
+
+        $rekamMedis = $this->actingAs($this->dokter)->get(route('dokter.rekam-medis', $this->antrean->id_antrean));
+        $rekamMedis->assertStatus(200);
+        $rekamMedis->assertSee('10 November 2026, 01:30 WIB');
     }
 
     /**
