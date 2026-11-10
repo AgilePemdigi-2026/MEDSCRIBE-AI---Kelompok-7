@@ -538,13 +538,13 @@ class DokterController extends Controller
 
         $dokterPemeriksa = $kunjungan->dokter ?? $user;
         $finalizedDoctor = $finalisasi?->finalizedBy ?? $dokterPemeriksa;
-        $waktuFinal = $finalisasi?->finalized_at
-            ? Carbon::parse($finalisasi->finalized_at)->locale('id')->isoFormat('D MMMM Y, HH:mm') . ' WIB'
-            : Carbon::now()->locale('id')->isoFormat('D MMMM Y, HH:mm') . ' WIB';
+        // finalized_at disimpan dalam zona aplikasi (UTC); label "WIB" butuh konversi ke Asia/Jakarta.
+        $waktuFinal = ($finalisasi?->finalized_at ? Carbon::parse($finalisasi->finalized_at) : Carbon::now())
+            ->timezone('Asia/Jakarta')->locale('id')->isoFormat('D MMMM Y, HH:mm') . ' WIB';
 
         $tanggalPemeriksaan = $kunjungan->tanggal
             ? Carbon::parse($kunjungan->tanggal)->locale('id')->isoFormat('D MMMM Y')
-            : Carbon::now()->locale('id')->isoFormat('D MMMM Y');
+            : Carbon::now('Asia/Jakarta')->locale('id')->isoFormat('D MMMM Y');
 
         $tglStr = str_replace('-', '', $kunjungan->tanggal ?: date('Ymd'));
         $prefix = $kunjungan->hospital?->hospital_code ? 'RS'.$kunjungan->hospital->hospital_code : 'RSUA';

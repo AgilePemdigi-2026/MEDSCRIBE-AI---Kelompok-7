@@ -816,8 +816,11 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
+    /* Fill-mode `backwards`, bukan `both`: frame akhir tidak ditahan, jadi kartu tidak
+       menyimpan transform setelah animasi. Transform yang tertahan menjadikan kartu acuan
+       bagi anak `position: fixed`, sehingga modal di dalam kartu terkurung di kartu itu. */
     .rise {
-        animation: riseIn 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: riseIn 560ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
         animation-delay: calc(var(--i, 0) * 70ms);
     }
 }

@@ -158,3 +158,18 @@
     </div>
 </div>
 @endsection
+
+@section('scripts')
+<script>
+    // Setelah reload, browser memulihkan posisi scroll lama dan mengabaikan hash (#soap, #finalisasi).
+    // Gulir ulang ke tahap yang dituju setelah halaman selesai dimuat.
+    window.addEventListener('load', function () {
+        const id = decodeURIComponent(window.location.hash.slice(1));
+        const target = id ? document.getElementById(id) : null;
+        if (!target || !target.matches('section.card')) return;
+        requestAnimationFrame(function () {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+@endsection

@@ -40,7 +40,7 @@
     $dokterPemeriksa = $kunjungan->dokter ?? $user;
     $finalizedDoctor = $finalisasi?->finalizedBy ?? $dokterPemeriksa;
     $waktuFinal = $finalisasi?->finalized_at
-        ? \Carbon\Carbon::parse($finalisasi->finalized_at)->locale('id')->isoFormat('D MMMM Y, HH:mm') . ' WIB'
+        ? \Carbon\Carbon::parse($finalisasi->finalized_at)->timezone('Asia/Jakarta')->locale('id')->isoFormat('D MMMM Y, HH:mm') . ' WIB'
         : null;
 @endphp
 
@@ -89,53 +89,33 @@
             @endif
         </div>
 
-        {{-- Pertahankan Informasi Hasil Pemeriksaan Kelengkapan sebagai Bukti Finalisasi --}}
+        {{-- Bukti kelayakan pra-finalisasi, dibaca dari status data sebenarnya --}}
+        @php
+            $buktiKelayakan = [
+                ['ok' => $soapSelesai, 'judul' => 'Draf SOAP Terverifikasi', 'ya' => 'SOAP telah disetujui dokter', 'tidak' => 'SOAP belum terverifikasi lengkap'],
+                ['ok' => $ttvSelesai, 'judul' => 'TTV & Catatan Perawat', 'ya' => 'Telah diisi lengkap oleh perawat', 'tidak' => 'Data TTV perawat belum lengkap'],
+                ['ok' => $wawancaraSelesai, 'judul' => 'Transkripsi Wawancara', 'ya' => 'Transkrip telah diverifikasi', 'tidak' => 'Transkrip belum diverifikasi'],
+                ['ok' => $tindakLanjutSelesai, 'judul' => 'Tindak Lanjut Medis', 'ya' => $tindakLanjut?->status ?: 'Tersimpan', 'tidak' => 'Tindak lanjut belum disimpan'],
+            ];
+        @endphp
         <div>
             <h4 class="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">Hasil Pemeriksaan Kelayakan Pra-Finalisasi</h4>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {{-- Syarat A: Draf SOAP --}}
-                <div class="flex items-center gap-3 p-3.5 rounded-[16px] bg-emerald-50/70 border border-emerald-200 text-xs">
-                    <span class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    </span>
-                    <div>
-                        <span class="font-semibold text-emerald-950 block">Draf SOAP Terverifikasi</span>
-                        <span class="text-emerald-800">SOAP telah disetujui dokter</span>
+                @foreach ($buktiKelayakan as $bukti)
+                    <div class="flex items-center gap-3 p-3.5 rounded-[16px] text-xs border {{ $bukti['ok'] ? 'bg-emerald-50/70 border-emerald-200' : 'bg-amber-50/70 border-amber-200' }}">
+                        <span class="w-6 h-6 rounded-full text-white flex items-center justify-center flex-shrink-0 {{ $bukti['ok'] ? 'bg-emerald-600' : 'bg-amber-500' }}" aria-hidden="true">
+                            @if ($bukti['ok'])
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            @else
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01" /></svg>
+                            @endif
+                        </span>
+                        <div>
+                            <span class="font-semibold block {{ $bukti['ok'] ? 'text-emerald-950' : 'text-amber-950' }}">{{ $bukti['judul'] }}</span>
+                            <span class="{{ $bukti['ok'] ? 'text-emerald-800' : 'text-amber-800' }}">{{ $bukti['ok'] ? $bukti['ya'] : $bukti['tidak'] }}</span>
+                        </div>
                     </div>
-                </div>
-
-                {{-- Syarat B: TTV & Catatan Perawat --}}
-                <div class="flex items-center gap-3 p-3.5 rounded-[16px] bg-emerald-50/70 border border-emerald-200 text-xs">
-                    <span class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    </span>
-                    <div>
-                        <span class="font-semibold text-emerald-950 block">TTV & Catatan Perawat</span>
-                        <span class="text-emerald-800">Telah diisi lengkap oleh perawat</span>
-                    </div>
-                </div>
-
-                {{-- Syarat C: Transkripsi Wawancara --}}
-                <div class="flex items-center gap-3 p-3.5 rounded-[16px] bg-emerald-50/70 border border-emerald-200 text-xs">
-                    <span class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    </span>
-                    <div>
-                        <span class="font-semibold text-emerald-950 block">Transkripsi Wawancara</span>
-                        <span class="text-emerald-800">Transkrip telah diverifikasi</span>
-                    </div>
-                </div>
-
-                {{-- Syarat D: Tindak Lanjut Medis --}}
-                <div class="flex items-center gap-3 p-3.5 rounded-[16px] bg-emerald-50/70 border border-emerald-200 text-xs">
-                    <span class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    </span>
-                    <div>
-                        <span class="font-semibold text-emerald-950 block">Tindak Lanjut Medis</span>
-                        <span class="text-emerald-800">{{ $tindakLanjut ? ($tindakLanjut->status ?: 'Tersimpan') : 'Tersimpan' }}</span>
-                    </div>
-                </div>
+                @endforeach
             </div>
         </div>
 
@@ -230,15 +210,9 @@
 
         {{-- Conditional Action Buttons Setelah Finalisasi (Section 2 & 4: Tombol Preview SOAP (PDF) & Kembali ke SOAP) --}}
         <div class="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-border-subtle">
-            <a href="#soap" class="btn btn-secondary min-h-11 px-5 text-center flex items-center justify-center gap-1.5">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-                <span>Kembali ke SOAP</span>
-            </a>
-            <a href="{{ route('dokter.soap.preview', $kunjungan) }}" id="btn-preview-soap"
-               class="btn min-h-11 px-6 bg-royal-indigo hover:bg-royal-indigo/90 text-white font-semibold rounded-[14px] shadow-sm flex items-center justify-center gap-2 transition-transform hover:scale-[1.01] active:scale-[0.99]">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25">
+            @include('partials.back-link', ['href' => '#soap', 'label' => 'Kembali ke SOAP'])
+            <a href="{{ route('dokter.soap.preview', $kunjungan) }}" id="btn-preview-soap" class="btn btn-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 <span>Preview SOAP (PDF)</span>
@@ -344,13 +318,9 @@
 
             {{-- Action Buttons --}}
             <div class="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-2">
-                <a href="#soap" class="btn btn-secondary min-h-11 px-5 text-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
-                    <span>Kembali ke SOAP</span>
-                </a>
-                <button type="button" id="btn-finalisasi-action" onclick="bukaModalFinalisasi()"
-                        class="btn min-h-11 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-[14px] shadow-sm flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                @include('partials.back-link', ['href' => '#soap', 'label' => 'Kembali ke SOAP'])
+                <button type="button" id="btn-finalisasi-action" onclick="bukaModalFinalisasi()" class="btn btn-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
                     <span>Setujui & Finalisasi Rekam Medis</span>
                 </button>
             </div>
@@ -377,12 +347,11 @@
                     </div>
 
                     <div class="grid grid-cols-2 gap-2 pt-2">
-                        <button type="button" onclick="tutupModalFinalisasi()" class="btn btn-secondary min-h-11">
+                        <button type="button" onclick="tutupModalFinalisasi()" class="btn btn-secondary">
                             Batal
                         </button>
-                        <button type="button" id="btn-konfirmasi-finalisasi" onclick="eksekusiFinalisasi()"
-                                class="btn bg-emerald-600 hover:bg-emerald-700 text-white font-semibold min-h-11 rounded-[14px]">
-                            <span id="btn-konfirmasi-label">Ya, Setujui & Finalisasi</span>
+                        <button type="button" id="btn-konfirmasi-finalisasi" onclick="eksekusiFinalisasi()" class="btn btn-primary">
+                            <span id="btn-konfirmasi-label">Finalisasi</span>
                         </button>
                     </div>
                 </div>
@@ -442,7 +411,7 @@
                     <h2 id="modalGagalFinalisasiTitle" class="mt-4 text-lg font-semibold text-medical-navy">Gagal Finalisasi</h2>
                     <p id="pesanGagalFinalisasi" class="mt-1.5 text-sm text-text-secondary leading-relaxed">Gagal memfinalisasi rekam medis. Periksa kembali kelengkapan seluruh data klinis.</p>
                     <div class="mt-6">
-                        <button type="button" onclick="tutupModalGagalFinalisasi()" class="btn btn-secondary w-full">Tutup</button>
+                        <button type="button" onclick="tutupModalGagalFinalisasi()" class="btn btn-primary w-full">Mengerti</button>
                     </div>
                 </div>
             </div>
@@ -612,7 +581,7 @@
                     btn.style.cursor = 'pointer';
                 }
                 if (label) {
-                    label.textContent = 'Ya, Setujui & Finalisasi';
+                    label.textContent = 'Finalisasi';
                 }
                 if (mainBtn) {
                     mainBtn.disabled = false;
