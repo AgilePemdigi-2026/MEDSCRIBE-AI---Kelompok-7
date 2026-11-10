@@ -149,29 +149,32 @@
         </div>
 
         {{-- Modal Konfirmasi Ulangi Rekaman --}}
-        <div id="modalUlangiRekaman" class="dialog-backdrop hidden" style="z-index: 9999;" role="dialog" aria-modal="true" aria-labelledby="modalUlangiJudul">
-            <div class="dialog max-w-md p-6 bg-white rounded-[22px] shadow-2xl border border-border-subtle space-y-4">
-                <div class="flex items-start gap-3.5">
-                    <span class="w-10 h-10 rounded-xl bg-danger-bg text-danger-text flex items-center justify-center flex-shrink-0" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                    </span>
-                    <div>
-                        <h3 id="modalUlangiJudul" class="text-base font-semibold text-medical-navy">Ulangi Rekaman?</h3>
-                        <p class="text-xs text-text-secondary mt-1.5 leading-relaxed">
-                            Apakah Anda yakin ingin mengulang rekaman dari awal? Seluruh transkrip dan durasi rekaman saat ini akan dihapus.
-                        </p>
+        <div id="modalUlangiRekaman" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="modalUlangiJudul">
+            <div class="dialog-backdrop" id="backdrop-ulangi"></div>
+            <div class="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+                <div class="dialog w-full max-w-md p-6 pointer-events-auto animate-dialog space-y-4">
+                    <div class="flex items-start gap-3.5">
+                        <span class="w-10 h-10 rounded-xl bg-danger-bg text-danger-text flex items-center justify-center flex-shrink-0" aria-hidden="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </span>
+                        <div>
+                            <h3 id="modalUlangiJudul" class="text-base font-semibold text-medical-navy">Ulangi Rekaman?</h3>
+                            <p class="text-xs text-text-secondary mt-1.5 leading-relaxed">
+                                Apakah Anda yakin ingin mengulang rekaman dari awal? Seluruh transkrip dan durasi rekaman saat ini akan dihapus.
+                            </p>
+                        </div>
                     </div>
-                </div>
 
-                <div class="grid grid-cols-2 gap-2 pt-2">
-                    <button type="button" id="btn-batal-ulangi" class="btn btn-secondary">
-                        Batal
-                    </button>
-                    <button type="button" id="btn-konfirmasi-ulangi" class="btn btn-danger">
-                        Ulangi Rekaman
-                    </button>
+                    <div class="grid grid-cols-2 gap-2 pt-2">
+                        <button type="button" id="btn-batal-ulangi" class="btn btn-secondary">
+                            Batal
+                        </button>
+                        <button type="button" id="btn-konfirmasi-ulangi" class="btn btn-danger">
+                            Ulangi Rekaman
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -791,6 +794,7 @@
 
     byId('retry-button')?.addEventListener('click', bukaModalUlangi);
     byId('btn-batal-ulangi')?.addEventListener('click', tutupModalUlangi);
+    byId('backdrop-ulangi')?.addEventListener('click', tutupModalUlangi);
     byId('btn-konfirmasi-ulangi')?.addEventListener('click', konfirmasiUlangiRekaman);
 
     // 5. Action: Proses Rekaman (Menyimpan transkrip & memicu OpenRouter SOAP - Phase 5)

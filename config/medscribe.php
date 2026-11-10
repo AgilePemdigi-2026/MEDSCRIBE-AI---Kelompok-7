@@ -27,7 +27,7 @@ return [
         'base_url' => env('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
         'model' => env('OPENROUTER_SOAP_MODEL', env('OPENROUTER_MODEL', 'nvidia/nemotron-3-ultra-550b-a55b:free')),
         'timeout' => (int) env('OPENROUTER_TIMEOUT_SECONDS', 120),
-        'verify_ssl' => env('OPENROUTER_VERIFY_SSL', true),
+        'verify_ssl' => env('OPENROUTER_VERIFY_SSL', false),
         'ca_bundle' => env('MEDSCRIBE_CA_BUNDLE'),
     ],
 

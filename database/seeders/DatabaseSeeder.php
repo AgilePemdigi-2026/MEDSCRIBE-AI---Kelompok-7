@@ -29,6 +29,17 @@ class DatabaseSeeder extends Seeder
         DB::table('antrean')->whereNull('hospital_id')->update(['hospital_id' => $rsuaId]);
         DB::table('kunjungan')->whereNull('hospital_id')->update(['hospital_id' => $rsuaId]);
 
+        // 2. Demo accounts & test data (HANYA dijalankan pada environment local atau testing)
+        if (app()->environment('local', 'testing')) {
+            $this->seedDemoData($rsuaId);
+        }
+    }
+
+    /**
+     * Seed demo accounts, patients, queue, and clinical records for development/testing only.
+     */
+    protected function seedDemoData(int $rsuaId): void
+    {
         // 2. Akun Perawat (Nurse Station)
         Pengguna::updateOrCreate(
             ['id_pengguna' => 1],

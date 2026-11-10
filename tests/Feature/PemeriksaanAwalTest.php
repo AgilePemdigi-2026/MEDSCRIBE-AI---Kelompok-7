@@ -31,26 +31,65 @@ class PemeriksaanAwalTest extends TestCase
             [
                 'nama_lengkap' => 'Dewi Pratiwi',
                 'role' => 'perawat',
+                'hospital_id' => 1,
+                'email_verified_at' => now(),
+                'approval_status' => 'approved',
                 'password' => bcrypt('password123'),
             ]
         );
+        if (!$this->perawat->hospital_id) {
+            $this->perawat->update(['hospital_id' => 1]);
+        }
 
         $this->dokter = Pengguna::firstOrCreate(
             ['email' => 'rina@medscribe.id'],
             [
                 'nama_lengkap' => 'dr. Rina Anggraini, Sp.PD',
                 'role' => 'dokter',
+                'hospital_id' => 1,
+                'email_verified_at' => now(),
+                'approval_status' => 'approved',
                 'password' => bcrypt('password123'),
+            ]
+        );
+        if (!$this->dokter->hospital_id) {
+            $this->dokter->update(['hospital_id' => 1]);
+        }
+
+        $this->pasien = Pasien::firstOrCreate(
+            ['no_rekam_medis' => '00-12-348'],
+            [
+                'nama_pasien' => 'Sri Wahyuni',
+                'tanggal_lahir' => '1974-11-05',
+                'jenis_kelamin' => 'Perempuan',
+                'hospital_id' => 1,
+            ]
+        );
+
+        $budi = Pasien::firstOrCreate(
+            ['no_rekam_medis' => '00-12-345'],
+            [
+                'nama_pasien' => 'Budi Santoso',
+                'tanggal_lahir' => '1992-05-14',
+                'jenis_kelamin' => 'Laki-laki',
+                'hospital_id' => 1,
             ]
         );
 
         // Ambil atau buat antrean pasien
-        $this->antrean = Antrean::where('status', 'Menunggu TTV')->first() 
-            ?? Antrean::create([
-                'id_pasien' => 4,
-                'tanggal_kunjungan' => '2026-09-19',
-                'status' => 'Menunggu TTV',
-            ]);
+        $this->antrean = Antrean::create([
+            'id_pasien' => $this->pasien->id_pasien,
+            'tanggal_kunjungan' => now()->toDateString(),
+            'status' => 'Menunggu TTV',
+            'hospital_id' => 1,
+        ]);
+
+        Antrean::create([
+            'id_pasien' => $budi->id_pasien,
+            'tanggal_kunjungan' => now()->toDateString(),
+            'status' => 'Menunggu TTV',
+            'hospital_id' => 1,
+        ]);
     }
 
     /**

@@ -11,6 +11,35 @@ use Tests\TestCase;
 class AuthenticationTest extends TestCase
 {
     use DatabaseTransactions;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Pengguna::firstOrCreate(
+            ['email' => 'rina@medscribe.id'],
+            [
+                'nama_lengkap' => 'dr. Rina Anggraini, Sp.PD',
+                'role' => 'dokter',
+                'hospital_id' => 1,
+                'email_verified_at' => now(),
+                'approval_status' => 'approved',
+                'password' => Hash::make('password123'),
+            ]
+        );
+
+        Pengguna::firstOrCreate(
+            ['email' => 'dewi@medscribe.id'],
+            [
+                'nama_lengkap' => 'Dewi Pratiwi',
+                'role' => 'perawat',
+                'hospital_id' => 1,
+                'email_verified_at' => now(),
+                'approval_status' => 'approved',
+                'password' => Hash::make('password123'),
+            ]
+        );
+    }
     /**
      * Halaman login dapat diakses oleh tamu.
      */
