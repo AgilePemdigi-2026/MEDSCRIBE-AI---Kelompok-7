@@ -43,8 +43,8 @@
             <p class="text-sm text-text-body max-w-md">Mikrofon dan transkripsi langsung (real-time) akan aktif setelah Anda menekan tombol Mulai Wawancara.</p>
             <form method="POST" action="{{ route('dokter.interview.start', $kunjungan) }}" data-submit-loading>
                 @csrf
-                <button type="submit" class="btn btn-primary min-h-12 px-6" data-loading-text="Memulai...">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                <button type="submit" class="btn btn-primary" data-loading-text="Memulai...">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
                     <span data-label>Mulai Wawancara</span>
                 </button>
             </form>
@@ -97,38 +97,38 @@
             {{-- Kontrol Aksi Rekaman & Transkripsi (State Machine Lifecycle) --}}
             <div class="flex flex-wrap items-center justify-center gap-3">
                 {{-- State: IDLE --}}
-                <button type="button" id="record-button" class="btn btn-primary min-h-12 px-6 shadow-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                <button type="button" id="record-button" class="btn btn-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
                     <span>Mulai Rekaman</span>
                 </button>
 
                 {{-- State: RECORDING --}}
-                <button type="button" id="stop-button" hidden class="btn btn-danger min-h-12 px-6 shadow-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="10" height="10" rx="2" /></svg>
+                <button type="button" id="stop-button" hidden class="btn btn-danger">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="10" height="10" rx="2" /></svg>
                     <span>Hentikan</span>
                 </button>
 
                 {{-- State: PAUSED (Tiga Aksi: Lanjutkan, Ulangi, Proses) --}}
                 <div id="paused-actions" hidden class="flex flex-wrap items-center justify-center gap-3">
                     {{-- 1. Lanjutkan --}}
-                    <button type="button" id="resume-button" class="btn btn-secondary min-h-12 px-5 font-semibold text-royal-indigo border-royal-indigo/30 hover:bg-pale-lavender/50 transition-colors shadow-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1.5 text-royal-indigo" fill="currentColor" viewBox="0 0 20 20">
+                    <button type="button" id="resume-button" class="btn btn-secondary">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                             <path d="M6.3 2.841A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
                         </svg>
                         <span>Lanjutkan</span>
                     </button>
 
                     {{-- 2. Ulangi Rekaman --}}
-                    <button type="button" id="retry-button" class="btn btn-secondary min-h-12 px-5 font-semibold text-danger-text border-danger-line/40 hover:bg-danger-bg/50 transition-colors shadow-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <button type="button" id="retry-button" class="btn btn-danger-quiet">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
                         <span>Ulangi Rekaman</span>
                     </button>
 
                     {{-- 3. Proses Rekaman --}}
-                    <button type="button" id="process-button" class="btn btn-primary min-h-12 px-7 font-semibold shadow-md shadow-royal-indigo/20">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1.5 text-emerald-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <button type="button" id="process-button" class="btn btn-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <span>Proses Rekaman</span>
@@ -166,11 +166,11 @@
                 </div>
 
                 <div class="grid grid-cols-2 gap-2 pt-2">
-                    <button type="button" id="btn-batal-ulangi" class="btn btn-secondary min-h-11">
+                    <button type="button" id="btn-batal-ulangi" class="btn btn-secondary">
                         Batal
                     </button>
-                    <button type="button" id="btn-konfirmasi-ulangi" class="btn btn-danger min-h-11">
-                        Ya, Ulangi Rekaman
+                    <button type="button" id="btn-konfirmasi-ulangi" class="btn btn-danger">
+                        Ulangi Rekaman
                     </button>
                 </div>
             </div>
@@ -199,11 +199,11 @@
             <div id="transcript-editor" class="space-y-3"></div>
             <div class="flex flex-col sm:flex-row sm:items-center justify-end gap-3 pt-2">
                 <p id="transcript-message" class="text-xs text-text-secondary sm:mr-auto" role="status"></p>
-                <button type="button" id="save-transcript" class="btn btn-secondary min-h-11">
+                <button type="button" id="save-transcript" class="btn btn-secondary">
                     Simpan Koreksi
                 </button>
-                <button type="button" id="verify-transcript-button" class="btn btn-primary min-h-11 px-6 shadow-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                <button type="button" id="verify-transcript-button" class="btn btn-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
                     <span>Verifikasi Transkripsi</span>
                 </button>
             </div>
@@ -213,8 +213,8 @@
                 <textarea id="manual-transcript-input" rows="6" class="field leading-relaxed" placeholder="Ketik atau tempel transkrip percakapan dokter dan pasien di sini...">{{ old('transkrip', $wawancara?->transkrip) }}</textarea>
                 <div class="flex flex-col sm:flex-row sm:items-center justify-end gap-3 pt-2">
                     <p id="transcript-message" class="text-xs text-text-secondary sm:mr-auto" role="status"></p>
-                    <button type="button" id="verify-manual-transcript-button" class="btn btn-primary min-h-11 px-6 shadow-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    <button type="button" id="verify-manual-transcript-button" class="btn btn-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
                         <span>Verifikasi Transkripsi</span>
                     </button>
                 </div>

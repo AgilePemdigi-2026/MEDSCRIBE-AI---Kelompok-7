@@ -158,9 +158,9 @@
                 @else
                     <span class="sm:mr-auto"></span>
                 @endif
-                <button type="submit" class="btn btn-secondary min-h-11">Simpan Koreksi</button>
-                <button type="button" id="verify-button" class="btn btn-primary min-h-11 px-6 shadow-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                <button type="submit" class="btn btn-secondary">Simpan Koreksi</button>
+                <button type="button" id="verify-button" class="btn btn-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
                     <span>{{ $terverifikasi ? 'Verifikasi Ulang' : 'Verifikasi SOAP' }}</span>
                 </button>
             </div>

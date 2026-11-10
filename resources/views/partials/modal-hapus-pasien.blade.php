@@ -45,7 +45,7 @@
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                         </svg>
-                        <span id="labelHapus">Ya, Hapus Registrasi</span>
+                        <span id="labelHapus">Hapus Registrasi</span>
                     </button>
                 </div>
             </form>
@@ -68,7 +68,7 @@
         btnConfirm.disabled = false;
         btnCancel.disabled = false;
         document.getElementById('spinnerHapus').classList.add('hidden');
-        document.getElementById('labelHapus').textContent = 'Ya, Hapus Registrasi';
+        document.getElementById('labelHapus').textContent = 'Hapus Registrasi';
 
         window.__hapusReturnFocus = document.activeElement;
         modal.classList.remove('hidden');
