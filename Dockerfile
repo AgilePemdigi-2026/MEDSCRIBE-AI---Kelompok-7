@@ -85,6 +85,7 @@ WORKDIR /var/www/html
 COPY --from=php-dependencies /app/vendor ./vendor
 COPY . .
 COPY --from=frontend-build /app/public/build ./public/build
+COPY docker/php.ini /usr/local/etc/php/conf.d/medscribe.ini
 
 RUN mkdir -p \
         storage/app/private \

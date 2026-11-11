@@ -62,6 +62,85 @@ OPENROUTER_MODEL=nvidia/nemotron-3-ultra-550b-a55b:free
 
 Key hanya boleh berada di environment backend dan tidak boleh masuk bundle frontend atau Git. Aplikasi tidak berpindah diam-diam ke model berbayar. Jika key, model gratis, jaringan, atau kuota tidak tersedia, error ditampilkan dan draf sebelumnya tidak ditimpa. Audio tidak pernah dikirim ke OpenRouter.
 
+## Deployment (Docker Compose / Coolify)
+
+Repo ini berisi `Dockerfile`, `Dockerfile` service STT (`services/audio_processor/Dockerfile`), dan `docker-compose.yaml` untuk deployment produksi.
+
+### Arsitektur container
+
+| Service | Peran | Healthcheck |
+|---|---|---|
+| `mysql` | MySQL 8.4, volume `mysql_data` | `mysqladmin ping` |
+| `migrate` | One-shot: `php artisan migrate --force && php artisan db:seed --force` | — (exit 0 = sukses) |
+| `app` | Apache + PHP 8.4 (Laravel), port 80 | `curl --fail http://127.0.0.1/` |
+| `queue` | Worker `queue:work --queue=stt` | proses worker hidup |
+| `stt` | FastAPI + Transformers (Whisper lokal), port 8765 | `/health` = `ready` |
+
+Urutan start dijamin `depends_on`: `mysql` (healthy) → `migrate` (harus **exit 0**) → `app` (harus **healthy**) → `queue`. `app` memakai `condition: service_completed_successfully` pada `migrate`, jadi bila migrasi gagal, `app` tidak pernah start dan deploy gagal cepat dengan pesan yang jelas.
+
+### Environment wajib di Coolify
+
+Wajib diisi (compose gagal dengan pesan eksplisit bila kosong): `APP_URL`, `APP_KEY`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`.
+
+Wajib diubah dari default untuk produksi:
+
+```dotenv
+APP_URL=https://domain-anda
+APP_KEY=base64:<32 byte acak>          # php artisan key:generate --show
+
+MAIL_MAILER=smtp                       # default "log" -> OTP email tidak pernah sampai ke user
+MAIL_HOST=smtp.provider-anda.com
+MAIL_PORT=587
+MAIL_USERNAME=...
+MAIL_PASSWORD=...
+MAIL_FROM_ADDRESS=noreply@domain-anda.com
+
+MEDSCRIBE_SOAP_DRIVER=openrouter       # default "mock" -> draf SOAP produksi hanya dummy
+OPENROUTER_API_KEY=...
+OPENROUTER_MODEL=<id model valid di OpenRouter>
+
+MEDSCRIBE_STT_API_TOKEN=<token acak>   # WAJIB nilai sama untuk app/queue dan stt
+```
+
+Opsional: `HF_TOKEN` (model STT ter-gate), `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI`.
+
+> `SESSION_DRIVER`, `CACHE_STORE`, dan `QUEUE_CONNECTION` sengaja memakai driver `database`. Semua tabelnya dibuat oleh service `migrate`, jadi **jangan** menghapus service tersebut dari compose.
+
+### Catatan konfigurasi
+
+- **Healthcheck memakai `/`, bukan `/up`.** Route `/up` bawaan Laravel tidak memakai middleware `web`, sehingga tidak memverifikasi koneksi database. memakai `/` memastikan container baru dianggap sehat setelah tabel benar-benar tersedia.
+- **Limit upload** diatur di `docker/php.ini` (`upload_max_filesize=128M`, `post_max_size=136M`). Nilai ini harus tetap >= `MEDSCRIBE_AUDIO_MAX_SIZE_KB` (default 102400 KB = 100 MB). Kalau env tersebut dinaikkan, `docker/php.ini` juga harus dinaikkan.
+- **`php artisan config:cache` tidak dijalankan saat build** karena konfigurasi bergantung pada environment runtime. Jika dipakai, wajib `php artisan config:clear` setiap kali environment Coolify berubah.
+- **Container `queue` dan `migrate` berjalan sebagai `www-data`** (container `app` tetap root supaya Apache bisa bind port 80) agar file di `storage/` tidak tercipta milik root dan menggagalkan penulisan log.
+- **`expose` bukan `ports`.** Service `app` hanya mengekspos port 80 di network internal `medscribe_internal`; proxy (Traefik) Coolify harus ikut terpasang ke network tersebut agar domain publik dapat diakses.
+- **Tidak ada akun demo di produksi.** `DatabaseSeeder` hanya membuat akun contoh pada environment `local`/`testing`. Produksi hanya mendapat data master rumah sakit dan katalog LOINC; akun dibuat lewat halaman registrasi yang memerlukan verifikasi OTP email.
+
+### Verifikasi pasca-deploy
+
+```bash
+docker compose ps                                   # semua service harus (healthy), migrate harus Exited (0)
+docker compose logs migrate                         # daftar migration + "Database seeding completed successfully"
+docker compose exec app php artisan migrate:status  # semua migration harus Ran
+docker compose exec app php -r 'echo ini_get("upload_max_filesize"), " ", ini_get("memory_limit");'
+curl -I https://domain-anda                         # harus 302 ke /login (bukan 500)
+docker compose exec stt python -c "import urllib.request,json;print(json.load(urllib.request.urlopen('http://127.0.0.1:8765/health')))"
+```
+
+### Troubleshooting deploy
+
+- **`container app ... is unhealthy`**: aplikasi hidup tetapi `/` tidak membalas sukses.
+  ```bash
+  docker compose logs app | tail -50
+  docker compose exec app php artisan migrate:status   # tabel sudah dibuat?
+  docker compose exec app php artisan config:show app.key   # APP_KEY valid (base64 32 byte)?
+  docker compose logs migrate                            # migrasi gagal?
+  ```
+  Penyebab yang paling sering: migrasi belum dijalankan (tabel `sessions`/`cache`/`jobs` belum ada) atau `APP_KEY` tidak valid.
+- **Volume `laravel_storage` berisi file milik root** (dari versi compose sebelumnya): perbaiki sekali dengan
+  `docker compose exec -u root app chown -R www-data:www-data /var/www/html/storage`.
+- **`Service STT tidak tersedia`**: pastikan container `stt` healthy (model whisper diunduh pada pemakaian pertama dan butuh RAM cukup), lalu cek `docker compose logs stt`.
+- **Reset total (⚠️ menghapus seluruh database)**: `docker compose down -v` lalu deploy ulang.
+
 ## Test dan troubleshooting
 
 ```bash
@@ -73,7 +152,8 @@ npm run build
 - `Model gagal dimuat`: pastikan nama model valid, cache dapat ditulis, internet tersedia saat download pertama, dan RAM mencukupi.
 - `CPU lambat`: ukur rasio waktu inferensi terhadap durasi audio pada laptop target sebelum memilih model lebih besar.
 - `FFmpeg` error: pastikan executable `ffmpeg` ada di `PATH`.
-- Job tetap `queued`: jalankan `php artisan queue:work`.
+- Job tetap `queued`: jalankan `php artisan queue:work` (di deployment: pastikan container `queue` healthy, `docker compose logs queue`).
 - Audio kosong/rusak: rekam ulang dengan mikrofon yang tersedia dan format browser yang didukung.
 - `HTTP 403` atau CSRF: gunakan sesi login dokter yang valid dan jangan menghapus middleware CSRF/role.
 - Rate limit OpenRouter: tunggu kuota pulih atau tinjau SOAP manual; aplikasi tidak memilih model berbayar.
+- Error `SQLSTATE ... no such table: sessions/cache/jobs` saat runtime: migration belum dijalankan pada database tersebut. Jalankan `php artisan migrate --force` (di deployment otomatis ditangani service `migrate`).
