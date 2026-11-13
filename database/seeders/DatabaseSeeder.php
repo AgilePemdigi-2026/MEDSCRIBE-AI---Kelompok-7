@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
         // 1. Jalankan seeder master data rumah sakit Kota Surabaya dan katalog LOINC
         $this->call(HospitalSeeder::class);
         $this->call(LoincParameterSeeder::class);
+        $this->call(DummyAccountSeeder::class);
 
         // Ambil rumah sakit default pilot (RS Universitas Airlangga)
         $rsua = Hospital::where('hospital_code', '3578770')->first();

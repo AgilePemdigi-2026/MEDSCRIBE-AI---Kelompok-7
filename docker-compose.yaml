@@ -21,6 +21,8 @@ x-app-env: &app-env
   QUEUE_CONNECTION: database
   MEDSCRIBE_STT_QUEUE: stt
   SESSION_DRIVER: database
+  SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-true}
+  SESSION_SAME_SITE: ${SESSION_SAME_SITE:-lax}
   CACHE_STORE: database
   FILESYSTEM_DISK: local
   MEDSCRIBE_AUDIO_DISK: local
@@ -60,6 +62,10 @@ x-app-env: &app-env
   GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
   GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
   GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+  SEED_DUMMY_ACCOUNTS: ${SEED_DUMMY_ACCOUNTS:-false}
+  DUMMY_ACCOUNT_PASSWORD: ${DUMMY_ACCOUNT_PASSWORD:-}
+  DUMMY_DOKTER_EMAIL: ${DUMMY_DOKTER_EMAIL:-dummy.dokter@medscribe.id}
+  DUMMY_PERAWAT_EMAIL: ${DUMMY_PERAWAT_EMAIL:-dummy.perawat@medscribe.id}
 
 x-app-volumes: &app-volumes
   - laravel_storage:/var/www/html/storage

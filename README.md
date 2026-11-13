@@ -87,6 +87,9 @@ Wajib diubah dari default untuk produksi:
 ```dotenv
 APP_URL=https://domain-anda
 APP_KEY=base64:<32 byte acak>          # php artisan key:generate --show
+APP_TIMEZONE=Asia/Jakarta
+SESSION_SECURE_COOKIE=true
+SESSION_SAME_SITE=lax
 
 MAIL_MAILER=smtp                       # default "log" -> OTP tidak pernah sampai ke user
 MAIL_SCHEME=smtp                       # smtp (port 587 + STARTTLS) atau smtps (port 465)
@@ -102,6 +105,10 @@ OPENROUTER_API_KEY=...
 OPENROUTER_MODEL=<id model valid di OpenRouter>
 
 MEDSCRIBE_STT_API_TOKEN=<token acak>   # WAJIB nilai sama untuk app/queue dan stt
+
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_REDIRECT_URI=https://domain-anda/auth/google/callback
 ```
 
 > **`MAIL_FROM_ADDRESS` tidak boleh kosong.** Nilai kosong membuat Symfony melempar
@@ -113,7 +120,23 @@ MEDSCRIBE_STT_API_TOKEN=<token acak>   # WAJIB nilai sama untuk app/queue dan st
 > `storage/logs/laravel.log` dan bisa dibaca dengan
 > `docker compose exec app tail -f storage/logs/laravel.log`.
 
-Opsional: `HF_TOKEN` (model STT ter-gate), `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI`.
+Opsional: `HF_TOKEN` (model STT ter-gate).
+
+`GOOGLE_REDIRECT_URI` harus sama persis dengan URI pada Google Cloud Console.
+Tambahkan `https://domain-anda/auth/google/callback` ke **Authorized redirect URIs**
+pada OAuth Client bertipe Web application.
+
+Untuk pengujian sebelum Google OAuth selesai, aktifkan sementara akun dummy berikut:
+
+```dotenv
+SEED_DUMMY_ACCOUNTS=true
+DUMMY_ACCOUNT_PASSWORD=<password-kuat-sementara>
+DUMMY_DOKTER_EMAIL=<email-pengujian>
+DUMMY_PERAWAT_EMAIL=perawat.dummy@medscribe.id
+```
+
+Akun dummy sudah terverifikasi dan disetujui. Password di-reset setiap deploy yang
+menjalankan seeder. Hapus flag dan akun tersebut setelah pengujian selesai.
 
 > `SESSION_DRIVER`, `CACHE_STORE`, dan `QUEUE_CONNECTION` sengaja memakai driver `database`. Semua tabelnya dibuat oleh service `migrate`, jadi **jangan** menghapus service tersebut dari compose.
 
@@ -125,7 +148,9 @@ Opsional: `HF_TOKEN` (model STT ter-gate), `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_S
 - **`php artisan config:cache` tidak dijalankan saat build** karena konfigurasi bergantung pada environment runtime. Jika dipakai, wajib `php artisan config:clear` setiap kali environment Coolify berubah.
 - **Container `queue` dan `migrate` berjalan sebagai `www-data`** (container `app` tetap root supaya Apache bisa bind port 80) agar file di `storage/` tidak tercipta milik root dan menggagalkan penulisan log.
 - **`expose` bukan `ports`.** Service `app` hanya mengekspos port 80 di network internal `medscribe_internal`; proxy (Traefik) Coolify harus ikut terpasang ke network tersebut agar domain publik dapat diakses.
-- **Tidak ada akun demo di produksi.** `DatabaseSeeder` hanya membuat akun contoh pada environment `local`/`testing`. Produksi hanya mendapat data master rumah sakit dan katalog LOINC; akun dibuat lewat halaman registrasi yang memerlukan verifikasi OTP email.
+- **Akun dummy produksi tidak aktif secara default.** `DummyAccountSeeder` hanya membuat akun
+  bila `SEED_DUMMY_ACCOUNTS=true` dan `DUMMY_ACCOUNT_PASSWORD` diisi eksplisit. Tanpa flag
+  tersebut, produksi hanya mendapat data master rumah sakit dan katalog LOINC.
 
 ### Verifikasi pasca-deploy
 
@@ -136,7 +161,7 @@ docker compose exec app php artisan migrate:status  # semua migration harus Ran
 docker compose exec app php -r 'echo ini_get("upload_max_filesize"), " ", ini_get("memory_limit");'
 docker compose exec app php artisan tinker --execute="dump(config('mail.from.address'), config('mail.default'));"
 curl -I https://domain-anda                         # harus 302 ke /login (bukan 500)
-curl -s https://domain-anda/login | grep -o 'src="[^"]*logo-medscribe[^"]*"'   # harus https://
+  curl -s https://domain-anda/login | grep -o 'srcset="[^"]*logo-medscribe[^"]*"' # semua harus https://
 docker compose exec stt python -c "import urllib.request,json;print(json.load(urllib.request.urlopen('http://127.0.0.1:8765/health')))"
 ```
 
@@ -164,12 +189,14 @@ docker compose exec stt python -c "import urllib.request,json;print(json.load(ur
   ```bash
   docker compose exec app ls -l /var/www/html/public/images/                                   # file ada di container?
   docker compose exec app sh -c 'curl -sI http://127.0.0.1/images/logo-medscribe.png | head -1'  # 200 atau 404?
-  curl -s http://domain-anda/login | grep -o 'src="[^"]*logo-medscribe[^"]*"'                    # http:// atau https://?
+  curl -s https://domain-anda/login | grep -o 'srcset="[^"]*logo-medscribe[^"]*"'                 # semua harus https://
   ```
   - File tidak ada di container → artefak build basi di server; rebuild tanpa cache di Coolify.
   - File ada tapi 404 → masalah routing Apache (`DocumentRoot` / `.htaccess`).
-  - URL hasil `http://` → `trustProxies` belum aktif; pastikan `bootstrap/app.php` memuat `trustProxies()` lalu deploy ulang.
+  - URL `srcset` hasil `http://` → mixed content; pastikan `APP_URL` memakai `https://`, `trustProxies()` aktif, lalu deploy ulang.
   - URL `https://` tapi gambar tetap kosong → cache browser; hard refresh (Ctrl+Shift+R).
+- **Google OAuth menampilkan `Error 400: redirect_uri_mismatch`**: daftarkan URI produksi
+  secara persis di Google Cloud Console dan isi `GOOGLE_REDIRECT_URI` di Coolify.
 - **Volume `laravel_storage` berisi file milik root** (dari versi compose sebelumnya): perbaiki sekali dengan
   `docker compose exec -u root app chown -R www-data:www-data /var/www/html/storage`.
 - **`Service STT tidak tersedia`**: pastikan container `stt` healthy (model whisper diunduh pada pemakaian pertama dan butuh RAM cukup), lalu cek `docker compose logs stt`.

@@ -32,4 +32,11 @@ return [
     ],
 
     'soap_driver' => env('MEDSCRIBE_SOAP_DRIVER', 'mock'),
+
+    'dummy_accounts' => [
+        'enabled' => (bool) env('SEED_DUMMY_ACCOUNTS', false),
+        'password' => env('DUMMY_ACCOUNT_PASSWORD'),
+        'dokter_email' => env('DUMMY_DOKTER_EMAIL', 'dummy.dokter@medscribe.id'),
+        'perawat_email' => env('DUMMY_PERAWAT_EMAIL', 'dummy.perawat@medscribe.id'),
+    ],
 ];
