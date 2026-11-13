@@ -88,12 +88,14 @@ Wajib diubah dari default untuk produksi:
 APP_URL=https://domain-anda
 APP_KEY=base64:<32 byte acak>          # php artisan key:generate --show
 
-MAIL_MAILER=smtp                       # default "log" -> OTP email tidak pernah sampai ke user
+MAIL_MAILER=smtp                       # default "log" -> OTP tidak pernah sampai ke user
+MAIL_SCHEME=smtp                       # smtp (port 587 + STARTTLS) atau smtps (port 465)
 MAIL_HOST=smtp.provider-anda.com
 MAIL_PORT=587
 MAIL_USERNAME=...
 MAIL_PASSWORD=...
-MAIL_FROM_ADDRESS=noreply@domain-anda.com
+MAIL_FROM_ADDRESS=noreply@domain-anda.com   # WAJIB diisi, jangan dikosongkan
+MAIL_FROM_NAME=MedScribe AI
 
 MEDSCRIBE_SOAP_DRIVER=openrouter       # default "mock" -> draf SOAP produksi hanya dummy
 OPENROUTER_API_KEY=...
@@ -102,6 +104,15 @@ OPENROUTER_MODEL=<id model valid di OpenRouter>
 MEDSCRIBE_STT_API_TOKEN=<token acak>   # WAJIB nilai sama untuk app/queue dan stt
 ```
 
+> **`MAIL_FROM_ADDRESS` tidak boleh kosong.** Nilai kosong membuat Symfony melempar
+> `LogicException: An email must have a "From" or a "Sender" header.` sehingga setiap pengiriman
+> email (OTP registrasi, lupa password) gagal dan tampil sebagai
+> "Gagal mengirimkan kode verifikasi ke email.".
+>
+> Tanpa SMTP server, pakai `MAIL_MAILER=log` untuk pengujian: OTP lalu ditulis ke
+> `storage/logs/laravel.log` dan bisa dibaca dengan
+> `docker compose exec app tail -f storage/logs/laravel.log`.
+
 Opsional: `HF_TOKEN` (model STT ter-gate), `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI`.
 
 > `SESSION_DRIVER`, `CACHE_STORE`, dan `QUEUE_CONNECTION` sengaja memakai driver `database`. Semua tabelnya dibuat oleh service `migrate`, jadi **jangan** menghapus service tersebut dari compose.
@@ -109,6 +120,7 @@ Opsional: `HF_TOKEN` (model STT ter-gate), `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_S
 ### Catatan konfigurasi
 
 - **Healthcheck memakai `/`, bukan `/up`.** Route `/up` bawaan Laravel tidak memakai middleware `web`, sehingga tidak memverifikasi koneksi database. memakai `/` memastikan container baru dianggap sehat setelah tabel benar-benar tersedia.
+- **`trustProxies` sudah dikonfigurasi** di `bootstrap/app.php`. Coolify memakai Traefik (TLS termination); tanpa itu, `X-Forwarded-Proto` diabaikan sehingga `asset()`/`route()` menghasilkan URL `http://` (mixed content → logo dan CSS/JS diblokir browser saat HTTPS aktif) dan `$request->ip()` selalu mengembalikan IP proxy sehingga rate limiter OTP berlaku global.
 - **Limit upload** diatur di `docker/php.ini` (`upload_max_filesize=128M`, `post_max_size=136M`). Nilai ini harus tetap >= `MEDSCRIBE_AUDIO_MAX_SIZE_KB` (default 102400 KB = 100 MB). Kalau env tersebut dinaikkan, `docker/php.ini` juga harus dinaikkan.
 - **`php artisan config:cache` tidak dijalankan saat build** karena konfigurasi bergantung pada environment runtime. Jika dipakai, wajib `php artisan config:clear` setiap kali environment Coolify berubah.
 - **Container `queue` dan `migrate` berjalan sebagai `www-data`** (container `app` tetap root supaya Apache bisa bind port 80) agar file di `storage/` tidak tercipta milik root dan menggagalkan penulisan log.
@@ -122,7 +134,9 @@ docker compose ps                                   # semua service harus (healt
 docker compose logs migrate                         # daftar migration + "Database seeding completed successfully"
 docker compose exec app php artisan migrate:status  # semua migration harus Ran
 docker compose exec app php -r 'echo ini_get("upload_max_filesize"), " ", ini_get("memory_limit");'
+docker compose exec app php artisan tinker --execute="dump(config('mail.from.address'), config('mail.default'));"
 curl -I https://domain-anda                         # harus 302 ke /login (bukan 500)
+curl -s https://domain-anda/login | grep -o 'src="[^"]*logo-medscribe[^"]*"'   # harus https://
 docker compose exec stt python -c "import urllib.request,json;print(json.load(urllib.request.urlopen('http://127.0.0.1:8765/health')))"
 ```
 
@@ -136,6 +150,26 @@ docker compose exec stt python -c "import urllib.request,json;print(json.load(ur
   docker compose logs migrate                            # migrasi gagal?
   ```
   Penyebab yang paling sering: migrasi belum dijalankan (tabel `sessions`/`cache`/`jobs` belum ada) atau `APP_KEY` tidak valid.
+- **Pendaftaran gagal dengan "Gagal mengirimkan kode verifikasi ke email."**: email ditolak Symfony karena alamat pengirim kosong. Periksa `MAIL_FROM_ADDRESS` (wajib diisi) dan `MAIL_MAILER`:
+  ```bash
+  docker compose exec app php artisan tinker --execute="dump(config('mail.from.address'), config('mail.default'));"
+  docker compose exec app printenv | grep -E '^MAIL_'
+  ```
+  Uji kirim langsung dari dalam container:
+  ```bash
+  docker compose exec app php artisan tinker --execute="Mail::to('email-anda@gmail.com')->send(new App\Mail\VerifyEmailOtpMail('123456','Tester',10)); echo 'sent';"
+  ```
+  Bila `MAIL_MAILER=log`, OTP tersimpan di `storage/logs/laravel.log`.
+- **Logo / gambar tidak tampil**: aset berada di `public/images` (di luar pipeline Vite, dimuat via `asset()`). Diagnosis berurutan:
+  ```bash
+  docker compose exec app ls -l /var/www/html/public/images/                                   # file ada di container?
+  docker compose exec app sh -c 'curl -sI http://127.0.0.1/images/logo-medscribe.png | head -1'  # 200 atau 404?
+  curl -s http://domain-anda/login | grep -o 'src="[^"]*logo-medscribe[^"]*"'                    # http:// atau https://?
+  ```
+  - File tidak ada di container → artefak build basi di server; rebuild tanpa cache di Coolify.
+  - File ada tapi 404 → masalah routing Apache (`DocumentRoot` / `.htaccess`).
+  - URL hasil `http://` → `trustProxies` belum aktif; pastikan `bootstrap/app.php` memuat `trustProxies()` lalu deploy ulang.
+  - URL `https://` tapi gambar tetap kosong → cache browser; hard refresh (Ctrl+Shift+R).
 - **Volume `laravel_storage` berisi file milik root** (dari versi compose sebelumnya): perbaiki sekali dengan
   `docker compose exec -u root app chown -R www-data:www-data /var/www/html/storage`.
 - **`Service STT tidak tersedia`**: pastikan container `stt` healthy (model whisper diunduh pada pemakaian pertama dan butuh RAM cukup), lalu cek `docker compose logs stt`.

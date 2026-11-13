@@ -12,6 +12,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Coolify memakai Traefik (TLS termination). Tanpa trustProxies, header
+        // X-Forwarded-Proto diabaikan sehingga asset()/route() menghasilkan URL
+        // http:// (mixed content di halaman https) dan $request->ip() selalu
+        // mengembalikan IP proxy sehingga rate limiter OTP jadi global.
+        $middleware->trustProxies(
+            at: '*',
+            headers: Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PROTO | Request::HEADER_X_FORWARDED_HOST,
+        );
+
         $middleware->redirectGuestsTo(fn () => route('login'));
         $middleware->redirectUsersTo(fn () => route('dashboard'));
 
