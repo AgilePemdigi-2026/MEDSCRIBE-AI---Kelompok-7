@@ -2,18 +2,13 @@
 
 namespace Tests\Feature;
 
-use App\Jobs\ProcessInterviewAudio;
 use App\Models\Antrean;
 use App\Models\Kunjungan;
 use App\Models\Pasien;
 use App\Models\PemeriksaanAwal;
 use App\Models\Pengguna;
-use App\Models\RekamanAudio;
 use App\Models\Wawancara;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class DokterRekamMedisTest extends TestCase
@@ -28,17 +23,9 @@ class DokterRekamMedisTest extends TestCase
 
     protected Antrean $antrean;
 
-    protected string $ffprobeStubPath;
-
     protected function setUp(): void
     {
         parent::setUp();
-
-        $probeDirectory = sys_get_temp_dir().DIRECTORY_SEPARATOR.'medscribe-ffprobe-'.uniqid();
-        mkdir($probeDirectory);
-        $this->ffprobeStubPath = $probeDirectory.DIRECTORY_SEPARATOR.'ffprobe.bat';
-        file_put_contents($this->ffprobeStubPath, "@echo {\"streams\":[{\"codec_type\":\"audio\"}],\"format\":{\"format_name\":\"matroska,webm\",\"duration\":\"1.0\"}}\r\n");
-        config(['medscribe.audio.ffprobe_path' => $this->ffprobeStubPath]);
 
         $this->dokter = Pengguna::firstOrCreate(
             ['email' => 'rina@medscribe.id'],
@@ -78,17 +65,6 @@ class DokterRekamMedisTest extends TestCase
                 'status' => 'Siap Periksa',
             ]
         );
-    }
-
-    protected function tearDown(): void
-    {
-        if (isset($this->ffprobeStubPath) && is_file($this->ffprobeStubPath)) {
-            $directory = dirname($this->ffprobeStubPath);
-            unlink($this->ffprobeStubPath);
-            @rmdir($directory);
-        }
-
-        parent::tearDown();
     }
 
     /**
@@ -212,159 +188,7 @@ class DokterRekamMedisTest extends TestCase
     }
 
     /**
-     * 4. Dokter dapat mengunggah rekaman audio klinis tanpa memicu integrasi AI.
-     */
-    public function test_dokter_dapat_mengunggah_rekaman_audio(): void
-    {
-        Storage::fake('local');
-        Queue::fake();
-
-        $file = UploadedFile::fake()->create('wawancara.webm', 500, 'audio/webm');
-
-        $response = $this->actingAs($this->dokter)->postJson(
-            '/dokter/rekam-medis/'.$this->antrean->id_antrean.'/audio',
-            ['audio' => $file]
-        );
-
-        $response->assertStatus(202);
-        $response->assertJson([
-            'success' => true,
-            'message' => 'Rekaman disimpan dan diantrikan ke service transkripsi lokal.',
-        ]);
-        Queue::assertPushed(ProcessInterviewAudio::class);
-
-        $this->assertDatabaseHas('rekaman_audio', [
-            'status' => 'queued',
-        ]);
-    }
-
-    public function test_upload_legacy_ditolak_setelah_recording_completed(): void
-    {
-        Storage::fake('local');
-        Queue::fake();
-        $kunjungan = Kunjungan::create([
-            'id_antrean' => $this->antrean->id_antrean,
-            'id_pasien' => $this->pasien->id_pasien,
-            'id_dokter' => $this->dokter->id_pengguna,
-            'tanggal' => '2026-09-19',
-            'status' => 'Sedang Diperiksa',
-        ]);
-        $interview = Wawancara::create([
-            'id_kunjungan' => $kunjungan->id_kunjungan,
-            'status' => 'Wawancara Berlangsung',
-        ]);
-        RekamanAudio::create([
-            'id_kunjungan' => $kunjungan->id_kunjungan,
-            'id_wawancara' => $interview->id_wawancara,
-            'path_audio' => 'interviews/completed.webm',
-            'status' => 'completed',
-        ]);
-
-        $response = $this->actingAs($this->dokter)->postJson(
-            route('dokter.rekam-medis.upload-audio', $this->antrean),
-            ['audio' => UploadedFile::fake()->create('interview.webm', 100, 'audio/webm')]
-        );
-
-        $response->assertStatus(409);
-        $this->assertEquals(1, RekamanAudio::where('id_kunjungan', $kunjungan->id_kunjungan)->count());
-        Queue::assertNothingPushed();
-    }
-
-    public function test_upload_legacy_dengan_recording_failed_membuat_recording_baru(): void
-    {
-        Storage::fake('local');
-        Queue::fake();
-        $kunjungan = Kunjungan::create([
-            'id_antrean' => $this->antrean->id_antrean,
-            'id_pasien' => $this->pasien->id_pasien,
-            'id_dokter' => $this->dokter->id_pengguna,
-            'tanggal' => '2026-09-19',
-            'status' => 'Sedang Diperiksa',
-        ]);
-        $interview = Wawancara::create([
-            'id_kunjungan' => $kunjungan->id_kunjungan,
-            'status' => 'Wawancara Berlangsung',
-            'processing_status' => 'failed',
-        ]);
-        RekamanAudio::create([
-            'id_kunjungan' => $kunjungan->id_kunjungan,
-            'id_wawancara' => $interview->id_wawancara,
-            'path_audio' => 'interviews/failed.webm',
-            'status' => 'failed',
-        ]);
-
-        $response = $this->actingAs($this->dokter)->postJson(
-            route('dokter.rekam-medis.upload-audio', $this->antrean),
-            ['audio' => UploadedFile::fake()->create('interview.webm', 100, 'audio/webm')]
-        );
-
-        $response->assertStatus(202)->assertJson(['status' => 'queued']);
-        $this->assertEquals(2, RekamanAudio::where('id_kunjungan', $kunjungan->id_kunjungan)->count());
-        Queue::assertPushed(ProcessInterviewAudio::class);
-    }
-
-    public function test_dokter_ditolak_mengunggah_audio_yang_melebihi_batas_durasi(): void
-    {
-        Storage::fake('local');
-        Queue::fake();
-        config(['medscribe.audio.max_duration_seconds' => 1]);
-
-        $file = UploadedFile::fake()->createWithContent('wawancara.wav', $this->wavBytes(2));
-        file_put_contents($this->ffprobeStubPath, "@echo {\"streams\":[{\"codec_type\":\"audio\"}],\"format\":{\"format_name\":\"wav\",\"duration\":\"2.0\"}}\r\n");
-
-        $response = $this->actingAs($this->dokter)->postJson(
-            '/dokter/rekam-medis/'.$this->antrean->id_antrean.'/audio',
-            ['audio' => $file]
-        );
-
-        $response->assertStatus(422)
-            ->assertJsonFragment(['message' => 'Durasi audio melebihi batas konfigurasi.']);
-        Queue::assertNothingPushed();
-        $this->assertDatabaseMissing('rekaman_audio', [
-            'id_kunjungan' => Kunjungan::where('id_antrean', $this->antrean->id_antrean)->value('id_kunjungan'),
-            'status' => 'queued',
-        ]);
-    }
-
-    public function test_dokter_upload_gagal_tertutup_jika_ffprobe_tidak_tersedia(): void
-    {
-        Storage::fake('local');
-        Queue::fake();
-        config(['medscribe.audio.ffprobe_path' => 'ffprobe-yang-tidak-ada.exe']);
-
-        $response = $this->actingAs($this->dokter)->postJson(
-            '/dokter/rekam-medis/'.$this->antrean->id_antrean.'/audio',
-            ['audio' => UploadedFile::fake()->create('wawancara.webm', 500, 'audio/webm')]
-        );
-
-        $response->assertStatus(503)
-            ->assertJsonFragment(['message' => 'ffprobe tidak dapat dijalankan untuk validasi audio.']);
-        Queue::assertNothingPushed();
-    }
-
-    /**
-     * 5. Unggah audio tidak memicu ekstraksi SOAP atau panggilan AI otomatis.
-     */
-    public function test_unggah_audio_tidak_memicu_generasi_draf_soap_otomatis(): void
-    {
-        Storage::fake('local');
-        Queue::fake();
-
-        $file = UploadedFile::fake()->create('wawancara_klinis.webm', 400, 'audio/webm');
-
-        $response = $this->actingAs($this->dokter)->postJson(
-            '/dokter/rekam-medis/'.$this->antrean->id_antrean.'/audio',
-            ['audio' => $file]
-        );
-
-        $response->assertStatus(202);
-        $response->assertJsonMissing(['ai_processed' => true]);
-        $response->assertJsonMissing(['soap' => []]);
-        Queue::assertPushed(ProcessInterviewAudio::class);
-    }
-
-    /**
-     * 6. Rute pemrosesan AI dinonaktifkan dari alur aktif sprint ini.
+     * 4. Rute pemrosesan AI dinonaktifkan dari alur aktif sprint ini.
      */
     public function test_rute_proses_ai_tidak_aktif(): void
     {
@@ -376,7 +200,7 @@ class DokterRekamMedisTest extends TestCase
     }
 
     /**
-     * 7. Dashboard antrean dokter mengurutkan nomor antrean dari terbesar ke terkecil (descending).
+     * 5. Dashboard antrean dokter mengurutkan nomor antrean dari terbesar ke terkecil (descending).
      */
     public function test_dashboard_dokter_mengurutkan_antrean_dari_terbesar_ke_terkecil(): void
     {
@@ -404,14 +228,5 @@ class DokterRekamMedisTest extends TestCase
         $sortedIds = $ids;
         rsort($sortedIds);
         $this->assertEquals($sortedIds, $ids);
-    }
-
-    private function wavBytes(int $seconds): string
-    {
-        $sampleRate = 16000;
-        $dataSize = $sampleRate * $seconds * 2;
-
-        return 'RIFF'.pack('V', 36 + $dataSize).'WAVE'.'fmt '.pack('VvvVVv', 16, 1, 1, $sampleRate, $sampleRate * 2, 2)
-            .'data'.pack('V', $dataSize).str_repeat("\0", $dataSize);
     }
 }

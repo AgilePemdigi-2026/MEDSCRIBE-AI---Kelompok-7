@@ -9,20 +9,21 @@ vendor
 public/build
 public/hot
 
-services/audio_processor/.venv*
-services/audio_processor/__pycache__
-services/audio_processor/models_cache
-**/__pycache__
-*.py[cod]
-
 storage
 bootstrap/cache/*.php
 *.log
 .phpunit.result.cache
 .phpunit.cache
 
+# Local data, documentation, and development tooling are not needed to build the image.
+*.sql
+*.md
+database/*.sqlite*
+.opencode
+.agents
+
+# Tests and editor/OS files
 tests
 .idea
 .vscode
-.agents
 Thumbs.db

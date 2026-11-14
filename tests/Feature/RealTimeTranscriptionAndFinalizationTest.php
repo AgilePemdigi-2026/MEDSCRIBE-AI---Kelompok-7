@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Jobs\ProcessInterviewAudio;
 use App\Models\Antrean;
 use App\Models\DrafSoap;
 use App\Models\Finalisasi;
@@ -13,8 +12,6 @@ use App\Models\Pengguna;
 use App\Models\TindakLanjut;
 use App\Models\Wawancara;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class RealTimeTranscriptionAndFinalizationTest extends TestCase
@@ -83,56 +80,6 @@ class RealTimeTranscriptionAndFinalizationTest extends TestCase
         }
 
         parent::tearDown();
-    }
-
-    /**
-     * Phase 1: Upload audio dengan transkripsi langsung (real-time) tersimpan otomatis
-     * dan tidak memasukkan audio ke antrean job batch Whisper.
-     */
-    public function test_upload_audio_dengan_transkrip_realtime_langsung_selesai_tanpa_job_batch(): void
-    {
-        Queue::fake();
-
-        $wawancara = Wawancara::create([
-            'id_kunjungan' => $this->kunjungan->id_kunjungan,
-            'status' => 'Wawancara Berlangsung',
-            'jawaban' => [],
-        ]);
-
-        $audioFile = UploadedFile::fake()->create('interview.webm', 100, 'audio/webm');
-        $realtimeTranscript = 'Selamat pagi dok, kepala saya terasa sangat pusing berputar.';
-        $realtimeSegments = [
-            [
-                'id' => 'seg-1',
-                'startTime' => 0.0,
-                'endTime' => 3.5,
-                'text' => $realtimeTranscript,
-                'speakerRole' => 'patient',
-                'reviewStatus' => 'confirmed',
-            ],
-        ];
-
-        $response = $this->actingAs($this->dokter)->postJson(
-            route('dokter.interview.audio.upload', $this->kunjungan),
-            [
-                'audio' => $audioFile,
-                'realtime_transcript' => $realtimeTranscript,
-                'realtime_segments' => $realtimeSegments,
-            ]
-        );
-
-        $response->assertStatus(200);
-        $response->assertJson([
-            'success' => true,
-            'status' => 'completed',
-        ]);
-
-        Queue::assertNotPushed(ProcessInterviewAudio::class);
-
-        $wawancara->refresh();
-        $this->assertEquals('completed', $wawancara->processing_status);
-        $this->assertEquals('realtime_streaming', $wawancara->sumber_transkrip);
-        $this->assertEquals($realtimeTranscript, $wawancara->transkrip);
     }
 
     /**
@@ -322,13 +269,12 @@ class RealTimeTranscriptionAndFinalizationTest extends TestCase
 
         $this->assertTrue($this->kunjungan->fresh()->isFinalized());
 
-        // 1. Upload audio wawancara ditolak
-        $audio = UploadedFile::fake()->create('test.webm', 50, 'audio/webm');
-        $resAudio = $this->actingAs($this->dokter)->postJson(
-            route('dokter.interview.audio.upload', $this->kunjungan),
-            ['audio' => $audio]
+        // 1. Proses rekaman wawancara ditolak
+        $resProcess = $this->actingAs($this->dokter)->postJson(
+            route('dokter.interview.process', $this->kunjungan),
+            ['realtime_transcript' => 'Teks baru']
         );
-        $resAudio->assertStatus(403);
+        $resProcess->assertStatus(403);
 
         // 2. Update transkrip ditolak
         $resTranscript = $this->actingAs($this->dokter)->putJson(

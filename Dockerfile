@@ -1,8 +1,10 @@
+# syntax=docker/dockerfile:1.7
+
 # Stage 1: Frontend
 FROM node:22-alpine AS frontend-build
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci
 COPY resources ./resources
 COPY public ./public
 COPY vite.config.js .
@@ -21,7 +23,8 @@ RUN apt-get update \
 FROM php-base AS php-dependencies
 WORKDIR /app
 COPY composer.json composer.lock ./
-RUN composer install \
+RUN --mount=type=cache,target=/tmp/composer-cache \
+    COMPOSER_CACHE_DIR=/tmp/composer-cache composer install \
     --no-dev \
     --no-interaction \
     --no-progress \
@@ -55,7 +58,7 @@ RUN mkdir -p storage/app/private storage/app/public storage/framework/cache \
     && chmod -R ug+rwX storage bootstrap/cache
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=5 \
-    CMD curl --fail --silent --show-error --max-time 5 http://127.0.0.1/ >/dev/null || exit 1
+    CMD curl --fail --silent --show-error --max-time 5 http://127.0.0.1/up >/dev/null || exit 1
 
 EXPOSE 80
 CMD ["apache2-foreground"]

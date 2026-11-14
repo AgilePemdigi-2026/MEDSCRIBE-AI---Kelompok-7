@@ -9,9 +9,7 @@ use App\Models\Pasien;
 use App\Models\Pengguna;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class HospitalMultiTenancyTest extends TestCase
@@ -200,18 +198,26 @@ class HospitalMultiTenancyTest extends TestCase
     }
 
     /**
-     * 5. Dokter dilarang mengunggah file audio rekam medis ke antrean dari rumah sakit lain (HTTP 403 Forbidden).
+     * 5. Dokter dilarang memproses transkrip rekam medis ke kunjungan dari rumah sakit lain (HTTP 403 Forbidden).
      */
-    public function test_dokter_dilarang_mengunggah_audio_untuk_pasien_rumah_sakit_lain(): void
+    public function test_dokter_dilarang_memproses_rekaman_untuk_pasien_rumah_sakit_lain(): void
     {
-        Storage::fake('public');
-        $fakeAudio = UploadedFile::fake()->create('klinis.wav', 100, 'audio/wav');
-
-        $response = $this->actingAs($this->dokterA)->postJson('/dokter/rekam-medis/' . $this->antreanB->id_antrean . '/audio', [
-            'audio' => $fakeAudio,
+        $kunjunganB = Kunjungan::create([
+            'hospital_id' => $this->hospitalB->id,
+            'id_antrean'  => $this->antreanB->id_antrean,
+            'id_pasien'   => $this->pasienB->id_pasien,
+            'id_dokter'   => $this->dokterB->id_pengguna,
+            'tanggal'     => Carbon::today()->toDateString(),
+            'status'      => 'Sedang Diperiksa',
         ]);
 
+        $response = $this->actingAs($this->dokterA)->postJson(
+            route('dokter.interview.process', $kunjunganB),
+            ['realtime_transcript' => 'Pasien mengeluh demam sejak kemarin.']
+        );
+
         $response->assertStatus(403);
+        $this->assertDatabaseMissing('wawancara', ['id_kunjungan' => $kunjunganB->id_kunjungan]);
     }
 
     /**

@@ -33,30 +33,6 @@ Feature: Poliklinik Dokter - Rekam Medis dan AI Medical Scribe
     And I should see the message "Wawancara dimulai. Rekam audio untuk membuat transkrip."
     And the interview session status should be "Wawancara Berlangsung"
 
-  Scenario: Upload Interview Audio Recording Success
-    Given I am logged in as a doctor
-    And I have started the interview session on the patient's medical record page
-    When I send the recorded interview audio "konsultasi.webm"
-    Then I should receive a "202 Accepted" response
-    And I should see the message "Rekaman disimpan dan diantrikan ke service transkripsi lokal."
-    And the recording should be stored with status "queued"
-    And the recording should be queued for local transcription
-
-  Scenario: Upload Audio Rejected Before the Interview Is Started
-    Given I am logged in as a doctor
-    And I am on the patient's medical record page without starting the interview
-    When I send an interview audio recording
-    Then I should receive an error response with status "422 Unprocessable Entity"
-    And I should see the message "Mulai sesi wawancara sebelum merekam."
-    And no recording should be stored or queued
-
-  Scenario: Upload Audio Rejected for Invalid File
-    Given I am logged in as a doctor
-    And I have started the interview session on the patient's medical record page
-    When I send data that is not an audio file
-    Then I should receive an error response with status "422 Unprocessable Entity"
-    And I should see a validation error on the "audio" field
-
   Scenario: Stream Consultation Audio Recording
     Given I am logged in as a doctor
     And the patient's visit has a saved interview recording

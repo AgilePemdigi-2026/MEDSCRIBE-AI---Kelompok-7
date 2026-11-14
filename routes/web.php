@@ -70,9 +70,6 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
         Route::get('/dokter/kunjungan/{kunjungan}/wawancara', [InterviewController::class, 'show'])->name('dokter.interview.show');
         Route::post('/dokter/kunjungan/{kunjungan}/wawancara/mulai', [InterviewController::class, 'start'])->name('dokter.interview.start');
         Route::post('/dokter/kunjungan/{kunjungan}/wawancara/selesai', [InterviewController::class, 'finish'])->name('dokter.interview.finish');
-        Route::post('/dokter/kunjungan/{kunjungan}/wawancara/audio', [InterviewAudioController::class, 'upload'])->name('dokter.interview.audio.upload');
-        Route::get('/dokter/kunjungan/{kunjungan}/wawancara/audio/status', [InterviewAudioController::class, 'status'])->name('dokter.interview.audio.status');
-        Route::post('/dokter/kunjungan/{kunjungan}/wawancara/audio/retry', [InterviewAudioController::class, 'retry'])->name('dokter.interview.audio.retry');
         Route::post('/dokter/kunjungan/{kunjungan}/wawancara/proses', [InterviewAudioController::class, 'processRecording'])->name('dokter.interview.process');
         Route::put('/dokter/kunjungan/{kunjungan}/wawancara/transcript', [InterviewAudioController::class, 'updateTranscript'])->name('dokter.interview.transcript.update');
         Route::post('/dokter/kunjungan/{kunjungan}/wawancara/verifikasi', [InterviewAudioController::class, 'verifyTranscript'])->name('dokter.interview.transcript.verify');
@@ -85,7 +82,6 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
         Route::post('/dokter/kunjungan/{kunjungan}/finalisasi', [DokterController::class, 'finalizeRekamMedis'])->name('dokter.rekam-medis.finalisasi');
         Route::get('/dokter/kunjungan/{kunjungan}/soap/preview', [DokterController::class, 'previewSoap'])->name('dokter.soap.preview');
         Route::get('/dokter/rekam-medis/{id_antrean}', [DokterController::class, 'showRekamMedis'])->name('dokter.rekam-medis');
-        Route::post('/dokter/rekam-medis/{id_antrean}/audio', [DokterController::class, 'uploadAudio'])->name('dokter.rekam-medis.upload-audio');
         Route::get('/dokter/rekam-medis/{id_antrean}/audio-file', [DokterController::class, 'streamAudio'])->name('dokter.rekam-medis.stream-audio');
     });
 

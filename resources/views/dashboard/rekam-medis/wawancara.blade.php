@@ -269,7 +269,6 @@
 <script>
 (function () {
     const audioConfig = {
-        upload: @json(route('dokter.interview.audio.upload', $kunjungan)),
         process: @json(route('dokter.interview.process', $kunjungan)),
         transcript: @json(route('dokter.interview.transcript.update', $kunjungan)),
         verify: @json(route('dokter.interview.transcript.verify', $kunjungan)),
