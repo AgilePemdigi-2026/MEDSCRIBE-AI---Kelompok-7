@@ -9,6 +9,8 @@ use RuntimeException;
 
 class OpenRouterSoapGenerationService implements SoapGenerationService
 {
+    public function __construct(private Icd10Catalog $icd10Catalog) {}
+
     public function generate(Kunjungan $kunjungan, string $transcript): array
     {
         @set_time_limit(180);
@@ -43,6 +45,7 @@ class OpenRouterSoapGenerationService implements SoapGenerationService
         ];
         $vitalInput = json_encode(array_filter($vitalData, fn ($v) => $v !== null), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         $contextInput = json_encode($patientContext, JSON_UNESCAPED_UNICODE);
+        $katalogIcd10 = $this->icd10Catalog->katalogUntukPrompt();
 
         $verify = config('medscribe.openrouter.verify_ssl', true);
         if ($verify) {
@@ -70,20 +73,22 @@ Aturan wajib:
 6. Diagnosis dokter yang belum pasti tetap merupakan diagnosis kerja/kemungkinan, bukan diagnosis pasti.
 7. Obat, dosis, dan frekuensi hanya boleh dicantumkan jika disebutkan secara eksplisit.
 8. Bagian yang informasinya tidak tersedia harus ditulis sebagai "Tidak disebutkan" atau "Belum tersedia", bukan diisi karangan.
-9. Rekomendasi ICD-10 hanya saran yang didukung transkrip.
-10. Hasil adalah draf dokumentasi klinis yang wajib ditinjau dokter.
+9. Rekomendasi ICD-10 diturunkan dari Assessment yang kamu susun sendiri, bukan dari asumsi tambahan. Hanya kode yang benar-benar didukung transkrip.
+10. Kode ICD-10 yang kamu sebutkan WAJIB diambil apa adanya dari "KATALOG ICD-10" di bawah. Jangan mengarang, mengubah, atau menambah kode di luar katalog tersebut.
+11. Field "description" ICD-10 harus menyalin judul resmi dari KATALOG ICD-10 secara persis, tanpa menerjemahkan, memperluas, atau mengarang deskripsi.
+12. Hasil adalah draf dokumentasi klinis yang wajib ditinjau dokter.
 
 Kembalikan satu objek JSON valid saja, tanpa markdown dan tanpa code fence, dengan field berikut:
 - subjective: string berisi subbagian "Keluhan Utama", "Riwayat Penyakit Sekarang", dan "Riwayat Penyakit Dahulu / Alergi / Obat".
 - objective: string berisi subbagian "Tanda-Tanda Vital", "Hasil Pemeriksaan Fisik", dan "Pemeriksaan Penunjang".
 - assessment: string berisi subbagian "Diagnosis Utama / Diagnosis Kerja" dan "Diagnosis Banding" jika ada.
 - plan: string berisi subbagian "Rencana Terapi / Pengobatan", "Rencana Tindak Lanjut / Lab", dan "Edukasi Pasien".
-- icd10Suggestions: array berisi saran kode ICD-10 yang didukung transkrip, atau array kosong.
+- icd10Suggestions: array berisi maksimal 5 objek diagnosis ICD-10 yang didukung transkrip, atau array kosong bila tidak ada. Setiap objek memiliki "code" (kode persis dari katalog), "description" (judul resmi persis seperti di katalog), dan "confidence" ("tinggi", "sedang", atau "rendah"). Objek pertama adalah diagnosis utama, berikutnya diurutkan dari yang paling relevan.
 - missingInformation: array berisi daftar informasi klinis penting yang belum tersedia.
 - reviewWarnings: array berisi peringatan review bagi dokter.
 PROMPT
                     ],
-                    ['role' => 'user', 'content' => "Konteks Pasien:\n{$contextInput}\n\nTanda-Tanda Vital & Catatan Klinis:\n{$vitalInput}\n\nTranskrip Wawancara Klinis yang Telah Diverifikasi:\n{$transcriptInput}\n\nJangan masukkan nama atau nomor kontak pasien. Kembalikan satu objek JSON valid sesuai format."]
+                    ['role' => 'user', 'content' => "Konteks Pasien:\n{$contextInput}\n\nTanda-Tanda Vital & Catatan Klinis:\n{$vitalInput}\n\nTranskrip Wawancara Klinis yang Telah Diverifikasi:\n{$transcriptInput}\n\nKATALOG ICD-10 (gunakan kode apa adanya dari daftar ini, pilih yang paling sesuai dengan Assessment):\n{$katalogIcd10}\n\nJangan masukkan nama atau nomor kontak pasien. Kembalikan satu objek JSON valid sesuai format."]
                 ],
             ]);
 
@@ -116,13 +121,21 @@ PROMPT
             }
         }
 
+        // Saran ICD-10 hanya diterima bila kodenya benar-benar ada di katalog
+        // master; kode karangan dibuang agar tidak pernah tampil di layar dokter.
+        $saranIcd10 = array_slice(
+            $this->icd10Catalog->normalisasiSaran($data['icd10Suggestions']),
+            0,
+            (int) config('medscribe.icd10.max_suggestions', 5)
+        );
+
         return [
             'subjective_text' => (string) $data['subjective'],
             'objective_text' => (string) $data['objective'],
             'assessment_text' => (string) $data['assessment'],
             'plan_text' => (string) $data['plan'],
-            'kode_icd10' => is_array($data['icd10Suggestions']) ? ($data['icd10Suggestions'][0]['code'] ?? $data['icd10Suggestions'][0] ?? null) : null,
-            'icd10_suggestions' => $data['icd10Suggestions'],
+            'kode_icd10' => $saranIcd10[0]['code'] ?? null,
+            'icd10_suggestions' => $saranIcd10,
             'missing_information' => $data['missingInformation'],
             'review_warnings' => $data['reviewWarnings'],
             'source_type' => 'openrouter_text_only',

@@ -9,6 +9,7 @@ use App\Models\PemeriksaanAwal;
 use App\Models\Pengguna;
 use App\Models\RekamanAudio;
 use App\Models\Wawancara;
+use App\Services\Icd10Catalog;
 use App\Services\SoapDraftPreparer;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -128,6 +129,15 @@ class DokterController extends Controller
         $pasien = $antrean->pasien;
         $umur = $pasien->umur ?: ($pasien->tanggal_lahir ? Carbon::parse($pasien->tanggal_lahir)->age : null);
 
+        // 7. Katalog ICD-10: saran AI, label kode terpilih, dan sumber isian
+        $icd10Catalog = app(Icd10Catalog::class);
+        $drafSoap = $soap['draf'] ?? null;
+        $saranIcd10 = $icd10Catalog->normalisasiSaran($drafSoap?->icd10_suggestions ?? []);
+        $kodeIc10 = $drafSoap?->kode_icd10;
+        $icd10Label = $icd10Catalog->label($kodeIc10, $saranIcd10);
+        $icd10LabelResmi = $icd10Catalog->labelResmi($kodeIc10, $saranIcd10);
+        $icd10Ic10 = filled($kodeIc10) && $saranIcd10 !== [] && $saranIcd10[0]['code'] === $kodeIc10;
+
         return view('dashboard.rekam-medis', compact(
             'user',
             'antrean',
@@ -144,7 +154,11 @@ class DokterController extends Controller
             'tindakLanjut',
             'tahapTindakLanjut',
             'tahapFinalisasi',
-            'parameterLoinc'
+            'parameterLoinc',
+            'saranIcd10',
+            'icd10Label',
+            'icd10LabelResmi',
+            'icd10Ic10'
         ));
     }
 
@@ -449,7 +463,11 @@ class DokterController extends Controller
 
         $icdDescription = null;
         if ($draf?->kode_icd10) {
-            $icdDescription = \App\Services\SoapDraftPreparer::ICD10_OPTIONS[$draf->kode_icd10] ?? null;
+            $icd10Catalog = app(\App\Services\Icd10Catalog::class);
+            $icdDescription = $icd10Catalog->labelResmi(
+                $draf->kode_icd10,
+                $icd10Catalog->normalisasiSaran($draf->icd10_suggestions ?? [])
+            );
         }
 
         return view('dashboard.rekam-medis.preview-soap', compact(

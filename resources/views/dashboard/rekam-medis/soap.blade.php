@@ -108,13 +108,48 @@
         </div>
 
         <div>
-            <label for="kode_icd10" class="field-label">Kode ICD-10 (Diagnosis Utama)</label>
-            <select id="kode_icd10" name="kode_icd10" class="field {{ $isFinalized ? 'bg-soft-offwhite cursor-not-allowed' : '' }}" @disabled($isFinalized)>
-                <option value="">Belum dipilih</option>
-                @foreach (\App\Services\SoapDraftPreparer::ICD10_OPTIONS as $code => $description)
-                    <option value="{{ $code }}" @selected(old('kode_icd10', $draf->kode_icd10) === $code)>{{ $code }} · {{ $description }}</option>
-                @endforeach
-            </select>
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <label for="kode_icd10" class="field-label mb-0">Kode ICD-10 (Diagnosis Utama)</label>
+                @if (filled($kodeIc10 ?? null))
+                    <span id="icd10-sumber"
+                          data-sumber-icd10="{{ ($icd10Ic10 ?? false) ? 'ai' : 'manual' }}"
+                          class="tag-id {{ ($icd10Ic10 ?? false) ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800' }}">
+                        <span data-teks-sumber>{{ ($icd10Ic10 ?? false) ? 'Diisi AI - wajib dikonfirmasi dokter' : 'Diisi manual dokter' }}</span>
+                    </span>
+                @endif
+            </div>
+
+            <div class="relative" id="icd10-pencarian">
+                <input type="text" id="kode_icd10" name="kode_icd10" autocomplete="off"
+                       value="{{ old('kode_icd10', $draf->kode_icd10) }}"
+                       placeholder="Contoh: J02.9"
+                       role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="icd10-hasil"
+                       class="field font-mono @error('kode_icd10') is-invalid @enderror {{ $isFinalized ? 'bg-soft-offwhite cursor-not-allowed' : '' }}"
+                       @disabled($isFinalized)>
+                <div id="icd10-hasil" role="listbox"
+                     class="hidden absolute left-0 right-0 top-full mt-1 z-30 max-h-64 overflow-y-auto rounded-[14px] border border-border-subtle bg-white shadow-lg py-1"></div>
+            </div>
+
+            <p id="icd10-label" class="field-hint">{{ $icd10Label ?? '' }}</p>
+            @error('kode_icd10')<p class="field-error">{{ $message }}</p>@enderror
+
+            @if (! empty($saranIcd10))
+                <div class="mt-3">
+                    <p class="text-[11px] font-semibold text-medical-navy mb-1.5">Saran AI (klik untuk memakai)</p>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach ($saranIcd10 as $saran)
+                            <button type="button"
+                                    data-kode-icd10="{{ $saran['code'] }}"
+                                    data-label-icd10="{{ $saran['description'] }}"
+                                    @disabled($isFinalized)
+                                    class="inline-flex items-center gap-1.5 rounded-full border border-border-subtle bg-white px-3 py-1.5 text-left text-xs transition hover:border-royal-indigo/40 hover:bg-pale-lavender/40 disabled:cursor-not-allowed disabled:opacity-60">
+                                <span class="font-mono font-semibold text-medical-navy">{{ $saran['code'] }}</span>
+                                <span class="text-text-secondary">{{ $saran['description'] }}</span>
+                            </button>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         </div>
 
         {{-- Data pasien dilipat --}}
@@ -291,6 +326,130 @@
             tutupModalVerifySoap();
         }
     });
+
+    // Pencarian kode ICD-10, pilihan saran AI, dan label deskripsi langsung.
+    (function () {
+        const input = document.getElementById('kode_icd10');
+        const panel = document.getElementById('icd10-hasil');
+        const label = document.getElementById('icd10-label');
+        const badge = document.getElementById('icd10-sumber');
+        if (!input || !panel) return;
+
+        const endpoint = @json(route('dokter.icd10.index'));
+        const labels = @json(collect($saranIcd10 ?? [])->mapWithKeys(fn ($saran) => [$saran['code'] => $saran['description']])->all());
+        const kodeAiUtama = @json($saranIcd10[0]['code'] ?? null);
+
+        let timer = null;
+        let controller = null;
+
+        function tutupPanel() {
+            panel.classList.add('hidden');
+            panel.replaceChildren();
+            input.setAttribute('aria-expanded', 'false');
+        }
+
+        function isiLabel(teks) {
+            if (label) label.textContent = teks || '';
+        }
+
+        function perbaruiBadge() {
+            if (!badge) return;
+            const kode = input.value.trim().toUpperCase();
+            const dariAi = kode !== '' && kode === kodeAiUtama;
+            badge.dataset.sumberIcd10 = dariAi ? 'ai' : 'manual';
+            badge.classList.toggle('bg-amber-100', dariAi);
+            badge.classList.toggle('text-amber-800', dariAi);
+            badge.classList.toggle('bg-emerald-100', !dariAi);
+            badge.classList.toggle('text-emerald-800', !dariAi);
+            const teks = badge.querySelector('[data-teks-sumber]');
+            if (teks) {
+                teks.textContent = dariAi ? 'Diisi AI - wajib dikonfirmasi dokter' : 'Diisi manual dokter';
+            }
+        }
+
+        function pilihKode(kode, deskripsi) {
+            input.value = kode;
+            isiLabel(deskripsi || labels[kode] || '');
+            perbaruiBadge();
+            tutupPanel();
+        }
+
+        function renderHasil(data) {
+            panel.replaceChildren();
+
+            if (! data.length) {
+                const kosong = document.createElement('p');
+                kosong.className = 'px-3 py-2 text-xs text-text-secondary';
+                kosong.textContent = 'Kode tidak ditemukan pada katalog ICD-10. Pastikan kode ICD-10 ditulis benar, contoh J02.9.';
+                panel.appendChild(kosong);
+            } else {
+                data.forEach((item) => {
+                    const tombol = document.createElement('button');
+                    tombol.type = 'button';
+                    tombol.className = 'w-full text-left px-3 py-2 hover:bg-soft-offwhite flex flex-col gap-0.5';
+
+                    const kode = document.createElement('span');
+                    kode.className = 'font-mono text-xs font-semibold text-medical-navy';
+                    kode.textContent = item.kode_icd10;
+
+                    const judul = document.createElement('span');
+                    judul.className = 'text-xs text-text-secondary';
+                    judul.textContent = item.deskripsi;
+
+                    tombol.appendChild(kode);
+                    tombol.appendChild(judul);
+                    tombol.addEventListener('click', () => pilihKode(item.kode_icd10, item.deskripsi));
+                    panel.appendChild(tombol);
+                });
+            }
+
+            panel.classList.remove('hidden');
+            input.setAttribute('aria-expanded', 'true');
+        }
+
+        input.addEventListener('input', function () {
+            const kode = input.value.trim().toUpperCase();
+            isiLabel(labels[kode] || '');
+            perbaruiBadge();
+            clearTimeout(timer);
+
+            if (kode.length < 2) {
+                tutupPanel();
+                return;
+            }
+
+            timer = setTimeout(async function () {
+                if (controller) controller.abort();
+                controller = new AbortController();
+
+                try {
+                    const res = await fetch(endpoint + '?q=' + encodeURIComponent(kode) + '&limit=8', {
+                        headers: { Accept: 'application/json' },
+                        signal: controller.signal,
+                    });
+                    if (! res.ok) return;
+                    const json = await res.json();
+                    renderHasil(json.data || []);
+                } catch (e) {
+                    // Permintaan dibatalkan atau jaringan gagal: abaikan.
+                }
+            }, 250);
+        });
+
+        input.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') tutupPanel();
+        });
+
+        document.querySelectorAll('[data-kode-icd10]').forEach(function (chip) {
+            chip.addEventListener('click', function () {
+                pilihKode(chip.dataset.kodeIcd10, chip.dataset.labelIcd10);
+            });
+        });
+
+        document.addEventListener('click', function (event) {
+            if (! event.target.closest('#icd10-pencarian')) tutupPanel();
+        });
+    })();
 
     // Polling jika status draf SOAP masih 'processing'
     @if ($isProcessing)

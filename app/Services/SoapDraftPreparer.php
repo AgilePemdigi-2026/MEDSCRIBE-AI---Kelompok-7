@@ -13,11 +13,6 @@ use Throwable;
  */
 class SoapDraftPreparer
 {
-    public const ICD10_OPTIONS = [
-        'J02.9' => 'Faringitis akut, tidak spesifik (simulasi)',
-        'R07.0' => 'Nyeri tenggorokan (simulasi)',
-    ];
-
     public function __construct(
         private MockSoapDraftService $draftService,
         private SoapGenerationService $soapGenerationService,

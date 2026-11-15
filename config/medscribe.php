@@ -20,6 +20,11 @@ return [
 
     'soap_driver' => env('MEDSCRIBE_SOAP_DRIVER', 'mock'),
 
+    'icd10' => [
+        // Jumlah saran kode ICD-10 yang ditampilkan pada formulir draf SOAP.
+        'max_suggestions' => (int) env('MEDSCRIBE_ICD10_MAX_SUGGESTIONS', 5),
+    ],
+
     'dummy_accounts' => [
         'enabled' => (bool) env('SEED_DUMMY_ACCOUNTS', false),
         'password' => env('DUMMY_ACCOUNT_PASSWORD'),

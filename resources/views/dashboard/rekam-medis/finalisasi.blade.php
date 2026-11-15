@@ -143,7 +143,12 @@
                     <div class="flex items-center justify-between pb-2 border-b border-border-subtle">
                         <span class="font-semibold text-sm text-medical-navy">Catatan SOAP Terverifikasi</span>
                         @if ($draf->kode_icd10)
-                            <span class="tag-id bg-pale-lavender text-royal-indigo font-mono text-xs">ICD-10: {{ $draf->kode_icd10 }}</span>
+                            <span class="tag-id bg-pale-lavender text-royal-indigo text-xs">
+                                <span class="font-mono">ICD-10: {{ $draf->kode_icd10 }}</span>
+                                @if (filled($icd10LabelResmi ?? null))
+                                    <span class="font-sans">{{ $icd10LabelResmi }}</span>
+                                @endif
+                            </span>
                         @endif
                     </div>
                     <dl class="space-y-2.5 text-xs">
