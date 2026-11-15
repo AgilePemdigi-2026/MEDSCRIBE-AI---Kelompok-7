@@ -161,53 +161,6 @@ class NurseStationPemeriksaanAwalBDDTest extends BDDTestCase
     }
 
     /**
-     * Skenario: Sistem menandai peringatan demam jika suhu tubuh pasien di atas 37.5 derajat Celsius
-     * @scenario High Fever Warning Indicator
-     */
-    public function test_skenario_peringatan_demam_jika_suhu_tinggi(): void
-    {
-        $this->given('Pasien antrean dengan suhu tubuh tinggi');
-        $pasien = Pasien::create([
-            'hospital_id'    => $this->perawat->hospital_id,
-            'no_rekam_medis' => 'DEMAM-' . uniqid(),
-            'nama_pasien'    => 'Pasien Demam Tinggi',
-            'jenis_kelamin'  => 'Perempuan',
-        ]);
-        $antrean = Antrean::create([
-            'hospital_id'       => $this->perawat->hospital_id,
-            'id_pasien'         => $pasien->id_pasien,
-            'tanggal_kunjungan' => now()->toDateString(),
-            'status'            => 'Menunggu TTV',
-        ]);
-
-        $this->when('Perawat menginput suhu tubuh 38.8 derajat Celsius');
-        $payload = [
-            'id_antrean'      => $antrean->id_antrean,
-            'tekanan_darah'   => '110/70',
-            'nadi'            => 95,
-            'suhu_tubuh'      => 38.8,
-            'laju_pernapasan' => 20,
-            'berat_badan'     => 55,
-            'tinggi_badan'    => 160,
-            'catatan'         => 'Menggigil sejak subuh',
-        ];
-        $response = $this->actingAs($this->perawat)->post('/perawat/pemeriksaan-awal', $payload);
-
-        $this->then('Data pemeriksaan tersimpan dengan suhu 38.8');
-        $response->assertSessionDoesntHaveErrors();
-        $this->assertDatabaseHas('pemeriksaan_awal', [
-            'suhu_tubuh' => 38.8,
-        ]);
-
-        $this->and('Dashboard perawat memuat indikator peringatan visual demam tinggi');
-        $viewRes = $this->actingAs($this->perawat)->get('/perawat/dashboard?antrean_id=' . $antrean->id_antrean);
-        $viewRes->assertStatus(200);
-        $viewRes->assertSee('38.8');
-        $viewRes->assertSee('Peringatan klinis: Suhu di atas rentang normal');
-        $viewRes->assertSee('id="suhuWarning" class="field-error flex items-center gap-1.5 "', false);
-    }
-
-    /**
      * Skenario: Perawat membatalkan pemeriksaan pasien dengan alasan yang valid
      * @scenario Cancel Patient Registration
      */

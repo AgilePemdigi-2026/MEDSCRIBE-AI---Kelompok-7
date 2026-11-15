@@ -66,7 +66,6 @@
                     $pa = $kunjungan->pemeriksaanAwal;
                     $tglStr = str_replace('-', '', $kunjungan->tanggal);
                     $kodeKunjungan = 'RSUA-' . $tglStr . '-' . str_pad($kunjungan->id_kunjungan, 3, '0', STR_PAD_LEFT);
-                    $demam = $pa && ($pa->suhu_tubuh ?? 0) > 37.5;
                 @endphp
                 <div class="relative pl-8 pb-6 last:pb-0">
                     <span class="absolute left-[11px] top-3 bottom-0 w-px bg-border-hover" aria-hidden="true"></span>
@@ -88,7 +87,7 @@
                                 <dl class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                                     <div class="vital"><dt class="vital-label">Tekanan Darah</dt><dd class="vital-value">{{ $pa->tekanan_darah ?? '-' }}<span class="vital-unit">mmHg</span></dd></div>
                                     <div class="vital"><dt class="vital-label">Nadi</dt><dd class="vital-value">{{ $pa->nadi ?? '-' }}<span class="vital-unit">x/menit</span></dd></div>
-                                    <div class="vital {{ $demam ? 'is-flagged' : '' }}"><dt class="vital-label">Suhu</dt><dd class="vital-value">{{ $pa->suhu_tubuh ?? '-' }}<span class="vital-unit">°C</span></dd></div>
+                                    <div class="vital"><dt class="vital-label">Suhu</dt><dd class="vital-value">{{ $pa->suhu_tubuh ?? '-' }}<span class="vital-unit">°C</span></dd></div>
                                     <div class="vital"><dt class="vital-label">Pernapasan</dt><dd class="vital-value">{{ $pa->laju_pernapasan ?? '-' }}<span class="vital-unit">x/menit</span></dd></div>
                                     @if ($pa->saturasi_oksigen)
                                         <div class="vital"><dt class="vital-label">SpO2</dt><dd class="vital-value text-royal-indigo">{{ $pa->saturasi_oksigen }}<span class="vital-unit">%</span></dd></div>

@@ -4,7 +4,6 @@
 
 @section('content')
 @php
-    $demam = $pemeriksaanAwal && $pemeriksaanAwal->suhu_tubuh && $pemeriksaanAwal->suhu_tubuh > 37.5;
     $sudahDitinjau = in_array($workflowState, ['soap-ready', 'soap', 'completed'], true);
     $terverifikasi = $finalisasi?->FINAL === true || $workflowState === 'completed';
 
@@ -65,7 +64,7 @@
                     <dl class="grid grid-cols-2 gap-2">
                         <div class="vital"><dt class="vital-label">Tekanan Darah</dt><dd class="vital-value">{{ $pemeriksaanAwal->tekanan_darah ?? '-' }}<span class="vital-unit">mmHg</span></dd></div>
                         <div class="vital"><dt class="vital-label">Nadi</dt><dd class="vital-value">{{ $pemeriksaanAwal->nadi ?? '-' }}<span class="vital-unit">x/menit</span></dd></div>
-                        <div class="vital {{ $demam ? 'is-flagged' : '' }}"><dt class="vital-label">Suhu</dt><dd class="vital-value">{{ $pemeriksaanAwal->suhu_tubuh ?? '-' }}<span class="vital-unit">°C</span></dd></div>
+                        <div class="vital"><dt class="vital-label">Suhu</dt><dd class="vital-value">{{ $pemeriksaanAwal->suhu_tubuh ?? '-' }}<span class="vital-unit">°C</span></dd></div>
                         <div class="vital"><dt class="vital-label">Pernapasan</dt><dd class="vital-value">{{ $pemeriksaanAwal->laju_pernapasan ?? '-' }}<span class="vital-unit">x/menit</span></dd></div>
                         <div class="vital"><dt class="vital-label">SpO2</dt><dd class="vital-value">{{ $pemeriksaanAwal->saturasi_oksigen ?? '-' }}<span class="vital-unit">%</span></dd></div>
                         <div class="vital"><dt class="vital-label">BB / TB</dt><dd class="vital-value">{{ $pemeriksaanAwal->berat_badan ?? '-' }}<span class="vital-unit">kg</span> {{ $pemeriksaanAwal->tinggi_badan ?? '-' }}<span class="vital-unit">cm</span></dd></div>

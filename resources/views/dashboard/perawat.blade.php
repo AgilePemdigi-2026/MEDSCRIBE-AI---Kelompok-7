@@ -156,7 +156,6 @@
                     $pt = $pasienTerpilih->pasien;
                     $usiaLengkap = $pt?->umur ?: ($pt?->tanggal_lahir ? \Carbon\Carbon::parse($pt->tanggal_lahir)->age : null);
                     $rsPasien = $pasienTerpilih->hospital->hospital_name ?? ($user->hospital->hospital_name ?? '-');
-                    $suhuCurrent = (float) old('suhu_tubuh', $pemeriksaanAwal->suhu_tubuh ?? 0);
                 @endphp
 
                 {{-- Kartu identitas pasien --}}
@@ -201,13 +200,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-4">
                             @include('partials.vital-input', ['id' => 'tekanan_darah', 'name' => 'tekanan_darah', 'label' => 'Tekanan Darah', 'unit' => 'mmHg', 'type' => 'text', 'placeholder' => '120/80', 'value' => old('tekanan_darah', $pemeriksaanAwal->tekanan_darah ?? '')])
                             @include('partials.vital-input', ['id' => 'nadi', 'name' => 'nadi', 'label' => 'Denyut Nadi', 'unit' => 'x/menit', 'placeholder' => '78', 'min' => 30, 'max' => 250, 'value' => old('nadi', $pemeriksaanAwal->nadi ?? '')])
-                            <div>
-                                @include('partials.vital-input', ['id' => 'suhu_tubuh', 'name' => 'suhu_tubuh', 'label' => 'Suhu Tubuh', 'unit' => '°C', 'placeholder' => '36.5', 'step' => '0.1', 'min' => 30, 'max' => 45, 'value' => old('suhu_tubuh', $pemeriksaanAwal->suhu_tubuh ?? '')])
-                                <p id="suhuWarning" class="field-error flex items-center gap-1.5 {{ $suhuCurrent > 37.5 ? '' : 'hidden' }}" aria-live="polite">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
-                                    Peringatan klinis: Suhu di atas rentang normal (&gt;37.5°C)
-                                </p>
-                            </div>
+                            @include('partials.vital-input', ['id' => 'suhu_tubuh', 'name' => 'suhu_tubuh', 'label' => 'Suhu Tubuh', 'unit' => '°C', 'placeholder' => '36.5', 'step' => '0.1', 'min' => 30, 'max' => 45, 'value' => old('suhu_tubuh', $pemeriksaanAwal->suhu_tubuh ?? '')])
                             @include('partials.vital-input', ['id' => 'laju_pernapasan', 'name' => 'laju_pernapasan', 'label' => 'Laju Pernapasan', 'unit' => 'x/menit', 'placeholder' => '18', 'min' => 5, 'max' => 60, 'value' => old('laju_pernapasan', $pemeriksaanAwal->laju_pernapasan ?? '')])
                             @include('partials.vital-input', ['id' => 'berat_badan', 'name' => 'berat_badan', 'label' => 'Berat Badan', 'unit' => 'kg', 'placeholder' => '68', 'step' => '0.1', 'min' => 1, 'max' => 300, 'value' => old('berat_badan', $pemeriksaanAwal->berat_badan ?? '')])
                             @include('partials.vital-input', ['id' => 'tinggi_badan', 'name' => 'tinggi_badan', 'label' => 'Tinggi Badan', 'unit' => 'cm', 'placeholder' => '170', 'step' => '0.1', 'min' => 30, 'max' => 250, 'value' => old('tinggi_badan', $pemeriksaanAwal->tinggi_badan ?? '')])
@@ -496,13 +489,7 @@
                                 @include('partials.vital-input', ['id' => 'modal_td_sistolik', 'name' => 'tekanan_darah_sistolik', 'label' => 'TD Sistolik', 'unit' => 'mmHg', 'placeholder' => '120', 'min' => 50, 'max' => 300, 'value' => old('tekanan_darah_sistolik')])
                                 @include('partials.vital-input', ['id' => 'modal_td_diastolik', 'name' => 'tekanan_darah_diastolik', 'label' => 'TD Diastolik', 'unit' => 'mmHg', 'placeholder' => '80', 'min' => 20, 'max' => 200, 'value' => old('tekanan_darah_diastolik')])
                                 @include('partials.vital-input', ['id' => 'modal_nadi', 'name' => 'nadi', 'label' => 'Denyut Nadi', 'unit' => 'x/menit', 'placeholder' => '78', 'min' => 30, 'max' => 250, 'value' => old('nadi')])
-                                <div>
-                                    @include('partials.vital-input', ['id' => 'modal_suhu', 'name' => 'suhu_tubuh', 'label' => 'Suhu Tubuh', 'unit' => '°C', 'placeholder' => '36.5', 'step' => '0.1', 'min' => 30, 'max' => 45, 'value' => old('suhu_tubuh')])
-                                    <p id="modalSuhuWarning" class="field-error items-center gap-1.5 hidden" aria-live="polite">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
-                                        Peringatan: Suhu di atas rentang normal (&gt;37.5°C)
-                                    </p>
-                                </div>
+                                @include('partials.vital-input', ['id' => 'modal_suhu', 'name' => 'suhu_tubuh', 'label' => 'Suhu Tubuh', 'unit' => '°C', 'placeholder' => '36.5', 'step' => '0.1', 'min' => 30, 'max' => 45, 'value' => old('suhu_tubuh')])
                                 @include('partials.vital-input', ['id' => 'modal_rr', 'name' => 'laju_pernapasan', 'label' => 'Laju Pernapasan', 'unit' => 'x/menit', 'placeholder' => '18', 'min' => 5, 'max' => 60, 'value' => old('laju_pernapasan')])
                                 @include('partials.vital-input', ['id' => 'modal_spo2', 'name' => 'saturasi_oksigen', 'label' => 'SpO2', 'unit' => '%', 'placeholder' => '98', 'min' => 50, 'max' => 100, 'value' => old('saturasi_oksigen')])
                                 @include('partials.vital-input', ['id' => 'modal_bb', 'name' => 'berat_badan', 'label' => 'Berat Badan', 'unit' => 'kg', 'placeholder' => '68', 'step' => '0.1', 'min' => 1, 'max' => 300, 'required' => false, 'value' => old('berat_badan')])
@@ -552,22 +539,6 @@
     });
 
     document.addEventListener('DOMContentLoaded', function () {
-        function watchSuhu(inputId, warningId) {
-            const input = document.getElementById(inputId);
-            const warning = document.getElementById(warningId);
-            if (!input || !warning) return;
-            const check = function () {
-                const val = parseFloat(input.value);
-                const high = !isNaN(val) && val > 37.5;
-                warning.classList.toggle('hidden', !high);
-                warning.classList.toggle('flex', high);
-            };
-            input.addEventListener('input', check);
-            input.addEventListener('change', check);
-        }
-        watchSuhu('suhu_tubuh', 'suhuWarning');
-        watchSuhu('modal_suhu', 'modalSuhuWarning');
-
         // Jumlah pilihan tanggal mengikuti bulan dan tahun yang dipilih.
         const filterBulan = document.getElementById('filterBulan');
         const filterTahun = document.getElementById('filterTahun');
