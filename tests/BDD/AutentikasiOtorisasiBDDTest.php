@@ -133,9 +133,9 @@ class AutentikasiOtorisasiBDDTest extends BDDTestCase
             'password' => 'password123',
         ]);
 
-        $this->then('Sistem menolak login');
-        $this->assertGuest();
-        $response->assertSessionHasErrors(['email' => 'Akun Anda sedang dalam proses peninjauan persetujuan administratif rumah sakit.']);
+        $this->then('Sistem mengarahkan perawat ke halaman pemberitahuan pending');
+        $this->assertAuthenticated();
+        $response->assertRedirect('/auth/pending');
     }
 
     /**

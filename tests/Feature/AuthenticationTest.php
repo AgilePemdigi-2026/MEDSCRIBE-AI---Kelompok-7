@@ -136,12 +136,15 @@ class AuthenticationTest extends TestCase
             'email' => $email,
         ]);
 
-        // Setelah verifikasi, pengguna dapat login eksplisit
+        // Setelah verifikasi, status akun adalah pending menunggu verifikasi admin rumah sakit
+        $this->assertEquals('pending', $user->approval_status);
+
+        // Saat login, akun pending diarahkan ke pemberitahuan /auth/pending
         $loginResponse = $this->post('/login', [
             'email' => $email,
             'password' => 'password123',
         ]);
-        $loginResponse->assertRedirect('/dokter/dashboard');
+        $loginResponse->assertRedirect('/auth/pending');
         $this->assertAuthenticated();
     }
 

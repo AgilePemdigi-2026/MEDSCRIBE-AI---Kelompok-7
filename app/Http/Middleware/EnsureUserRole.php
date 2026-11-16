@@ -43,12 +43,22 @@ class EnsureUserRole
             }
 
             // Jika pengguna mencoba mengakses dashboard peran lain (navigasi GET), arahkan ke dashboard perannya sendiri
+            if ($userRole === 'admin') {
+                return redirect()->route('admin.dashboard')->with('warning', 'Akses ditolak: Admin Rumah Sakit tidak memiliki akses ke fitur operasional klinis.');
+            }
+
             if ($userRole === 'dokter') {
-                return redirect()->route('dokter.dashboard')->with('warning', 'Akses ditolak: Anda tidak memiliki akses ke halaman Nurse Station/Perawat.');
+                $warning = in_array('perawat', $allowedRoles, true)
+                    ? 'Akses ditolak: Anda tidak memiliki akses ke halaman Nurse Station/Perawat.'
+                    : 'Akses ditolak: Anda tidak memiliki akses ke halaman yang dituju.';
+                return redirect()->route('dokter.dashboard')->with('warning', $warning);
             }
 
             if ($userRole === 'perawat') {
-                return redirect()->route('perawat.dashboard')->with('warning', 'Akses ditolak: Anda tidak memiliki akses ke halaman Dokter.');
+                $warning = in_array('dokter', $allowedRoles, true)
+                    ? 'Akses ditolak: Anda tidak memiliki akses ke halaman Dokter.'
+                    : 'Akses ditolak: Anda tidak memiliki akses ke halaman yang dituju.';
+                return redirect()->route('perawat.dashboard')->with('warning', $warning);
             }
 
             abort(403, 'Akses ditolak. Anda tidak memiliki wewenang untuk mengakses halaman ini.');

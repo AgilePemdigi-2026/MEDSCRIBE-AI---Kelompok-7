@@ -23,9 +23,9 @@ class Pengguna extends Authenticatable
     protected $primaryKey = 'id_pengguna';
 
     /**
-     * Tabel pengguna tidak menggunakan kolom timestamps bawaan Laravel.
+     * Tabel pengguna kini menggunakan timestamps untuk mencatat waktu registrasi.
      */
-    public $timestamps = false;
+    public $timestamps = true;
 
     /**
      * Atribut yang dapat diisi secara mass-assignment.
@@ -40,6 +40,16 @@ class Pengguna extends Authenticatable
         'password',
         'google_id',
         'avatar',
+        'approved_by',
+        'approved_at',
+        'rejected_by',
+        'rejected_at',
+        'rejection_reason',
+        'deactivated_by',
+        'deactivated_at',
+        'deactivation_reason',
+        'created_at',
+        'updated_at',
     ];
 
     /**
@@ -58,6 +68,11 @@ class Pengguna extends Authenticatable
         return [
             'password'          => 'hashed',
             'email_verified_at' => 'datetime',
+            'approved_at'       => 'datetime',
+            'rejected_at'       => 'datetime',
+            'deactivated_at'    => 'datetime',
+            'created_at'        => 'datetime',
+            'updated_at'        => 'datetime',
         ];
     }
 
@@ -86,11 +101,66 @@ class Pengguna extends Authenticatable
     }
 
     /**
-     * Helper untuk memeriksa apakah akun telah disetujui untuk akses data klinis.
+     * Helper untuk memeriksa apakah akun telah disetujui / aktif untuk akses data klinis.
      */
     public function isApproved(): bool
     {
-        return strtolower($this->approval_status ?? 'approved') === 'approved';
+        return $this->isActive();
+    }
+
+    /**
+     * Helper untuk memeriksa apakah akun berstatus aktif.
+     */
+    public function isActive(): bool
+    {
+        $status = strtolower($this->approval_status ?? 'approved');
+        return in_array($status, ['active', 'approved'], true);
+    }
+
+    /**
+     * Helper untuk memeriksa apakah akun berstatus pending menunggu verifikasi admin.
+     */
+    public function isPending(): bool
+    {
+        return strtolower($this->approval_status ?? '') === 'pending';
+    }
+
+    /**
+     * Helper untuk memeriksa apakah pendaftaran akun ditolak oleh admin.
+     */
+    public function isRejected(): bool
+    {
+        return strtolower($this->approval_status ?? '') === 'rejected';
+    }
+
+    /**
+     * Helper untuk memeriksa apakah akun telah dinonaktifkan oleh admin.
+     */
+    public function isInactive(): bool
+    {
+        return strtolower($this->approval_status ?? '') === 'inactive';
+    }
+
+    /**
+     * Label status akun dalam bahasa Indonesia.
+     */
+    public function getStatusLabelAttribute(): string
+    {
+        return match (strtolower($this->approval_status ?? 'approved')) {
+            'active', 'approved' => 'Aktif',
+            'pending'            => 'Menunggu Verifikasi',
+            'rejected'           => 'Ditolak',
+            'inactive'           => 'Nonaktif',
+            default              => ucfirst($this->approval_status ?? 'Aktif'),
+        };
+    }
+
+    /**
+     * Helper untuk memeriksa apakah pengguna berperan sebagai Admin Rumah Sakit.
+     */
+    public function isAdmin(): bool
+    {
+        return strtolower($this->role ?? '') === 'admin';
     }
 
     /**
@@ -98,7 +168,7 @@ class Pengguna extends Authenticatable
      */
     public function isDokter(): bool
     {
-        return strtolower($this->role) === 'dokter';
+        return strtolower($this->role ?? '') === 'dokter';
     }
 
     /**
@@ -106,7 +176,39 @@ class Pengguna extends Authenticatable
      */
     public function isPerawat(): bool
     {
-        return strtolower($this->role) === 'perawat';
+        return strtolower($this->role ?? '') === 'perawat';
+    }
+
+    /**
+     * Relasi ke admin yang menyetujui akun ini.
+     */
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(Pengguna::class, 'approved_by', 'id_pengguna');
+    }
+
+    /**
+     * Relasi ke admin yang menolak akun ini.
+     */
+    public function rejectedBy(): BelongsTo
+    {
+        return $this->belongsTo(Pengguna::class, 'rejected_by', 'id_pengguna');
+    }
+
+    /**
+     * Relasi ke admin yang menonaktifkan akun ini.
+     */
+    public function deactivatedBy(): BelongsTo
+    {
+        return $this->belongsTo(Pengguna::class, 'deactivated_by', 'id_pengguna');
+    }
+
+    /**
+     * Relasi ke catatan riwayat audit log tindakan admin.
+     */
+    public function auditLogs(): HasMany
+    {
+        return $this->hasMany(AdminAuditLog::class, 'admin_id', 'id_pengguna');
     }
 
     /**

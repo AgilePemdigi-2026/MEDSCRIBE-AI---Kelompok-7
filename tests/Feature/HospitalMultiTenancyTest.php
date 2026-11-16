@@ -299,8 +299,8 @@ class HospitalMultiTenancyTest extends TestCase
         $this->assertNotNull($pasien);
         $this->assertEquals($this->hospitalA->id, $pasien->hospital_id);
 
-        // Format nomor rekam medis YYYYMMDD-NNN
-        $prefix = Carbon::now()->format('Ymd');
+        // Format nomor rekam medis YYYYMMDD-NNN (zona WIB Asia/Jakarta)
+        $prefix = Carbon::now('Asia/Jakarta')->format('Ymd');
         $this->assertMatchesRegularExpression('/^' . $prefix . '-\d{3}$/', $pasien->no_rekam_medis);
     }
 

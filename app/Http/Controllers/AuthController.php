@@ -115,16 +115,7 @@ class AuthController extends Controller
                 ]);
         }
 
-        // 5. Verifikasi status persetujuan akun staf (jika ada)
-        if (!$user->isApproved()) {
-            return back()
-                ->withInput($request->only('email', 'remember'))
-                ->withErrors([
-                    'email' => 'Akun Anda sedang dalam proses peninjauan persetujuan administratif rumah sakit.',
-                ]);
-        }
-
-        // 6. Otentikasi dan regenerasi session ID
+        // 5. Otentikasi dan regenerasi session ID
         $remember = $request->boolean('remember');
         Auth::login($user, $remember);
 
@@ -345,14 +336,6 @@ class AuthController extends Controller
                 ]);
         }
 
-        // Case E: Akun tidak aktif atau belum disetujui
-        if (!$user->isApproved()) {
-            return redirect()->route('login')
-                ->withErrors([
-                    'email' => 'Akun Anda sedang dalam proses peninjauan persetujuan administratif rumah sakit.',
-                ]);
-        }
-
         // Keamanan: Cegah konflik penautan identitas Google
         if ($user->google_id && (string) $user->google_id !== $googleId) {
             return redirect()->route('login')
@@ -413,10 +396,38 @@ class AuthController extends Controller
     }
 
     /**
-     * Mengarahkan pengguna ke halaman yang sesuai berdasarkan perannya.
+     * Mengarahkan pengguna ke halaman yang sesuai berdasarkan peran dan status akun.
+     * Sesuai ketentuan matriks otentikasi MedScribe AI:
+     * - Admin Active -> Dashboard Admin Rumah Sakit
+     * - Dokter / Perawat Pending -> Halaman pemberitahuan menunggu verifikasi
+     * - Dokter / Perawat Active -> Dashboard Dokter / Perawat
+     * - Dokter / Perawat Rejected -> Halaman pemberitahuan penolakan
+     * - Dokter / Perawat Inactive -> Halaman pemberitahuan akun dinonaktifkan
      */
-    protected function redirectBasedOnRole(Pengguna $user): RedirectResponse
+    public function redirectBasedOnRole(Pengguna $user): RedirectResponse
     {
+        // 1. Admin Rumah Sakit
+        if ($user->isAdmin()) {
+            if ($user->isActive()) {
+                return redirect()->intended(route('admin.dashboard'));
+            }
+            return redirect()->route('auth.inactive');
+        }
+
+        // 2. Status Akun Tenaga Medis (Dokter & Perawat)
+        if ($user->isPending()) {
+            return redirect()->route('auth.pending');
+        }
+
+        if ($user->isRejected()) {
+            return redirect()->route('auth.rejected');
+        }
+
+        if ($user->isInactive()) {
+            return redirect()->route('auth.inactive');
+        }
+
+        // 3. Akun Aktif: Arahkan ke dashboard operasional sesuai peran klinis
         if ($user->isDokter()) {
             return redirect()->intended(route('dokter.dashboard'));
         }
@@ -426,5 +437,71 @@ class AuthController extends Controller
         }
 
         return redirect()->intended(route('dashboard'));
+    }
+
+    /**
+     * Menampilkan halaman pemberitahuan menunggu verifikasi admin rumah sakit.
+     */
+    public function showPendingNotice(): View|RedirectResponse
+    {
+        $user = Auth::user();
+
+        if ($user->isActive()) {
+            return $this->redirectBasedOnRole($user);
+        }
+        if ($user->isRejected()) {
+            return redirect()->route('auth.rejected');
+        }
+        if ($user->isInactive()) {
+            return redirect()->route('auth.inactive');
+        }
+
+        $hospital = $user->hospital;
+
+        return view('auth.pending', compact('user', 'hospital'));
+    }
+
+    /**
+     * Menampilkan halaman pemberitahuan penolakan permohonan registrasi oleh admin rumah sakit.
+     */
+    public function showRejectedNotice(): View|RedirectResponse
+    {
+        $user = Auth::user();
+
+        if ($user->isActive()) {
+            return $this->redirectBasedOnRole($user);
+        }
+        if ($user->isPending()) {
+            return redirect()->route('auth.pending');
+        }
+        if ($user->isInactive()) {
+            return redirect()->route('auth.inactive');
+        }
+
+        $hospital = $user->hospital;
+
+        return view('auth.rejected', compact('user', 'hospital'));
+    }
+
+    /**
+     * Menampilkan halaman pemberitahuan akun dinonaktifkan oleh admin rumah sakit.
+     */
+    public function showInactiveNotice(): View|RedirectResponse
+    {
+        $user = Auth::user();
+
+        if ($user->isActive()) {
+            return $this->redirectBasedOnRole($user);
+        }
+        if ($user->isPending()) {
+            return redirect()->route('auth.pending');
+        }
+        if ($user->isRejected()) {
+            return redirect()->route('auth.rejected');
+        }
+
+        $hospital = $user->hospital;
+
+        return view('auth.inactive', compact('user', 'hospital'));
     }
 }

@@ -132,7 +132,7 @@ class PemeriksaanAwalTest extends TestCase
      */
     public function test_perawat_dapat_memilih_pasien_tertentu_dari_antrean(): void
     {
-        $targetAntrean = Antrean::first();
+        $targetAntrean = $this->antrean;
 
         $response = $this->actingAs($this->perawat)->get('/perawat/dashboard?antrean_id=' . $targetAntrean->id_antrean);
 

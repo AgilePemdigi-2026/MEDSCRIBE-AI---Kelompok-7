@@ -22,7 +22,7 @@ class CleanupDummyDataCommandTest extends TestCase
         $protectedEmails = ['onilmoses@gmail.com', 'otnielmoses17@gmail.com'];
 
         $this->artisan('app:cleanup-dummy-data', ['--dry-run' => true])
-            ->expectsOutputToContain('Ignasius Otnile Moses')
+            ->expectsOutputToContain('Ignasius Otniel Moses')
             ->assertExitCode(0);
     }
 

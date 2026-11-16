@@ -448,7 +448,7 @@ class DokterController extends Controller
         $dokterPemeriksa = $kunjungan->dokter ?? $user;
         $finalizedDoctor = $finalisasi?->finalizedBy ?? $dokterPemeriksa;
         // finalized_at disimpan dalam zona aplikasi (UTC); label "WIB" butuh konversi ke Asia/Jakarta.
-        $waktuFinal = ($finalisasi?->finalized_at ? Carbon::parse($finalisasi->finalized_at) : Carbon::now())
+        $waktuFinal = ($finalisasi?->finalized_at ? Carbon::parse($finalisasi->finalized_at, 'UTC') : Carbon::now())
             ->timezone('Asia/Jakarta')->locale('id')->isoFormat('D MMMM Y, HH:mm') . ' WIB';
 
         $tanggalPemeriksaan = $kunjungan->tanggal
