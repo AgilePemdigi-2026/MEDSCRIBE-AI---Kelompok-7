@@ -2,16 +2,12 @@
 
 namespace Tests\BDD;
 
-use App\Jobs\ProcessInterviewAudio;
 use App\Models\Antrean;
 use App\Models\Kunjungan;
 use App\Models\Pasien;
 use App\Models\Pengguna;
 use App\Models\RekamanAudio;
 use App\Models\Wawancara;
-use App\Services\AudioProbeService;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -140,91 +136,6 @@ class PoliklinikDokterRekamMedisBDDTest extends BDDTestCase
     }
 
     /**
-     * Skenario: Dokter berhasil mengunggah rekaman audio wawancara dan audio diantrikan untuk transkripsi
-     * @scenario Upload Interview Audio Recording Success
-     */
-    public function test_skenario_dokter_berhasil_mengunggah_rekaman_audio(): void
-    {
-        $this->given('Dokter sudah memulai sesi wawancara dan memegang rekaman audio WebM');
-        Storage::fake('local');
-        Queue::fake();
-        $this->fakeAudioProbe(2);
-        $kunjungan = $this->mulaiWawancara();
-
-        $this->when('Dokter mengunggah rekaman audio wawancara');
-        $response = $this->actingAs($this->dokter)->postJson(
-            route('dokter.interview.audio.upload', $kunjungan),
-            ['audio' => UploadedFile::fake()->create('konsultasi.webm', 100, 'audio/webm')]
-        );
-
-        $this->then('Sistem menerima file dan mengantrikannya ke service transkripsi');
-        $response->assertStatus(202);
-        $response->assertJson([
-            'success' => true,
-            'message' => 'Rekaman disimpan dan diantrikan ke service transkripsi lokal.',
-            'status'  => 'queued',
-        ]);
-        Queue::assertPushed(ProcessInterviewAudio::class);
-
-        $this->and('Metadata rekaman audio tersimpan di database dengan status "queued"');
-        $this->assertDatabaseHas('rekaman_audio', [
-            'id_kunjungan' => $kunjungan->id_kunjungan,
-            'status'       => 'queued',
-        ]);
-    }
-
-    /**
-     * Skenario: Unggahan audio ditolak jika sesi wawancara belum dimulai
-     * @scenario Upload Audio Rejected Before the Interview Is Started
-     */
-    public function test_skenario_unggahan_audio_ditolak_jika_wawancara_belum_dimulai(): void
-    {
-        $this->given('Dokter membuka rekam medis tetapi belum menekan "Mulai Wawancara"');
-        Storage::fake('local');
-        Queue::fake();
-        $this->fakeAudioProbe(2);
-        $this->actingAs($this->dokter)->get('/dokter/rekam-medis/' . $this->antrean->id_antrean)->assertStatus(200);
-        $kunjungan = Kunjungan::where('id_antrean', $this->antrean->id_antrean)->firstOrFail();
-
-        $this->when('Dokter mencoba mengunggah rekaman audio');
-        $response = $this->actingAs($this->dokter)->postJson(
-            route('dokter.interview.audio.upload', $kunjungan),
-            ['audio' => UploadedFile::fake()->create('konsultasi.webm', 100, 'audio/webm')]
-        );
-
-        $this->then('Sistem menolak unggahan dan meminta dokter memulai wawancara');
-        $response->assertStatus(422);
-        $response->assertJson([
-            'success' => false,
-            'message' => 'Mulai sesi wawancara sebelum merekam.',
-        ]);
-
-        $this->and('Tidak ada rekaman audio yang disimpan maupun diantrikan');
-        $this->assertDatabaseMissing('rekaman_audio', ['id_kunjungan' => $kunjungan->id_kunjungan]);
-        Queue::assertNothingPushed();
-    }
-
-    /**
-     * Skenario: Unggahan audio ditolak jika data yang dikirim bukan berkas audio
-     * @scenario Upload Audio Rejected for Invalid File
-     */
-    public function test_skenario_unggahan_audio_ditolak_jika_format_tidak_valid(): void
-    {
-        $this->given('Dokter sudah memulai sesi wawancara');
-        $kunjungan = $this->mulaiWawancara();
-
-        $this->when('Dokter mengirim payload yang bukan berkas audio');
-        $response = $this->actingAs($this->dokter)->postJson(
-            route('dokter.interview.audio.upload', $kunjungan),
-            ['audio' => 'bukan-berkas-file-audio']
-        );
-
-        $this->then('Sistem menolak dengan error validasi pada field audio (422 Unprocessable Entity)');
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors('audio');
-    }
-
-    /**
      * Skenario: Dokter dapat melakukan streaming/pemutaran ulang rekaman audio konsultasi
      * @scenario Stream Consultation Audio Recording
      */
@@ -252,27 +163,5 @@ class PoliklinikDokterRekamMedisBDDTest extends BDDTestCase
         $this->then('Sistem mengalirkan konten file audio dengan status 200');
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'audio/wav');
-    }
-
-    /**
-     * Membuka rekam medis lalu menekan "Mulai Wawancara", sama seperti alur dokter di halaman.
-     */
-    protected function mulaiWawancara(): Kunjungan
-    {
-        $this->actingAs($this->dokter)->get('/dokter/rekam-medis/' . $this->antrean->id_antrean)->assertStatus(200);
-        $kunjungan = Kunjungan::where('id_antrean', $this->antrean->id_antrean)->firstOrFail();
-        $this->actingAs($this->dokter)->post(route('dokter.interview.start', $kunjungan));
-
-        return $kunjungan;
-    }
-
-    /**
-     * Ganti ffprobe dengan durasi tetap agar skenario tidak bergantung pada instalasi FFmpeg di mesin penguji.
-     */
-    protected function fakeAudioProbe(int $durationSeconds): void
-    {
-        $this->mock(AudioProbeService::class, function ($mock) use ($durationSeconds) {
-            $mock->shouldReceive('probe')->andReturn($durationSeconds);
-        });
     }
 }

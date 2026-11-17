@@ -19,7 +19,8 @@
                     <span class="inline-flex items-center gap-2.5">
                         {{-- Ubin terang di belakang logo agar huruf M navy tetap terbaca di atas panel navy --}}
                         <span class="w-12 h-12 rounded-[14px] bg-white flex items-center justify-center shadow-[0_8px_20px_-8px_rgba(0,0,0,0.5)]">
-                            <img src="{{ asset('images/logo-medscribe.png') }}" srcset="{{ asset('images/logo-medscribe.png') }} 1x, {{ asset('images/logo-medscribe@2x.png') }} 2x"
+                            @php($logoUrl = asset('images/logo-medscribe.png'))
+                            <img src="{{ $logoUrl }}" srcset="{{ $logoUrl }} 1x, {{ str_replace('.png', '@2x.png', $logoUrl) }} 2x"
                                  width="40" height="40" alt="" class="w-10 h-10">
                         </span>
                         <span class="text-lg font-semibold tracking-tight">MedScribe <span class="text-[#A5ADD8]">AI</span></span>

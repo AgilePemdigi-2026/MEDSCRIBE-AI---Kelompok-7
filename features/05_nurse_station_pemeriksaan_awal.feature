@@ -46,14 +46,6 @@ Feature: Nurse Station - Manajemen Antrean dan Input Pemeriksaan Awal TTV
     And the queue status should be updated to "Siap Periksa"
     And the Objective section of the doctor's SOAP draft should contain "TD 120/80", "Nadi 80", and "Suhu 36,8°C"
 
-  Scenario: High Fever Warning Indicator
-    Given I am logged in as a nurse
-    And a patient is in the queue with status "Menunggu TTV"
-    When I save the patient's vital signs with "Suhu Tubuh" "38.8"
-    And I open that patient on the "/perawat/dashboard" page
-    Then I should see the temperature "38.8"
-    And I should see the warning "Peringatan klinis: Suhu di atas rentang normal (>37.5°C)"
-
   Scenario: Cancel Patient Registration
     Given I am logged in as a nurse
     And a patient is in the queue with status "Menunggu TTV"

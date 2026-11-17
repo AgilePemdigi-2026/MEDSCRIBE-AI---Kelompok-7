@@ -40,8 +40,7 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            // Keep a completed-but-slow STT job invisible to other workers.
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 7500),
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
             'after_commit' => true,
         ],
 

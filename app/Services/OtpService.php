@@ -233,7 +233,9 @@ class OtpService
                     'role'              => $pending->role,
                     'hospital_id'       => $pending->hospital_id,
                     'email_verified_at' => Carbon::now(),
-                    'approval_status'   => 'approved',
+                    'approval_status'   => 'pending',
+                    'created_at'        => Carbon::now(),
+                    'updated_at'        => Carbon::now(),
                 ]
             );
 

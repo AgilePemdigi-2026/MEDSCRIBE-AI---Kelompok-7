@@ -9,9 +9,7 @@ use App\Models\PemeriksaanAwal;
 use App\Models\Pengguna;
 use App\Models\RekamanAudio;
 use App\Models\Wawancara;
-use App\Services\AudioProbeException;
-use App\Services\InterviewAudioUploadException;
-use App\Services\InterviewAudioUploadService;
+use App\Services\Icd10Catalog;
 use App\Services\SoapDraftPreparer;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -19,7 +17,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -132,6 +129,15 @@ class DokterController extends Controller
         $pasien = $antrean->pasien;
         $umur = $pasien->umur ?: ($pasien->tanggal_lahir ? Carbon::parse($pasien->tanggal_lahir)->age : null);
 
+        // 7. Katalog ICD-10: saran AI, label kode terpilih, dan sumber isian
+        $icd10Catalog = app(Icd10Catalog::class);
+        $drafSoap = $soap['draf'] ?? null;
+        $saranIcd10 = $icd10Catalog->normalisasiSaran($drafSoap?->icd10_suggestions ?? []);
+        $kodeIc10 = $drafSoap?->kode_icd10;
+        $icd10Label = $icd10Catalog->label($kodeIc10, $saranIcd10);
+        $icd10LabelResmi = $icd10Catalog->labelResmi($kodeIc10, $saranIcd10);
+        $icd10Ic10 = filled($kodeIc10) && $saranIcd10 !== [] && $saranIcd10[0]['code'] === $kodeIc10;
+
         return view('dashboard.rekam-medis', compact(
             'user',
             'antrean',
@@ -148,109 +154,12 @@ class DokterController extends Controller
             'tindakLanjut',
             'tahapTindakLanjut',
             'tahapFinalisasi',
-            'parameterLoinc'
+            'parameterLoinc',
+            'saranIcd10',
+            'icd10Label',
+            'icd10LabelResmi',
+            'icd10Ic10'
         ));
-    }
-
-    /**
-     * Memproses upload berkas audio wawancara klinis dari browser
-     * dan menyimpannya secara aman pada penyimpanan server.
-     * Audio diproses oleh queue STT lokal setelah upload.
-     */
-    public function uploadAudio(Request $request, int $id_antrean): JsonResponse
-    {
-        $user = Auth::user();
-        if (! $user || ! $user->isDokter()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Otorisasi ditolak: Hanya dokter yang berhak mengunggah rekaman klinis.',
-            ], 403);
-        }
-
-        $antrean = Antrean::with('pasien')->findOrFail($id_antrean);
-        $this->authorizeHospitalAccess($user, $antrean);
-
-        $kunjungan = DB::transaction(function () use ($antrean, $user): Kunjungan {
-            // Serialize legacy visit creation before the upload service locks the visit row.
-            $lockedAntrean = Antrean::whereKey($antrean->id_antrean)->lockForUpdate()->firstOrFail();
-            $kunjungan = Kunjungan::firstOrCreate(
-                ['id_antrean' => $lockedAntrean->id_antrean],
-                [
-                    'hospital_id' => $user->hospital_id ?? $lockedAntrean->hospital_id,
-                    'id_pasien' => $lockedAntrean->id_pasien,
-                    'id_dokter' => $user->id_pengguna,
-                    'tanggal' => $lockedAntrean->tanggal_kunjungan ?: Carbon::today()->toDateString(),
-                    'status' => 'Sedang Diperiksa',
-                ]
-            );
-            $this->authorizeKunjungan($kunjungan, $user->id_pengguna);
-
-            return $kunjungan->fresh();
-        });
-
-        abort_if($kunjungan->isFinalized(), 403, 'Rekam medis telah difinalisasi dan tidak dapat diubah.');
-
-        $request->validate([
-            'audio' => [
-                'required', 'file', 'max:'.config('medscribe.audio.max_size_kb'),
-                'mimetypes:audio/webm,video/webm,audio/ogg,audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/x-m4a',
-            ],
-            'realtime_transcript' => ['nullable', 'string'],
-            'realtime_segments' => ['nullable'],
-        ]);
-        $file = $request->file('audio');
-        abort_if(($file->getSize() ?? 0) <= 0, 422, 'Berkas audio kosong.');
-
-        $realtimeSegments = $request->input('realtime_segments');
-        if (is_string($realtimeSegments)) {
-            $decoded = json_decode($realtimeSegments, true);
-            if (is_array($decoded)) {
-                $realtimeSegments = $decoded;
-            }
-        }
-
-        try {
-            $result = app(InterviewAudioUploadService::class)->upload(
-                $kunjungan,
-                $file,
-                false,
-                $request->input('realtime_transcript'),
-                is_array($realtimeSegments) ? $realtimeSegments : null
-            );
-        } catch (AudioProbeException|InterviewAudioUploadException $exception) {
-            return response()->json(['success' => false, 'message' => $exception->getMessage()], $exception->statusCode);
-        } catch (\Throwable) {
-            Log::warning('Clinical audio upload failed.', ['queue' => true]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal menyimpan rekaman audio. Periksa format dan ukuran file, lalu coba lagi.',
-            ], 500);
-        }
-
-        $recording = $result['recording'];
-        $isExisting = $result['outcome'] === 'existing';
-        $isRealtime = $result['outcome'] === 'created_realtime';
-
-        if ($isRealtime) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Rekaman dan transkripsi langsung berhasil disimpan.',
-                'audio_id' => $recording->id_rekaman,
-                'status' => 'completed',
-                'audio_stream' => route('dokter.rekam-medis.stream-audio', $antrean->id_antrean),
-            ], 200);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => $isExisting
-                ? 'Rekaman ini sedang diproses. Tidak dibuat rekaman baru.'
-                : 'Rekaman disimpan dan diantrikan ke service transkripsi lokal.',
-            'audio_id' => $recording->id_rekaman,
-            'status' => $recording->status === 'transcribing' ? 'transcribing' : 'queued',
-            'audio_stream' => route('dokter.rekam-medis.stream-audio', $antrean->id_antrean),
-        ], 202);
     }
 
     /**
@@ -539,7 +448,7 @@ class DokterController extends Controller
         $dokterPemeriksa = $kunjungan->dokter ?? $user;
         $finalizedDoctor = $finalisasi?->finalizedBy ?? $dokterPemeriksa;
         // finalized_at disimpan dalam zona aplikasi (UTC); label "WIB" butuh konversi ke Asia/Jakarta.
-        $waktuFinal = ($finalisasi?->finalized_at ? Carbon::parse($finalisasi->finalized_at) : Carbon::now())
+        $waktuFinal = ($finalisasi?->finalized_at ? Carbon::parse($finalisasi->finalized_at, 'UTC') : Carbon::now())
             ->timezone('Asia/Jakarta')->locale('id')->isoFormat('D MMMM Y, HH:mm') . ' WIB';
 
         $tanggalPemeriksaan = $kunjungan->tanggal
@@ -554,7 +463,11 @@ class DokterController extends Controller
 
         $icdDescription = null;
         if ($draf?->kode_icd10) {
-            $icdDescription = \App\Services\SoapDraftPreparer::ICD10_OPTIONS[$draf->kode_icd10] ?? null;
+            $icd10Catalog = app(\App\Services\Icd10Catalog::class);
+            $icdDescription = $icd10Catalog->labelResmi(
+                $draf->kode_icd10,
+                $icd10Catalog->normalisasiSaran($draf->icd10_suggestions ?? [])
+            );
         }
 
         return view('dashboard.rekam-medis.preview-soap', compact(

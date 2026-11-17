@@ -2,18 +2,14 @@
 
 namespace Tests\Feature;
 
-use App\Jobs\ProcessInterviewAudio;
 use App\Models\Antrean;
 use App\Models\DrafSoap;
 use App\Models\Kunjungan;
 use App\Models\Pasien;
 use App\Models\PemeriksaanAwal;
 use App\Models\Pengguna;
-use App\Models\RekamanAudio;
 use App\Models\Wawancara;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -151,168 +147,6 @@ class InterviewTest extends TestCase
         $this->assertStringContainsString('Nyeri saat menelan', DrafSoap::where('id_kunjungan', $this->kunjungan->id_kunjungan)->first()->subjective_text);
     }
 
-    public function test_upload_audio_mengantrikan_pemrosesan_lokal(): void
-    {
-        Queue::fake();
-        $this->actingAs($this->dokter)->post(route('dokter.interview.start', $this->kunjungan));
-
-        $response = $this->actingAs($this->dokter)->postJson(
-            route('dokter.interview.audio.upload', $this->kunjungan),
-            ['audio' => UploadedFile::fake()->create('interview.webm', 100, 'audio/webm')]
-        );
-
-        $response->assertStatus(202)->assertJson(['status' => 'queued']);
-        Queue::assertPushed(ProcessInterviewAudio::class);
-        $this->assertDatabaseHas('rekaman_audio', ['id_kunjungan' => $this->kunjungan->id_kunjungan, 'status' => 'queued']);
-    }
-
-    public function test_upload_audio_gagal_tertutup_jika_ffprobe_tidak_tersedia(): void
-    {
-        Queue::fake();
-        config(['medscribe.audio.ffprobe_path' => 'ffprobe-yang-tidak-ada.exe']);
-        $this->actingAs($this->dokter)->post(route('dokter.interview.start', $this->kunjungan));
-
-        $response = $this->actingAs($this->dokter)->postJson(
-            route('dokter.interview.audio.upload', $this->kunjungan),
-            ['audio' => UploadedFile::fake()->create('interview.webm', 100, 'audio/webm')]
-        );
-
-        $response->assertStatus(503)
-            ->assertJsonFragment(['message' => 'ffprobe tidak dapat dijalankan untuk validasi audio.']);
-        Queue::assertNothingPushed();
-    }
-
-    public function test_upload_audio_menolak_format_yang_tidak_didukung(): void
-    {
-        Queue::fake();
-        $this->actingAs($this->dokter)->post(route('dokter.interview.start', $this->kunjungan));
-
-        $response = $this->actingAs($this->dokter)->postJson(
-            route('dokter.interview.audio.upload', $this->kunjungan),
-            ['audio' => UploadedFile::fake()->create('interview.txt', 100, 'text/plain')]
-        );
-
-        $response->assertStatus(422);
-        Queue::assertNothingPushed();
-        $this->assertDatabaseMissing('rekaman_audio', [
-            'id_kunjungan' => $this->kunjungan->id_kunjungan,
-            'status' => 'queued',
-        ]);
-    }
-
-    public function test_upload_webm_tanpa_durasi_melalui_endpoint_menyimpan_duration_null(): void
-    {
-        Storage::fake('local');
-        Queue::fake();
-        config(['medscribe.audio.ffprobe_path' => 'ffprobe']);
-        $this->actingAs($this->dokter)->post(route('dokter.interview.start', $this->kunjungan));
-
-        $response = $this->actingAs($this->dokter)->postJson(
-            route('dokter.interview.audio.upload', $this->kunjungan),
-            ['audio' => UploadedFile::fake()->createWithContent(
-                'streaming.webm',
-                file_get_contents(base_path('tests/Fixtures/streaming_webm_no_duration.webm'))
-            )]
-        );
-
-        $response->assertStatus(202)->assertJson(['success' => true, 'status' => 'queued']);
-        Queue::assertPushed(ProcessInterviewAudio::class);
-        $this->assertDatabaseHas('rekaman_audio', [
-            'id_kunjungan' => $this->kunjungan->id_kunjungan,
-            'duration_seconds' => null,
-            'status' => 'queued',
-        ]);
-    }
-
-    public function test_upload_file_rusak_ditolak_endpoint(): void
-    {
-        Queue::fake();
-        config(['medscribe.audio.ffprobe_path' => 'ffprobe']);
-        $this->actingAs($this->dokter)->post(route('dokter.interview.start', $this->kunjungan));
-
-        $response = $this->actingAs($this->dokter)->postJson(
-            route('dokter.interview.audio.upload', $this->kunjungan),
-            ['audio' => UploadedFile::fake()->createWithContent('broken.webm', 'not a media file')]
-        );
-
-        $response->assertStatus(422);
-        Queue::assertNothingPushed();
-    }
-
-    public function test_upload_tanpa_stream_audio_ditolak_endpoint(): void
-    {
-        Queue::fake();
-        config(['medscribe.audio.ffprobe_path' => 'ffprobe']);
-        $this->actingAs($this->dokter)->post(route('dokter.interview.start', $this->kunjungan));
-        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=');
-
-        $response = $this->actingAs($this->dokter)->postJson(
-            route('dokter.interview.audio.upload', $this->kunjungan),
-            ['audio' => UploadedFile::fake()->createWithContent('image.png', $png)]
-        );
-
-        $response->assertStatus(422);
-        Queue::assertNothingPushed();
-    }
-
-    public function test_upload_webm_dengan_durasi_numerik_diterima(): void
-    {
-        Storage::fake('local');
-        Queue::fake();
-        config(['medscribe.audio.ffprobe_path' => 'ffprobe']);
-        $this->actingAs($this->dokter)->post(route('dokter.interview.start', $this->kunjungan));
-
-        $response = $this->actingAs($this->dokter)->postJson(
-            route('dokter.interview.audio.upload', $this->kunjungan),
-            ['audio' => UploadedFile::fake()->createWithContent(
-                'valid.webm',
-                file_get_contents(base_path('tests/Fixtures/valid_opus_2s.webm'))
-            )]
-        );
-
-        $response->assertStatus(202);
-        $recording = RekamanAudio::where('id_kunjungan', $this->kunjungan->id_kunjungan)->firstOrFail();
-        $this->assertSame(3, $recording->duration_seconds);
-    }
-
-    public function test_upload_tidak_membuat_recording_kedua_saat_recording_aktif(): void
-    {
-        Queue::fake();
-        $this->actingAs($this->dokter)->post(route('dokter.interview.start', $this->kunjungan));
-        $payload = ['audio' => UploadedFile::fake()->create('interview.webm', 100, 'audio/webm')];
-
-        $this->actingAs($this->dokter)->postJson(route('dokter.interview.audio.upload', $this->kunjungan), $payload)
-            ->assertStatus(202);
-        $this->actingAs($this->dokter)->postJson(
-            route('dokter.interview.audio.upload', $this->kunjungan),
-            ['audio' => UploadedFile::fake()->create('interview.webm', 100, 'audio/webm')]
-        )->assertStatus(202)->assertJsonFragment(['message' => 'Rekaman ini sedang diproses. Tidak dibuat rekaman baru.']);
-
-        $this->assertEquals(1, RekamanAudio::where('id_kunjungan', $this->kunjungan->id_kunjungan)->count());
-    }
-
-    public function test_upload_baru_ditolak_setelah_recording_completed(): void
-    {
-        Queue::fake();
-        $this->actingAs($this->dokter)->post(route('dokter.interview.start', $this->kunjungan));
-        $interview = Wawancara::where('id_kunjungan', $this->kunjungan->id_kunjungan)->firstOrFail();
-        RekamanAudio::create([
-            'id_kunjungan' => $this->kunjungan->id_kunjungan,
-            'id_wawancara' => $interview->id_wawancara,
-            'path_audio' => 'interviews/completed.webm',
-            'status' => 'completed',
-        ]);
-
-        $response = $this->actingAs($this->dokter)->postJson(
-            route('dokter.interview.audio.upload', $this->kunjungan),
-            ['audio' => UploadedFile::fake()->create('interview.webm', 100, 'audio/webm')]
-        );
-
-        $response->assertStatus(409);
-        $this->assertEquals(1, RekamanAudio::where('id_kunjungan', $this->kunjungan->id_kunjungan)->count());
-        Queue::assertNothingPushed();
-    }
-
     public function test_koreksi_transkrip_menyimpan_role_speaker_dan_teks(): void
     {
         $interview = Wawancara::create([
@@ -369,9 +203,8 @@ class InterviewTest extends TestCase
         $this->assertTrue($draft->fresh()->needs_review);
     }
 
-    public function test_upload_audio_mengklaim_kunjungan_yang_belum_ditugaskan(): void
+    public function test_proses_rekaman_mengklaim_kunjungan_yang_belum_ditugaskan(): void
     {
-        Queue::fake();
         $this->kunjungan->update(['id_dokter' => null]);
         Wawancara::create([
             'id_kunjungan' => $this->kunjungan->id_kunjungan,
@@ -379,46 +212,19 @@ class InterviewTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->dokter)->postJson(
-            route('dokter.interview.audio.upload', $this->kunjungan),
-            ['audio' => UploadedFile::fake()->create('interview.webm', 100, 'audio/webm')]
+            route('dokter.interview.process', $this->kunjungan),
+            ['realtime_transcript' => 'Pasien mengeluh demam sejak kemarin.']
         );
 
-        $response->assertStatus(202);
+        $response->assertOk()->assertJson(['success' => true]);
         $this->assertDatabaseHas('kunjungan', [
             'id_kunjungan' => $this->kunjungan->id_kunjungan,
             'id_dokter' => $this->dokter->id_pengguna,
         ]);
     }
 
-    public function test_status_audio_mengembalikan_status_pipeline_yang_konsisten(): void
+    public function test_dokter_tidak_dapat_memproses_rekaman_ke_kunjungan_dokter_lain(): void
     {
-        $interview = Wawancara::create([
-            'id_kunjungan' => $this->kunjungan->id_kunjungan,
-            'status' => 'Wawancara Berlangsung',
-            'processing_status' => 'queued',
-        ]);
-        $recording = RekamanAudio::create([
-            'id_kunjungan' => $this->kunjungan->id_kunjungan,
-            'id_wawancara' => $interview->id_wawancara,
-            'path_audio' => 'interviews/status.webm',
-            'status' => 'queued',
-        ]);
-
-        foreach (['queued', 'transcribing', 'completed', 'failed'] as $status) {
-            $interview->update(['processing_status' => $status]);
-            $recording->update(['status' => $status]);
-
-            $this->actingAs($this->dokter)
-                ->getJson(route('dokter.interview.audio.status', $this->kunjungan))
-                ->assertOk()
-                ->assertJsonPath('status', $status)
-                ->assertJsonPath('recording.status', $status);
-        }
-    }
-
-    public function test_dokter_tidak_dapat_upload_audio_ke_kunjungan_dokter_lain(): void
-    {
-        Queue::fake();
         $otherDoctor = Pengguna::create([
             'email' => 'other-doctor-'.uniqid().'@medscribe.id',
             'nama_lengkap' => 'Dokter Lain',
@@ -432,12 +238,11 @@ class InterviewTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->dokter)->postJson(
-            route('dokter.interview.audio.upload', $this->kunjungan),
-            ['audio' => UploadedFile::fake()->create('interview.webm', 100, 'audio/webm')]
+            route('dokter.interview.process', $this->kunjungan),
+            ['realtime_transcript' => 'Pasien mengeluh demam sejak kemarin.']
         );
 
         $response->assertForbidden();
-        Queue::assertNothingPushed();
     }
 
     public function test_transcript_completed_menampilkan_review_tanpa_konsol_rekaman(): void

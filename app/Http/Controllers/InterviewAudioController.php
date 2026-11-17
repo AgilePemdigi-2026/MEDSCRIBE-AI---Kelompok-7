@@ -2,15 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\ProcessInterviewAudio;
 use App\Models\DrafSoap;
 use App\Models\Kunjungan;
 use App\Models\RekamanAudio;
 use App\Models\Wawancara;
-use App\Services\AudioProbeException;
 use App\Services\AudioProbeService;
-use App\Services\InterviewAudioUploadException;
-use App\Services\InterviewAudioUploadService;
 use App\Services\SoapDraftPreparer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,102 +14,6 @@ use Illuminate\Support\Facades\Log;
 
 class InterviewAudioController extends Controller
 {
-    public function upload(Request $request, Kunjungan $kunjungan): JsonResponse
-    {
-        $this->authorizeVisit($kunjungan);
-        abort_if($kunjungan->isFinalized(), 403, 'Rekam medis telah difinalisasi dan tidak dapat diubah.');
-
-        $request->validate([
-            'audio' => ['required', 'file', 'max:'.config('medscribe.audio.max_size_kb'), 'mimetypes:audio/webm,video/webm,audio/ogg,audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/x-m4a'],
-            'realtime_transcript' => ['nullable', 'string'],
-            'realtime_segments' => ['nullable'],
-        ]);
-        $file = $request->file('audio');
-        abort_if(($file->getSize() ?? 0) <= 0, 422, 'Berkas audio kosong.');
-
-        $realtimeSegments = $request->input('realtime_segments');
-        if (is_string($realtimeSegments)) {
-            $decoded = json_decode($realtimeSegments, true);
-            if (is_array($decoded)) {
-                $realtimeSegments = $decoded;
-            }
-        }
-
-        try {
-            $result = app(InterviewAudioUploadService::class)->upload(
-                $kunjungan,
-                $file,
-                true,
-                $request->input('realtime_transcript'),
-                is_array($realtimeSegments) ? $realtimeSegments : null
-            );
-        } catch (AudioProbeException|InterviewAudioUploadException $exception) {
-            return response()->json(['success' => false, 'message' => $exception->getMessage()], $exception->statusCode);
-        }
-
-        $recording = $result['recording'];
-        $isExisting = $result['outcome'] === 'existing';
-        $isRealtime = $result['outcome'] === 'created_realtime';
-
-        if ($isRealtime) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Rekaman dan transkripsi langsung berhasil disimpan. Silakan tinjau dan verifikasi transkrip.',
-                'audio_id' => $recording->id_rekaman,
-                'status' => 'completed',
-            ], 200);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => $isExisting
-                ? 'Rekaman ini sedang diproses. Tidak dibuat rekaman baru.'
-                : 'Rekaman disimpan dan diantrikan ke service transkripsi lokal.',
-            'audio_id' => $recording->id_rekaman,
-            'status' => $recording->status === 'transcribing' ? 'transcribing' : 'queued',
-        ], 202);
-    }
-
-    public function status(Kunjungan $kunjungan): JsonResponse
-    {
-        $this->authorizeVisit($kunjungan);
-        $interview = Wawancara::where('id_kunjungan', $kunjungan->id_kunjungan)->firstOrFail();
-        $recording = $interview->rekamanAudio()->latest('id_rekaman')->first();
-        $status = $interview->processing_status ?: $recording?->status;
-
-        return response()->json([
-            'status' => $status,
-            'error' => $interview->processing_error,
-            'recording' => $recording ? [
-                'id' => $recording->id_rekaman,
-                'status' => $recording->status,
-                'size' => $recording->file_size,
-                'durationSeconds' => $recording->duration_seconds,
-                'mimeType' => $recording->mime_type,
-                'error' => $recording->error_message,
-            ] : null,
-            'segments' => $interview->transcript_segments ?? [],
-            'speakerMap' => $interview->speaker_map ?? [],
-        ]);
-    }
-
-    public function retry(Kunjungan $kunjungan): JsonResponse
-    {
-        $this->authorizeVisit($kunjungan);
-        $interview = Wawancara::where('id_kunjungan', $kunjungan->id_kunjungan)->firstOrFail();
-        $recording = $interview->rekamanAudio()->latest('id_rekaman')->firstOrFail();
-        $recording->update(['status' => 'queued', 'error_message' => null]);
-        $interview->update(['processing_status' => 'queued', 'processing_error' => null]);
-        ProcessInterviewAudio::dispatch($recording->id_rekaman)
-            ->onQueue(config('medscribe.stt.queue', 'default'));
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Pemrosesan audio diantrikan ulang.',
-            'status' => 'queued',
-        ]);
-    }
-
     public function updateTranscript(Request $request, Kunjungan $kunjungan): JsonResponse
     {
         $this->authorizeVisit($kunjungan);

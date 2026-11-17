@@ -16,9 +16,11 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Jalankan seeder master data rumah sakit Kota Surabaya dan katalog LOINC
+        // 1. Jalankan seeder master data rumah sakit Kota Surabaya dan katalog terminologi
         $this->call(HospitalSeeder::class);
         $this->call(LoincParameterSeeder::class);
+        $this->call(Icd10Seeder::class);
+        $this->call(DummyAccountSeeder::class);
 
         // Ambil rumah sakit default pilot (RS Universitas Airlangga)
         $rsua = Hospital::where('hospital_code', '3578770')->first();
@@ -41,11 +43,10 @@ class DatabaseSeeder extends Seeder
     protected function seedDemoData(int $rsuaId): void
     {
         // 2. Akun Perawat (Nurse Station)
-        Pengguna::updateOrCreate(
-            ['id_pengguna' => 1],
+        $perawat = Pengguna::updateOrCreate(
+            ['email' => 'dewi@medscribe.id'],
             [
                 'nama_lengkap'      => 'Dewi Pratiwi',
-                'email'             => 'dewi@medscribe.id',
                 'role'              => 'perawat',
                 'hospital_id'       => $rsuaId,
                 'email_verified_at' => now(),
@@ -55,11 +56,10 @@ class DatabaseSeeder extends Seeder
         );
 
         // 3. Akun Dokter Poliklinik
-        Pengguna::updateOrCreate(
-            ['id_pengguna' => 2],
+        $dokter = Pengguna::updateOrCreate(
+            ['email' => 'rina@medscribe.id'],
             [
                 'nama_lengkap'      => 'dr. Rina Anggraini, Sp.PD',
-                'email'             => 'rina@medscribe.id',
                 'role'              => 'dokter',
                 'hospital_id'       => $rsuaId,
                 'email_verified_at' => now(),
@@ -99,14 +99,14 @@ class DatabaseSeeder extends Seeder
         // 6. Data kunjungan awal jika belum ada
         if (!DB::table('kunjungan')->where('id_kunjungan', 1)->exists()) {
             DB::table('kunjungan')->insert([
-                ['id_kunjungan' => 1, 'hospital_id' => $rsuaId, 'id_antrean' => 1, 'id_pasien' => 1, 'id_dokter' => 2, 'tanggal' => '2026-09-19', 'status' => 'SOAP Terverifikasi'],
+                ['id_kunjungan' => 1, 'hospital_id' => $rsuaId, 'id_antrean' => 1, 'id_pasien' => 1, 'id_dokter' => $dokter->id_pengguna, 'tanggal' => '2026-09-19', 'status' => 'SOAP Terverifikasi'],
             ]);
         }
 
         // 7. Data pemeriksaan awal jika belum ada
         if (!DB::table('pemeriksaan_awal')->where('id_pemeriksaan', 1)->exists()) {
             DB::table('pemeriksaan_awal')->insert([
-                ['id_pemeriksaan' => 1, 'id_kunjungan' => 1, 'id_perawat' => 1, 'tekanan_darah' => '120/80', 'suhu_tubuh' => 38.6, 'nadi' => 78, 'catatan' => 'Demam 3 hari, nyeri menelan, dan batuk kering. Suhu tubuh 38,6°C', 'created_at' => now(), 'updated_at' => now()],
+                ['id_pemeriksaan' => 1, 'id_kunjungan' => 1, 'id_perawat' => $perawat->id_pengguna, 'tekanan_darah' => '120/80', 'suhu_tubuh' => 38.6, 'nadi' => 78, 'catatan' => 'Demam 3 hari, nyeri menelan, dan batuk kering. Suhu tubuh 38,6°C', 'created_at' => now(), 'updated_at' => now()],
             ]);
         }
 
@@ -116,7 +116,7 @@ class DatabaseSeeder extends Seeder
                 [
                     'id_draf_soap'    => 1,
                     'id_kunjungan'    => 1,
-                    'id_pengguna'     => 2,
+                    'id_pengguna'     => $dokter->id_pengguna,
                     'subjective_text' => 'Pasien mengeluhkan demam sejak 3 hari, disertai nyeri menelan dan batuk kering. Riwayat lain perlu dikonfirmasi saat review dokter.',
                     'objective_text'  => 'TD 120/80 mmHg, Nadi 78 x/menit, Suhu 38,6°C, RR 18 x/menit, BB 68 kg, TB 170 cm',
                     'assessment_text' => 'J02.9 - Faringitis akut, tidak spesifik. Penilaian klinis dan kesesuaian kode wajib dikonfirmasi dokter.',

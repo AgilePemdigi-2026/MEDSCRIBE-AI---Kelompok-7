@@ -7,8 +7,6 @@ use App\Models\Hospital;
 use App\Models\Kunjungan;
 use App\Models\Pasien;
 use App\Models\Pengguna;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * BDD Test Suite: Fitur 04 - Isolasi Data Multi-Tenancy Berbasis Rumah Sakit
@@ -103,13 +101,12 @@ class IsolasiMultiTenancyBDDTest extends BDDTestCase
     }
 
     /**
-     * Skenario: Dokter Rumah Sakit A dilarang mengunggah audio konsultasi untuk pasien Rumah Sakit B
-     * @scenario Doctor Blocked from Uploading Interview Audio for Other Hospital Patient
+     * Skenario: Dokter Rumah Sakit A dilarang memproses rekaman konsultasi untuk pasien Rumah Sakit B
+     * @scenario Doctor Blocked from Processing Interview Recording for Other Hospital Patient
      */
-    public function test_skenario_dokter_rs_a_dilarang_unggah_audio_untuk_pasien_rs_b(): void
+    public function test_skenario_dokter_rs_a_dilarang_proses_rekaman_untuk_pasien_rs_b(): void
     {
-        $this->given('Kunjungan pasien RS B sedang ditangani dokter RS B, dan dokter RS A memegang file audio');
-        Storage::fake('local');
+        $this->given('Kunjungan pasien RS B sedang ditangani dokter RS B, dan dokter RS A memegang transkrip wawancara');
         $kunjunganB = Kunjungan::create([
             'hospital_id' => $this->hospitalB->id,
             'id_antrean'  => $this->antreanB->id_antrean,
@@ -118,17 +115,17 @@ class IsolasiMultiTenancyBDDTest extends BDDTestCase
             'tanggal'     => now()->toDateString(),
             'status'      => 'Sedang Diperiksa',
         ]);
-        $audioFile = UploadedFile::fake()->create('rekaman.webm', 200, 'audio/webm');
 
-        $this->when('Dokter RS A mengirim unggahan audio wawancara ke kunjungan milik RS B');
-        $response = $this->actingAs($this->dokterA)->postJson(route('dokter.interview.audio.upload', $kunjunganB), [
-            'audio' => $audioFile,
+        $this->when('Dokter RS A mengirim transkrip wawancara ke kunjungan milik RS B');
+        $response = $this->actingAs($this->dokterA)->postJson(route('dokter.interview.process', $kunjunganB), [
+            'realtime_transcript' => 'Pasien mengeluh demam sejak kemarin.',
         ]);
 
-        $this->then('Sistem menolak unggahan dengan status 403 Forbidden');
+        $this->then('Sistem menolak permintaan dengan status 403 Forbidden');
         $response->assertStatus(403);
         $response->assertJson(['message' => 'Akses ditolak: Anda tidak memiliki wewenang untuk mengakses rekam medis dari rumah sakit lain.']);
         $this->assertDatabaseMissing('rekaman_audio', ['id_kunjungan' => $kunjunganB->id_kunjungan]);
+        $this->assertDatabaseMissing('wawancara', ['id_kunjungan' => $kunjunganB->id_kunjungan]);
     }
 
     /**

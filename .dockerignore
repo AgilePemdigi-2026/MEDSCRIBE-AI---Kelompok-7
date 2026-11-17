@@ -1,0 +1,29 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+
+node_modules
+vendor
+public/build
+public/hot
+
+storage
+bootstrap/cache/*.php
+*.log
+.phpunit.result.cache
+.phpunit.cache
+
+# Local data, documentation, and development tooling are not needed to build the image.
+*.sql
+*.md
+database/*.sqlite*
+.opencode
+.agents
+
+# Tests and editor/OS files
+tests
+.idea
+.vscode
+Thumbs.db

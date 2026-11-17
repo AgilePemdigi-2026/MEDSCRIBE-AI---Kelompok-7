@@ -733,15 +733,6 @@
         white-space: nowrap;
     }
 
-    .vital.is-flagged {
-        background-color: #FEF2F2;
-        border-color: #FECACA;
-    }
-
-    .vital.is-flagged .vital-value {
-        color: #B91C1C;
-    }
-
     /* ---------- Tabel ---------- */
     .table {
         width: 100%;
