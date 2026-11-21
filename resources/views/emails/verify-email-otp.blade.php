@@ -14,7 +14,7 @@
                     <tr>
                         <td style="padding-bottom: 24px; border-bottom: 1px solid #EEEEFD;">
                             <div style="font-size: 20px; font-weight: 700; color: #122056; letter-spacing: -0.3px;">MedScribe AI</div>
-                            <div style="font-size: 12px; color: #69718B; margin-top: 2px;">Sistem Informasi Rekam Medis Digital</div>
+                            <div style="font-size: 12px; color: #69718B; margin-top: 2px;">Sistem Rekam Medis Elektronik Terintegrasi</div>
                         </td>
                     </tr>
 
@@ -28,16 +28,18 @@
                             <p style="margin: 0 0 16px 0;">Untuk menyelesaikan proses pendaftaran, silakan gunakan kode verifikasi berikut:</p>
 
                             <!-- OTP Container -->
-                            <div style="background-color: #EEEEFD; border: 1px solid #5865DC; border-radius: 8px; padding: 20px; text-align: center; margin: 24px 0;">
-                                <div style="font-family: 'Courier New', Courier, monospace; font-size: 34px; font-weight: 700; letter-spacing: 8px; color: #122056; line-height: 1.2;">
+                            <div style="background-color: #EEEEFD; border: 1px solid #CBD1EA; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0;">
+                                <div style="font-family: 'SF Mono', Monaco, Inconsolata, 'Roboto Mono', 'Courier New', monospace; font-size: 34px; font-weight: 700; letter-spacing: 8px; color: #122056; line-height: 1.2;">
                                     {{ $otp }}
                                 </div>
-                                <div style="font-size: 13px; color: #5865DC; font-weight: 500; margin-top: 8px;">
+                                <div style="font-size: 13px; color: #2E3BB0; font-weight: 600; margin-top: 8px;">
                                     Kode verifikasi ini berlaku selama {{ $expiresInMinutes }} menit sejak email diterbitkan.
                                 </div>
                             </div>
 
                             <p style="margin: 0 0 16px 0;">Masukkan kode tersebut pada halaman verifikasi email MedScribe AI untuk melanjutkan proses pendaftaran.</p>
+
+                            <p style="margin: 0 0 20px 0; font-size: 14px; color: #20294A; font-weight: 500;">Demi keamanan akun, jangan berikan kode verifikasi ini kepada siapa pun.</p>
 
                             <p style="margin: 0 0 28px 0; font-size: 14px; color: #69718B;">Apabila Anda tidak merasa melakukan pendaftaran ini, silakan abaikan email ini. Tidak diperlukan tindakan lebih lanjut.</p>
 
@@ -45,7 +47,7 @@
                             <div style="border-top: 1px solid #EEEEFD; padding-top: 20px; font-size: 14px; color: #20294A;">
                                 <div style="margin-bottom: 4px;">Hormat kami,</div>
                                 <div style="font-weight: 700; color: #122056;">Tim MedScribe AI</div>
-                                <div style="font-size: 12px; color: #69718B;">Sistem Informasi Rekam Medis Digital</div>
+                                <div style="font-size: 12px; color: #69718B;">Sistem Rekam Medis Elektronik Terintegrasi</div>
                             </div>
                         </td>
                     </tr>

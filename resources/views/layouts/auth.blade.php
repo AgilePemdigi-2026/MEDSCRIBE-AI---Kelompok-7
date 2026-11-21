@@ -14,22 +14,22 @@
         <div class="flex-grow grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] gap-4">
 
             {{-- Panel navy: identitas sistem dan cuplikan fitur untuk dokter & perawat. --}}
-            <aside class="hidden lg:flex card-navy spotlight flex-col justify-between gap-6 p-8 xl:p-10 rise">
+            <aside class="hidden lg:flex card-navy flex-col justify-between gap-6 p-8 xl:p-10 rise">
                 <div class="relative">
                     <span class="inline-flex items-center gap-2.5">
                         {{-- Ubin terang di belakang logo agar huruf M navy tetap terbaca di atas panel navy --}}
-                        <span class="w-12 h-12 rounded-[14px] bg-white flex items-center justify-center shadow-[0_8px_20px_-8px_rgba(0,0,0,0.5)]">
+                        <span class="w-12 h-12 rounded-[14px] bg-white flex items-center justify-center shadow-[0_8px_20px_-8px_rgba(18,32,86,0.35)]">
                             @php($logoUrl = asset('images/logo-medscribe.png'))
                             <img src="{{ $logoUrl }}" srcset="{{ $logoUrl }} 1x, {{ str_replace('.png', '@2x.png', $logoUrl) }} 2x"
                                  width="40" height="40" alt="" class="w-10 h-10">
                         </span>
-                        <span class="text-lg font-semibold tracking-tight">MedScribe <span class="text-[#A5ADD8]">AI</span></span>
+                        <span class="text-lg font-semibold tracking-tight">MedScribe <span class="text-on-navy-muted">AI</span></span>
                     </span>
                 </div>
 
                 <div class="relative">
                     <p class="text-[clamp(1.9rem,2.6vw,2.6rem)] leading-[1.08] font-semibold tracking-[-0.035em]">
-                        Sistem Rekam Medis<br>Elektronik <span class="text-[#A5ADD8]">Terintegrasi</span>
+                        Sistem Rekam Medis<br>Elektronik <span class="text-on-navy-muted">Terintegrasi</span>
                     </p>
 
                     <div class="mt-6">

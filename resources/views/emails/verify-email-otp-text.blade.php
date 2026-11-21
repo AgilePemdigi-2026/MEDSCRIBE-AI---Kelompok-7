@@ -14,5 +14,5 @@ Apabila Anda tidak merasa melakukan pendaftaran ini, silakan abaikan email ini. 
 
 Hormat kami,
 Tim MedScribe AI
-Sistem Informasi Rekam Medis Digital
+Sistem Rekam Medis Elektronik Terintegrasi
 

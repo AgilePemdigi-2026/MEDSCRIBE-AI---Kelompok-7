@@ -72,8 +72,16 @@ function openDialog(id, trigger = document.activeElement) {
     const dialog = document.getElementById(id);
     if (!dialog || !dialog.classList.contains('hidden')) return;
 
+    if (openDialogs.length === 0) {
+        // Cegah layout shift jika browser belum mendukung scrollbar-gutter
+        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+        if (scrollbarWidth > 0 && !(window.CSS && CSS.supports('scrollbar-gutter', 'stable'))) {
+            document.body.style.paddingRight = `${scrollbarWidth}px`;
+        }
+        document.body.style.overflow = 'hidden';
+    }
+
     dialog.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
     openDialogs.push({ dialog, trigger });
 
     const target = dialog.querySelector('[autofocus], [data-dialog-focus]')
@@ -90,7 +98,10 @@ function closeDialog(id) {
 
     const [{ dialog, trigger }] = openDialogs.splice(index, 1);
     dialog.classList.add('hidden');
-    if (openDialogs.length === 0) document.body.style.overflow = '';
+    if (openDialogs.length === 0) {
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    }
     if (trigger instanceof HTMLElement && document.contains(trigger)) trigger.focus();
 }
 

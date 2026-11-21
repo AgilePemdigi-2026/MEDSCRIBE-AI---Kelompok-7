@@ -14,12 +14,12 @@
         <input type="hidden" name="email" value="{{ $email }}">
         <input type="hidden" name="token" value="{{ $token }}">
 
-        @include('partials.password-field', ['id' => 'password', 'name' => 'password', 'label' => 'Password Baru', 'placeholder' => 'Minimal 8 karakter', 'autocomplete' => 'new-password', 'minlength' => 8, 'autofocus' => true])
+        @include('partials.password-field', ['id' => 'password', 'name' => 'password', 'label' => 'Kata Sandi Baru', 'placeholder' => 'Minimal 8 karakter', 'autocomplete' => 'new-password', 'minlength' => 8, 'autofocus' => true])
 
-        @include('partials.password-field', ['id' => 'password_confirmation', 'name' => 'password_confirmation', 'label' => 'Konfirmasi Password Baru', 'placeholder' => 'Ulangi kata sandi baru', 'autocomplete' => 'new-password', 'minlength' => 8, 'icon' => 'check'])
+        @include('partials.password-field', ['id' => 'password_confirmation', 'name' => 'password_confirmation', 'label' => 'Konfirmasi Kata Sandi Baru', 'placeholder' => 'Ulangi kata sandi baru', 'autocomplete' => 'new-password', 'minlength' => 8, 'icon' => 'check'])
 
         <div class="pt-1">
-            @include('partials.submit-button', ['label' => 'Simpan Password Baru', 'loading' => 'Menyimpan...'])
+            @include('partials.submit-button', ['label' => 'Simpan Kata Sandi Baru', 'loading' => 'Menyimpan...'])
         </div>
     </form>
 

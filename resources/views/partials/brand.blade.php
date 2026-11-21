@@ -5,6 +5,6 @@
          width="40" height="40" alt="" class="w-10 h-10 flex-shrink-0">
     <span class="leading-tight">
         <span class="block text-base font-semibold tracking-tight text-medical-navy">MedScribe <span class="text-royal-indigo">AI</span></span>
-        <span class="block text-[11px] text-text-secondary">Sistem Rekam Medis Elektronik</span>
+        <span class="block text-[11px] text-text-secondary">Sistem Rekam Medis Elektronik Terintegrasi</span>
     </span>
 </span>

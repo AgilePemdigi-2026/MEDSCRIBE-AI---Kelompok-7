@@ -30,7 +30,7 @@
     </div>
 
     <div class="mt-5 flex items-center justify-between gap-3">
-        <p class="text-xs text-[#A5ADD8]" aria-live="polite" data-polaroid-status>
+        <p class="text-xs text-on-navy-muted" aria-live="polite" data-polaroid-status>
             Fitur <span class="font-semibold text-white lowercase" data-polaroid-role>{{ $polaroids[0][2] }}</span>
             <span class="sr-only">: <span data-polaroid-caption>{{ $polaroids[0][1] }}</span></span>
             · <span class="num" data-polaroid-count>1/{{ count($polaroids) }}</span>

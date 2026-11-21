@@ -24,7 +24,7 @@
         <div>
             @include('partials.password-field', ['id' => 'password', 'name' => 'password', 'label' => 'Kata Sandi', 'placeholder' => '••••••••'])
             <div class="mt-1.5 text-right">
-                <a href="{{ route('password.request') }}" class="link text-xs inline-flex min-h-8 items-center">Lupa Password?</a>
+                <a href="{{ route('password.request') }}" class="link text-xs inline-flex min-h-11 items-center">Lupa Kata Sandi?</a>
             </div>
         </div>
 

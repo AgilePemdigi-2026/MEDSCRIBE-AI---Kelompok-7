@@ -3,7 +3,7 @@
 <head>
     @include('partials.head')
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'MedScribe AI - Sistem RME Cerdas')</title>
+    <title>@yield('title', 'MedScribe AI - Sistem Rekam Medis Elektronik Terintegrasi')</title>
 </head>
 <body class="min-h-dvh flex flex-col app-backdrop text-text-body antialiased">
 

@@ -41,7 +41,7 @@ class ForgotPasswordTest extends TestCase
         $response = $this->get(route('password.request'));
 
         $response->assertStatus(200);
-        $response->assertSee('Lupa Password?');
+        $response->assertSee('Lupa Kata Sandi?');
         $response->assertSee('Masukkan alamat email yang terdaftar untuk menerima kode verifikasi.');
         $response->assertSee('Kirim Kode Verifikasi');
     }

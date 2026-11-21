@@ -1,6 +1,6 @@
 @extends('layouts.auth')
 
-@section('title', 'Verifikasi Kode Reset Password - MedScribe AI')
+@section('title', 'Verifikasi Kode Pemulihan Kata Sandi - MedScribe AI')
 
 @section('content')
 <h1 class="text-[1.9rem] leading-tight font-semibold tracking-[-0.03em] text-medical-navy">Verifikasi Kode Pemulihan</h1>
@@ -14,7 +14,7 @@
         'resendAction' => route('password.otp.resend'),
         'formId' => 'verifyResetForm',
         'submitLabel' => 'Verifikasi Kode & Lanjutkan',
-        'validity' => 'Kode OTP pemulihan berlaku selama 10 menit.',
+        'validity' => 'Kode OTP berlaku selama 10 menit sejak diterbitkan.',
     ])
 </div>
 @endsection

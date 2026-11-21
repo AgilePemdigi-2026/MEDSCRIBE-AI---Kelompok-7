@@ -14,5 +14,5 @@ Demi keamanan akun, jangan berikan kode verifikasi ini kepada siapa pun.
 
 Hormat kami,
 Tim MedScribe AI
-Sistem Informasi Rekam Medis Digital
+Sistem Rekam Medis Elektronik Terintegrasi
 
