@@ -599,6 +599,33 @@
         color: var(--color-royal-indigo);
     }
 
+    /* Varian kolom di atas kartu navy (pencarian antrean perawat). */
+    .field.field-on-navy {
+        background-color: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.15);
+        color: var(--color-pure-white);
+    }
+
+    .field.field-on-navy::placeholder {
+        color: var(--color-on-navy-muted);
+    }
+
+    .field.field-on-navy:hover:not(:disabled):not([readonly]) {
+        background-color: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .field.field-on-navy:focus {
+        background-color: rgba(255, 255, 255, 0.14);
+        border-color: var(--color-on-navy-muted);
+        box-shadow: 0 0 0 4px rgba(165, 173, 216, 0.25);
+    }
+
+    .field-icon:has(> .field-on-navy) > svg,
+    .field-icon:focus-within:has(> .field-on-navy) > svg {
+        color: var(--color-on-navy-muted);
+    }
+
     /* ---------- Pesan ---------- */
     .alert {
         display: flex;

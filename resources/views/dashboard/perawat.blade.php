@@ -10,52 +10,23 @@
 @endphp
 <div class="space-y-6">
 
-    {{-- Judul halaman + status pemeriksaan + navigasi tab --}}
-    <section class="flex flex-col lg:flex-row lg:items-end justify-between gap-5 rise">
-        <div>
-            <p class="eyebrow flex items-center gap-2">
-                Pemeriksaan Awal
-                <span aria-hidden="true">·</span>
-                @if (session('saved_pemeriksaan'))
-                    <span class="status status-ok">Pemeriksaan Berhasil Disimpan</span>
-                @elseif ($pasienTerpilih && $pasienTerpilih->status === 'Siap Periksa')
-                    <span class="status status-active">TTV Terverifikasi</span>
-                @else
-                    <span class="status status-warn">Menunggu Input TTV</span>
-                @endif
-            </p>
-            <h1 class="mt-2 text-[2.2rem] sm:text-[2.9rem] leading-[1.04] font-semibold tracking-[-0.045em] text-medical-navy">
-                Nurse <span class="text-royal-indigo">Station</span>
-            </h1>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-2">
-            <nav aria-label="Tampilan Nurse Station">
-                <div class="pill-nav">
-                    <a href="{{ route('perawat.dashboard', ['tab' => 'antrean']) }}" @if ($activeTab === 'antrean') aria-current="page" @endif>Antrean Aktif</a>
-                    <a href="{{ route('perawat.dashboard', ['tab' => 'pasien']) }}" @if ($activeTab === 'pasien') aria-current="page" @endif>Daftar Pasien</a>
-                </div>
-            </nav>
-            <button type="button" onclick="openModalInputPasien()" class="btn btn-primary">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-                Input Pasien
-            </button>
-        </div>
-    </section>
-
-    @if ($errors->any())
-        <div class="alert alert-danger" role="alert">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
-            <div>
-                <p class="font-semibold">Mohon periksa kembali isian formulir:</p>
-                <ul class="mt-1 list-disc pl-5 space-y-0.5">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
+    {{-- Judul halaman + navigasi tab. Status pasien terpilih ada di kartu identitas, hasil simpan di notifikasi. --}}
+    <x-page-header :eyebrow="'Nurse Station · ' . \Carbon\Carbon::now('Asia/Jakarta')->locale('id')->isoFormat('dddd, D MMMM Y')"
+                   title="Pemeriksaan Awal & TTV"
+                   subtitle="Pilih pasien dari antrean, lalu isi tanda-tanda vitalnya sebelum diperiksa dokter.">
+        <nav aria-label="Tampilan Nurse Station" class="pill-nav-scroll">
+            <div class="pill-nav">
+                <a href="{{ route('perawat.dashboard', ['tab' => 'antrean']) }}" @if ($activeTab === 'antrean') aria-current="page" @endif>Antrean Aktif</a>
+                <a href="{{ route('perawat.dashboard', ['tab' => 'pasien']) }}" @if ($activeTab === 'pasien') aria-current="page" @endif>Daftar Pasien</a>
             </div>
-        </div>
-    @endif
+        </nav>
+        <button type="button" data-dialog-open="modalInputPasien" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+            Input Pasien
+        </button>
+    </x-page-header>
+
+    @include('partials.form-errors')
 
     @if ($activeTab === 'antrean')
     {{-- ========== TAB ANTREAN ========== --}}
@@ -67,13 +38,13 @@
                 <div class="flex items-start justify-between gap-3">
                     <h2 id="judulDaftarAntrean" class="text-base font-semibold">Daftar Antrean</h2>
                     <p class="text-[2rem] leading-none font-semibold tracking-tight num" title="Pasien dengan TTV lengkap dari total antrean">
-                        {{ $ttvLengkapCount }}<span class="text-[#A5ADD8]">/{{ $daftarAntrean->count() }}</span>
+                        {{ $ttvLengkapCount }}<span class="text-on-navy-muted">/{{ $daftarAntrean->count() }}</span>
                     </p>
                 </div>
-                <p class="mt-1 text-xs text-[#A5ADD8]">{{ $daftarAntrean->count() }} Pasien · {{ $ttvLengkapCount }} TTV sudah diisi</p>
+                <p class="mt-1 text-xs text-on-navy-muted">{{ $daftarAntrean->count() }} Pasien · {{ $ttvLengkapCount }} TTV sudah diisi</p>
 
                 {{-- Keterangan arti lingkaran di sisi kanan setiap pasien --}}
-                <p class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[#CBD1EA]">
+                <p class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-on-navy-soft">
                     <span class="inline-flex items-center gap-1.5">
                         <span class="w-4 h-4 rounded-full bg-royal-indigo flex items-center justify-center" aria-hidden="true">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
@@ -92,13 +63,13 @@
                         <input type="hidden" name="antrean_id" value="{{ request('antrean_id') }}">
                     @endif
                     <label for="cariPasien" class="sr-only">Cari pasien</label>
-                    <div class="relative">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-[#A5ADD8] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    <div class="field-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         <input type="search" id="cariPasien" name="cari" value="{{ request('cari') }}" placeholder="Nama atau No. RM"
-                               class="w-full min-h-11 pl-10 pr-10 rounded-full bg-white/[0.08] border border-white/15 text-sm text-white placeholder-[#A5ADD8] transition-colors hover:bg-white/[0.12] focus:outline-none focus:bg-white/[0.14] focus:border-[#A5ADD8]">
+                               class="field field-on-navy {{ request('cari') ? 'pr-12' : '' }}">
                         @if (request('cari'))
                             <a href="{{ route('perawat.dashboard', array_filter(['tab' => 'antrean', 'antrean_id' => request('antrean_id')])) }}"
-                               class="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-[#A5ADD8] hover:text-white hover:bg-white/10" aria-label="Hapus pencarian">
+                               class="absolute right-0 top-1/2 -translate-y-1/2 w-11 h-11 rounded-(--radius-field) flex items-center justify-center text-on-navy-muted transition-colors hover:text-white hover:bg-white/10" aria-label="Hapus pencarian">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                             </a>
                         @endif
@@ -119,13 +90,13 @@
                     <li>
                         <a href="{{ route('perawat.dashboard', array_filter(['antrean_id' => $antrean->id_antrean, 'cari' => request('cari'), 'tab' => 'antrean'])) }}"
                            @if ($isSelected) aria-current="true" @endif
-                           class="group flex items-center gap-3 p-3 rounded-[18px] border transition-all duration-200 {{ $isSelected ? 'bg-white text-medical-navy border-white shadow-[0_10px_24px_-12px_rgba(0,0,0,0.5)]' : 'border-transparent hover:bg-white/[0.08] hover:border-white/10' }}">
+                           class="group flex items-center gap-3 p-3 rounded-(--radius-panel) border transition-all duration-200 {{ $isSelected ? 'bg-white text-medical-navy border-white shadow-[0_10px_24px_-12px_rgba(0,0,0,0.5)]' : 'border-transparent hover:bg-white/[0.08] hover:border-white/10' }}">
                             <span class="avatar w-9 h-9 font-mono text-[11px] {{ $isSelected ? 'bg-pale-lavender text-royal-indigo-hover' : 'bg-white/10 text-white' }}" aria-hidden="true">
                                 {{ str_pad($antrean->id_antrean, 3, '0', STR_PAD_LEFT) }}
                             </span>
                             <span class="flex-1 min-w-0">
                                 <span class="block text-sm font-semibold truncate">{{ $p->nama_pasien ?? 'Pasien #' . $antrean->id_pasien }}</span>
-                                <span class="block text-[11px] mt-0.5 {{ $isSelected ? 'text-text-secondary' : 'text-[#A5ADD8]' }}">
+                                <span class="block text-[11px] mt-0.5 {{ $isSelected ? 'text-text-secondary' : 'text-on-navy-muted' }}">
                                     A-{{ str_pad($antrean->id_antrean, 3, '0', STR_PAD_LEFT) }}
                                     · {{ $usia ? $usia . ' th' : '-' }}{{ $jk ? ' · ' . $jk : '' }}
                                     · {{ $siap ? 'Siap dipanggil dokter' : $antrean->status }}
@@ -142,11 +113,11 @@
                         </a>
                     </li>
                 @empty
-                    <li class="px-3 py-10 text-center text-xs text-[#A5ADD8]">Tidak ada pasien yang cocok dengan pencarian.</li>
+                    <li class="px-3 py-10 text-center text-xs text-on-navy-muted">{{ request('cari') ? 'Tidak ada pasien yang cocok dengan pencarian.' : 'Antrean masih kosong.' }}</li>
                 @endforelse
             </ul>
 
-            <p class="relative mt-auto px-5 py-4 border-t border-white/10 text-[11px] text-[#A5ADD8] text-center">Antrean diperbarui otomatis setelah data disimpan.</p>
+            <p class="relative mt-auto px-5 py-4 border-t border-white/10 text-[11px] text-on-navy-muted text-center">Antrean diperbarui otomatis setelah data disimpan.</p>
         </section>
 
         {{-- Formulir pemeriksaan awal --}}
@@ -166,8 +137,8 @@
                             {{ strtoupper(substr($pt->nama_pasien ?? 'P', 0, 1)) }}
                         </span>
                         <div class="flex-1 min-w-0">
-                            <h2 id="judulFormTTV" class="text-xs font-medium text-royal-indigo-hover">Formulir Pemeriksaan Awal &amp; TTV</h2>
-                            <p class="mt-0.5 text-2xl font-semibold tracking-tight text-medical-navy">{{ $pt->nama_pasien ?? 'Pasien' }}</p>
+                            <p class="text-xs font-medium text-royal-indigo-hover">Formulir Pemeriksaan Awal &amp; TTV</p>
+                            <h2 id="judulFormTTV" class="mt-0.5 text-2xl font-semibold tracking-tight text-medical-navy">{{ $pt->nama_pasien ?? 'Pasien' }}</h2>
                             <p class="text-sm text-text-body/80">{{ $usiaLengkap ? $usiaLengkap . ' tahun' : '-' }} · {{ $pt?->jenis_kelamin ?? '-' }}</p>
                             <div class="mt-3 flex flex-wrap gap-2">
                                 <span class="tag-id bg-white">No. RM {{ $pt->no_rekam_medis ?? '-' }}</span>
@@ -180,9 +151,9 @@
                                 'status' => $pasienTerpilih->status,
                                 'statusText' => $pasienTerpilih->status === 'Siap Periksa' ? 'Siap Dipanggil Dokter' : null,
                             ])
-                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 border border-border-hover text-[11px] text-medical-navy">
+                            <span class="chip bg-white">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-royal-indigo" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                                {{ $rsPasien }} · Terkunci ke Faskes Pasien
+                                {{ $rsPasien }}
                             </span>
                         </div>
                     </div>
@@ -194,14 +165,15 @@
                     <input type="hidden" name="cari_filter" value="{{ request('cari') }}">
 
                     <fieldset>
-                        <legend class="text-lg font-semibold text-medical-navy">Tanda-tanda vital</legend>
-                        <p class="mt-0.5 mb-5 text-xs text-text-secondary">Semua field bertanda * wajib diisi. Masukkan angka sesuai satuan standar klinis.</p>
+                        <legend class="section-title">Tanda-tanda vital</legend>
+                        <p class="section-subtitle mb-5">Isian bertanda * wajib diisi. Masukkan angka sesuai satuan di kanan kolom.</p>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                             @include('partials.vital-input', ['id' => 'tekanan_darah', 'name' => 'tekanan_darah', 'label' => 'Tekanan Darah', 'unit' => 'mmHg', 'type' => 'text', 'placeholder' => '120/80', 'value' => old('tekanan_darah', $pemeriksaanAwal->tekanan_darah ?? '')])
                             @include('partials.vital-input', ['id' => 'nadi', 'name' => 'nadi', 'label' => 'Denyut Nadi', 'unit' => 'x/menit', 'placeholder' => '78', 'min' => 30, 'max' => 250, 'value' => old('nadi', $pemeriksaanAwal->nadi ?? '')])
                             @include('partials.vital-input', ['id' => 'suhu_tubuh', 'name' => 'suhu_tubuh', 'label' => 'Suhu Tubuh', 'unit' => '°C', 'placeholder' => '36.5', 'step' => '0.1', 'min' => 30, 'max' => 45, 'value' => old('suhu_tubuh', $pemeriksaanAwal->suhu_tubuh ?? '')])
                             @include('partials.vital-input', ['id' => 'laju_pernapasan', 'name' => 'laju_pernapasan', 'label' => 'Laju Pernapasan', 'unit' => 'x/menit', 'placeholder' => '18', 'min' => 5, 'max' => 60, 'value' => old('laju_pernapasan', $pemeriksaanAwal->laju_pernapasan ?? '')])
+                            @include('partials.vital-input', ['id' => 'saturasi_oksigen', 'name' => 'saturasi_oksigen', 'label' => 'SpO2', 'unit' => '%', 'placeholder' => '98', 'min' => 50, 'max' => 100, 'required' => false, 'value' => old('saturasi_oksigen', $pemeriksaanAwal->saturasi_oksigen ?? '')])
                             @include('partials.vital-input', ['id' => 'berat_badan', 'name' => 'berat_badan', 'label' => 'Berat Badan', 'unit' => 'kg', 'placeholder' => '68', 'step' => '0.1', 'min' => 1, 'max' => 300, 'value' => old('berat_badan', $pemeriksaanAwal->berat_badan ?? '')])
                             @include('partials.vital-input', ['id' => 'tinggi_badan', 'name' => 'tinggi_badan', 'label' => 'Tinggi Badan', 'unit' => 'cm', 'placeholder' => '170', 'step' => '0.1', 'min' => 30, 'max' => 250, 'value' => old('tinggi_badan', $pemeriksaanAwal->tinggi_badan ?? '')])
                         </div>
@@ -220,18 +192,17 @@
                     <div class="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-4 pt-5 border-t border-border-subtle">
                         <p class="flex items-start gap-2 text-xs text-text-secondary max-w-md">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-royal-indigo flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            Data tanda-tanda vital di atas akan tersimpan dan terintegrasi secara langsung ke berkas rekam medis dokter.
+                            Setelah disimpan, tanda-tanda vital langsung masuk ke rekam medis yang dibuka dokter.
                         </p>
                         @include('partials.submit-button', ['id' => 'btnSimpanPemeriksaan', 'label' => 'Simpan data pemeriksaan', 'loading' => 'Menyimpan...', 'class' => 'w-full sm:w-auto px-6'])
                     </div>
                 </form>
             @else
-                <div class="card px-6 py-20 text-center">
-                    <span class="mx-auto avatar w-14 h-14 bg-pale-lavender text-royal-indigo" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                    </span>
-                    <h2 id="judulFormTTV" class="mt-4 text-base font-semibold text-medical-navy">Tidak ada pasien yang dipilih</h2>
-                    <p class="mt-1 text-xs text-text-secondary">Silakan pilih salah satu pasien dari daftar antrean untuk membuka Formulir Pemeriksaan Awal &amp; TTV.</p>
+                <div class="card py-10">
+                    <h2 id="judulFormTTV" class="sr-only">Formulir Pemeriksaan Awal &amp; TTV</h2>
+                    <x-empty-state title="Belum ada pasien yang dipilih"
+                                   hint="Pilih pasien dari daftar antrean untuk mengisi tanda-tanda vitalnya."
+                                   icon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </div>
             @endif
         </section>
@@ -247,8 +218,8 @@
         <div class="p-5 sm:p-6 space-y-5">
             <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-5">
                 <div>
-                    <h2 id="judulDaftarPasien" class="text-lg font-semibold text-medical-navy">Daftar Pasien Terdaftar</h2>
-                    <p class="text-xs text-text-secondary mt-0.5">Pencarian dan filter berdasarkan tanggal registrasi pasien.</p>
+                    <h2 id="judulDaftarPasien" class="section-title">Daftar Pasien Terdaftar</h2>
+                    <p class="section-subtitle">Cari pasien atau saring berdasarkan tanggal registrasi.</p>
                 </div>
 
                 <form method="GET" action="{{ route('perawat.dashboard') }}" id="formFilterPasien" class="grid grid-cols-2 sm:flex sm:flex-wrap items-end gap-3" role="search">
@@ -258,7 +229,7 @@
                         <label for="cariPasienList" class="field-label">Cari pasien</label>
                         <div class="field-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                            <input type="search" id="cariPasienList" name="cari_pasien" value="{{ $searchPasien }}" placeholder="Cari nama atau ID pasien..." class="field">
+                            <input type="search" id="cariPasienList" name="cari_pasien" value="{{ $searchPasien }}" placeholder="Nama atau No. RM" class="field">
                         </div>
                     </div>
 
@@ -295,7 +266,7 @@
                     <div class="flex gap-2">
                         <button type="submit" class="btn btn-navy">Cari</button>
                         @if ($adaFilter)
-                            <a href="{{ route('perawat.dashboard', ['tab' => 'pasien']) }}" class="btn btn-soft">Hapus Filter</a>
+                            <a href="{{ route('perawat.dashboard', ['tab' => 'pasien']) }}" class="btn btn-soft">Hapus filter</a>
                         @endif
                     </div>
                 </form>
@@ -304,10 +275,10 @@
             @if ($adaFilter)
                 <div class="flex flex-wrap items-center gap-2 text-xs text-text-secondary">
                     <span>Filter aktif:</span>
-                    @if ($searchPasien)<span class="status status-active">"{{ $searchPasien }}"</span>@endif
-                    @if ($filterTahun)<span class="status status-active">Tahun {{ $filterTahun }}</span>@endif
-                    @if ($filterBulan)<span class="status status-active">{{ $namaBulan[$filterBulan - 1] ?? '' }}</span>@endif
-                    @if ($filterTanggal)<span class="status status-active">Tanggal {{ $filterTanggal }}</span>@endif
+                    @if ($searchPasien)<span class="chip chip-accent">"{{ $searchPasien }}"</span>@endif
+                    @if ($filterTahun)<span class="chip chip-accent">Tahun {{ $filterTahun }}</span>@endif
+                    @if ($filterBulan)<span class="chip chip-accent">{{ $namaBulan[$filterBulan - 1] ?? '' }}</span>@endif
+                    @if ($filterTanggal)<span class="chip chip-accent">Tanggal {{ $filterTanggal }}</span>@endif
                     <span aria-hidden="true">·</span>
                     <span><span class="font-semibold text-medical-navy num">{{ $daftarPasien->total() }}</span> hasil ditemukan</span>
                 </div>
@@ -318,13 +289,13 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th scope="col">ID Pasien</th>
+                        <th scope="col">No. RM</th>
                         <th scope="col">Nama Lengkap</th>
                         <th scope="col">Umur</th>
                         <th scope="col" class="hidden lg:table-cell">Jenis Kelamin</th>
                         <th scope="col" class="hidden xl:table-cell">Tgl. Registrasi</th>
                         <th scope="col">TTV Terakhir</th>
-                        <th scope="col" class="text-right">Aksi</th>
+                        <th scope="col" class="text-right">Tindakan</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -334,30 +305,24 @@
                             $ttvDate = $latestKunjungan?->pemeriksaanAwal?->created_at;
                             $umurPasien = $pasien->umur ?: ($pasien->tanggal_lahir ? \Carbon\Carbon::parse($pasien->tanggal_lahir)->age : null);
                         @endphp
-                        <tr>
+                        <tr class="group">
                             <td class="whitespace-nowrap"><span class="tag-id">{{ $pasien->no_rekam_medis }}</span></td>
                             <td class="whitespace-nowrap">
-                                <a href="{{ route('perawat.pasien.show', $pasien->id_pasien) }}" class="flex items-center gap-3 group">
+                                <a href="{{ route('perawat.pasien.show', $pasien->id_pasien) }}" class="flex items-center gap-3">
                                     <span class="avatar w-8 h-8 bg-pale-lavender text-royal-indigo-hover text-xs transition-colors group-hover:bg-royal-indigo group-hover:text-white" aria-hidden="true">{{ strtoupper(substr($pasien->nama_pasien, 0, 1)) }}</span>
                                     <span class="font-semibold text-medical-navy group-hover:text-royal-indigo-hover transition-colors">{{ $pasien->nama_pasien }}</span>
                                 </a>
                             </td>
                             <td class="text-text-secondary whitespace-nowrap num">{{ $umurPasien ? $umurPasien . ' tahun' : '-' }}</td>
-                            <td class="whitespace-nowrap hidden lg:table-cell">
-                                @if ($pasien->jenis_kelamin === 'Laki-laki')
-                                    <span class="status status-active">Laki-laki</span>
-                                @elseif ($pasien->jenis_kelamin === 'Perempuan')
-                                    <span class="status status-danger">Perempuan</span>
-                                @else
-                                    -
-                                @endif
+                            <td class="text-text-secondary whitespace-nowrap hidden lg:table-cell">
+                                {{ $pasien->jenis_kelamin ?: '-' }}
                             </td>
                             <td class="text-text-secondary whitespace-nowrap num hidden xl:table-cell">
-                                {{ $pasien->created_at ? $pasien->created_at->timezone('Asia/Jakarta')->format('d/m/Y H:i') . ' WIB' : '-' }}
+                                {{ $pasien->created_at ? $pasien->created_at->timezone('Asia/Jakarta')->locale('id')->isoFormat('D MMM Y, HH:mm') . ' WIB' : '-' }}
                             </td>
                             <td class="whitespace-nowrap num">
                                 @if ($ttvDate)
-                                    <span class="font-medium text-medical-navy">{{ $ttvDate->timezone('Asia/Jakarta')->format('d/m/Y H:i') }} WIB</span>
+                                    <span class="font-medium text-medical-navy">{{ $ttvDate->timezone('Asia/Jakarta')->locale('id')->isoFormat('D MMM Y, HH:mm') }} WIB</span>
                                 @else
                                     <span class="text-text-secondary">Belum ada</span>
                                 @endif
@@ -371,19 +336,17 @@
                                     <button type="button" onclick="openModalHapusPasien({{ $pasien->id_pasien }}, '{{ addslashes($pasien->nama_pasien) }}', '{{ $pasien->no_rekam_medis }}')"
                                             class="btn btn-danger-quiet btn-sm" title="Hapus / Batalkan Registrasi Pasien">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                        <span class="hidden sm:inline">Hapus</span><span class="sr-only"> registrasi {{ $pasien->nama_pasien }}</span>
+                                        <span class="hidden xl:inline">Hapus registrasi</span><span class="sr-only xl:hidden">Hapus registrasi</span><span class="sr-only"> {{ $pasien->nama_pasien }}</span>
                                     </button>
                                 </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="!py-14 text-center">
-                                <span class="mx-auto avatar w-12 h-12 bg-pale-lavender text-royal-indigo" aria-hidden="true">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                                </span>
-                                <p class="mt-3 text-sm font-semibold text-medical-navy">Tidak ada pasien ditemukan</p>
-                                <p class="mt-1 text-xs text-text-secondary">Coba ubah kata kunci pencarian atau filter tanggal.</p>
+                            <td colspan="7" class="!p-0">
+                                <x-empty-state :title="$adaFilter ? 'Tidak ada pasien yang cocok' : 'Belum ada pasien terdaftar'"
+                                               :hint="$adaFilter ? 'Coba kata kunci lain atau hapus filter.' : 'Pasien baru dari tombol Input Pasien akan tampil di sini.'"
+                                               icon="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </td>
                         </tr>
                     @endforelse
@@ -401,30 +364,30 @@
 </div>
 
 {{-- ========== DIALOG: Input Pasien Baru + TTV ========== --}}
-<div id="modalInputPasien" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="modalInputTitle">
-    <div class="dialog-backdrop" onclick="closeModalInputPasien()"></div>
+<div id="modalInputPasien" data-dialog class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="modalInputTitle">
+    <div class="dialog-backdrop"></div>
 
     <div class="fixed inset-0 overflow-y-auto pointer-events-none">
         <div class="min-h-full flex items-start justify-center px-4 py-8 sm:py-12">
             <div class="dialog w-full max-w-2xl pointer-events-auto animate-dialog">
                 <div class="flex items-start justify-between gap-4 p-6 sm:px-8">
                     <div class="flex items-center gap-3">
-                        <span class="avatar w-11 h-11 bg-gradient-to-br from-medical-navy to-royal-indigo text-white" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                        <span class="avatar w-11 h-11 bg-pale-lavender text-royal-indigo" aria-hidden="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
                         </span>
                         <div>
-                            <h2 id="modalInputTitle" class="text-lg font-semibold text-medical-navy">Input Pasien Baru</h2>
-                            <p class="text-xs text-text-secondary">Registrasi pasien dan pengukuran TTV awal</p>
+                            <h2 id="modalInputTitle" class="section-title">Input Pasien Baru</h2>
+                            <p class="section-subtitle">Daftarkan pasien dan catat tanda-tanda vital awalnya.</p>
                         </div>
                     </div>
-                    <button type="button" onclick="closeModalInputPasien()" class="btn btn-ghost btn-icon btn-sm -mr-2" aria-label="Tutup dialog">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    <button type="button" data-dialog-close class="btn btn-ghost btn-icon btn-sm -mr-2" aria-label="Tutup dialog">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
 
                 <div class="mx-6 sm:mx-8 alert alert-info">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="text-royal-indigo" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    <span>ID Pasien akan digenerate otomatis oleh sistem dalam format <strong class="font-mono text-royal-indigo-hover">YYYYMMDD-NNN</strong> secara atomik setelah data berhasil disimpan.</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <span class="text-text-body">No. RM dibuat otomatis setelah data disimpan, dengan format <span class="tag-id">YYYYMMDD-NNN</span>.</span>
                 </div>
 
                 <form method="POST" action="{{ route('perawat.pasien.store') }}" id="formPasienBaru" class="p-6 sm:px-8 space-y-6" data-submit-loading>
@@ -438,7 +401,7 @@
                         <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div class="sm:col-span-2">
                                 <label for="modal_nama_pasien" class="field-label">Nama Lengkap <span class="req" aria-hidden="true">*</span></label>
-                                <input type="text" id="modal_nama_pasien" name="nama_pasien" required autocomplete="off"
+                                <input type="text" id="modal_nama_pasien" name="nama_pasien" required autocomplete="off" data-dialog-focus
                                        value="{{ old('nama_pasien') }}" placeholder="Masukkan nama lengkap pasien"
                                        class="field @error('nama_pasien') is-invalid @enderror">
                                 @error('nama_pasien')<p class="field-error">{{ $message }}</p>@enderror
@@ -483,7 +446,7 @@
                         <fieldset>
                             <legend class="flex items-center gap-2.5 text-sm font-semibold text-medical-navy">
                                 <span class="avatar w-7 h-7 bg-medical-navy text-white text-xs" aria-hidden="true">2</span>
-                                Tanda-Tanda Vital (TTV)
+                                Tanda-tanda vital
                             </legend>
                             <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 @include('partials.vital-input', ['id' => 'modal_td_sistolik', 'name' => 'tekanan_darah_sistolik', 'label' => 'TD Sistolik', 'unit' => 'mmHg', 'placeholder' => '120', 'min' => 50, 'max' => 300, 'value' => old('tekanan_darah_sistolik')])
@@ -504,8 +467,8 @@
                     </div>
 
                     <div class="flex items-center justify-between gap-2 pt-5 border-t border-border-subtle">
-                        <button type="button" onclick="closeModalInputPasien()" class="btn btn-secondary">Batal</button>
-                        @include('partials.submit-button', ['id' => 'btnSimpanPasienBaru', 'label' => 'Simpan Pasien', 'loading' => 'Menyimpan...', 'class' => 'px-6'])
+                        <button type="button" data-dialog-close class="btn btn-secondary">Batal</button>
+                        @include('partials.submit-button', ['id' => 'btnSimpanPasienBaru', 'label' => 'Simpan pasien', 'loading' => 'Menyimpan...', 'class' => 'px-6'])
                     </div>
                 </form>
             </div>
@@ -518,26 +481,6 @@
 
 @section('scripts')
 <script>
-    window.openModalInputPasien = function () {
-        const modal = document.getElementById('modalInputPasien');
-        window.__inputReturnFocus = document.activeElement;
-        modal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-        document.getElementById('modal_nama_pasien')?.focus();
-    };
-
-    window.closeModalInputPasien = function () {
-        const modal = document.getElementById('modalInputPasien');
-        if (!modal || modal.classList.contains('hidden')) return;
-        modal.classList.add('hidden');
-        document.body.style.overflow = '';
-        window.__inputReturnFocus?.focus?.();
-    };
-
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') closeModalInputPasien();
-    });
-
     document.addEventListener('DOMContentLoaded', function () {
         // Jumlah pilihan tanggal mengikuti bulan dan tahun yang dipilih.
         const filterBulan = document.getElementById('filterBulan');
@@ -573,7 +516,7 @@
         }
 
         @if ($errors->hasAny(['nama_pasien', 'umur', 'jenis_kelamin', 'tekanan_darah_sistolik', 'tekanan_darah_diastolik', 'saturasi_oksigen']))
-            openModalInputPasien();
+            window.openDialog?.('modalInputPasien');
         @endif
     });
 </script>

@@ -165,6 +165,8 @@ class PemeriksaanAwalController extends Controller
             'nadi'            => ['required', 'integer', 'min:30', 'max:250'],
             'suhu_tubuh'      => ['required', 'numeric', 'min:30', 'max:45'],
             'laju_pernapasan' => ['required', 'integer', 'min:5', 'max:60'],
+            // Opsional agar klien lama yang belum mengirim SpO2 tetap bisa menyimpan.
+            'saturasi_oksigen' => ['nullable', 'integer', 'min:50', 'max:100'],
             'berat_badan'     => ['required', 'numeric', 'min:1', 'max:300'],
             'tinggi_badan'    => ['required', 'numeric', 'min:30', 'max:250'],
             'catatan'         => ['required', 'string', 'max:1000'],
@@ -185,6 +187,9 @@ class PemeriksaanAwalController extends Controller
             'laju_pernapasan.integer'  => 'Laju pernapasan harus berupa bilangan bulat.',
             'laju_pernapasan.min'      => 'Laju pernapasan minimal 5 x/menit.',
             'laju_pernapasan.max'      => 'Laju pernapasan maksimal 60 x/menit.',
+            'saturasi_oksigen.integer' => 'Saturasi oksigen harus berupa bilangan bulat.',
+            'saturasi_oksigen.min'     => 'Saturasi oksigen minimal 50%.',
+            'saturasi_oksigen.max'     => 'Saturasi oksigen maksimal 100%.',
             'berat_badan.required'     => 'Berat badan wajib diisi.',
             'berat_badan.numeric'      => 'Berat badan harus berupa angka numerik.',
             'tinggi_badan.required'    => 'Tinggi badan wajib diisi.',
@@ -242,6 +247,7 @@ class PemeriksaanAwalController extends Controller
                     'tekanan_darah_sistolik'  => $sistolik,
                     'tekanan_darah_diastolik' => $diastolik,
                     'suhu_tubuh'              => (float) $validated['suhu_tubuh'],
+                    'saturasi_oksigen'        => isset($validated['saturasi_oksigen']) ? (int) $validated['saturasi_oksigen'] : null,
                     'nadi'                    => (int) $validated['nadi'],
                     'laju_pernapasan'         => (int) $validated['laju_pernapasan'],
                     'berat_badan'             => (float) $validated['berat_badan'],
@@ -257,15 +263,19 @@ class PemeriksaanAwalController extends Controller
 
             // 5. Integrasi otomatis ke komponen Objective pada Draf SOAP dokter (REQ-10)
             $suhuFormatted = str_replace('.', ',', (string) round($validated['suhu_tubuh'], 1));
-            $formattedObjective = sprintf(
-                'TD %s mmHg, Nadi %d x/menit, Suhu %s°C, RR %d x/menit, BB %g kg, TB %g cm',
-                $validated['tekanan_darah'],
-                $validated['nadi'],
-                $suhuFormatted,
-                $validated['laju_pernapasan'],
-                $validated['berat_badan'],
-                $validated['tinggi_badan']
-            );
+            // Urutan sama dengan storePasienBaru(): TD, Nadi, Suhu, RR, SpO2, BB, TB.
+            $objectiveParts = [
+                sprintf('TD %s mmHg', $validated['tekanan_darah']),
+                sprintf('Nadi %d x/menit', $validated['nadi']),
+                sprintf('Suhu %s°C', $suhuFormatted),
+                sprintf('RR %d x/menit', $validated['laju_pernapasan']),
+            ];
+            if (isset($validated['saturasi_oksigen'])) {
+                $objectiveParts[] = sprintf('SpO2 %d%%', $validated['saturasi_oksigen']);
+            }
+            $objectiveParts[] = sprintf('BB %g kg', $validated['berat_badan']);
+            $objectiveParts[] = sprintf('TB %g cm', $validated['tinggi_badan']);
+            $formattedObjective = implode(', ', $objectiveParts);
 
             DrafSoap::updateOrCreate(
                 ['id_kunjungan' => $kunjungan->id_kunjungan],
