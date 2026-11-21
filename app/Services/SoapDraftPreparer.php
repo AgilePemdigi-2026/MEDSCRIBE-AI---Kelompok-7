@@ -30,20 +30,29 @@ class SoapDraftPreparer
         $draf = $kunjungan->drafSoap;
         $generationError = null;
         $requiresTranscriptReview = filled($transcript) && ! $kunjungan->wawancara?->transcript_reviewed_at;
+        $isObjectiveOnlyStub = $draf
+            && is_null($draf->source_transcript_hash)
+            && blank($draf->subjective_text)
+            && blank($draf->assessment_text)
+            && blank($draf->plan_text);
 
-        if (! $draf && ! filled($transcript)) {
+        if ((! $draf || $isObjectiveOnlyStub) && ! filled($transcript)) {
             $generationError = 'Transkrip wawancara yang sudah ditinjau belum tersedia. Draf SOAP belum dibuat.';
-            $draf = new DrafSoap([
-                'subjective_text' => '', 'objective_text' => '', 'assessment_text' => '', 'plan_text' => '',
-                'needs_review' => true, 'icd10_suggestions' => [], 'missing_information' => ['Transkrip wawancara'], 'review_warnings' => [],
-            ]);
-        } elseif (! $draf) {
-            if ($requiresTranscriptReview) {
-                $generationError = 'Tinjau dan simpan koreksi transkrip serta label speaker sebelum membuat draf SOAP.';
+            if (! $draf) {
                 $draf = new DrafSoap([
                     'subjective_text' => '', 'objective_text' => '', 'assessment_text' => '', 'plan_text' => '',
-                    'needs_review' => true, 'icd10_suggestions' => [], 'missing_information' => ['Transkrip belum diverifikasi'], 'review_warnings' => [],
+                    'needs_review' => true, 'icd10_suggestions' => [], 'missing_information' => ['Transkrip wawancara'], 'review_warnings' => [],
                 ]);
+            }
+        } elseif (! $draf || $isObjectiveOnlyStub) {
+            if ($requiresTranscriptReview) {
+                $generationError = 'Tinjau dan simpan koreksi transkrip serta label speaker sebelum membuat draf SOAP.';
+                if (! $draf) {
+                    $draf = new DrafSoap([
+                        'subjective_text' => '', 'objective_text' => '', 'assessment_text' => '', 'plan_text' => '',
+                        'needs_review' => true, 'icd10_suggestions' => [], 'missing_information' => ['Transkrip belum diverifikasi'], 'review_warnings' => [],
+                    ]);
+                }
             } else {
                 $result = $this->generateAndSave($kunjungan, $transcript);
                 $draf = $result['draf'];

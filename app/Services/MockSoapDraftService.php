@@ -37,7 +37,10 @@ class MockSoapDraftService
             $vitals->nadi !== null ? "Denyut nadi: {$vitals->nadi} x/menit" : 'Denyut nadi: Belum diisi',
             $vitals->suhu_tubuh !== null ? "Suhu tubuh: {$vitals->suhu_tubuh} °C" : 'Suhu tubuh: Belum diisi',
             $vitals->laju_pernapasan !== null ? "Frekuensi napas: {$vitals->laju_pernapasan} x/menit" : 'Frekuensi napas: Belum diisi',
-        ])->implode("\n");
+            $vitals->saturasi_oksigen !== null ? "Saturasi oksigen (SpO2): {$vitals->saturasi_oksigen}%" : null,
+            $vitals->berat_badan ? "Berat badan: {$vitals->berat_badan} kg" : null,
+            $vitals->tinggi_badan ? "Tinggi badan: {$vitals->tinggi_badan} cm" : null,
+        ])->filter()->implode("\n");
     }
 
     public function vitalsSnapshot($vitals): string
@@ -47,6 +50,7 @@ class MockSoapDraftService
             'nadi' => $vitals?->nadi,
             'suhu_tubuh' => $vitals?->suhu_tubuh,
             'laju_pernapasan' => $vitals?->laju_pernapasan,
+            'saturasi_oksigen' => $vitals?->saturasi_oksigen,
             'berat_badan' => $vitals?->berat_badan,
             'tinggi_badan' => $vitals?->tinggi_badan,
         ], JSON_THROW_ON_ERROR);

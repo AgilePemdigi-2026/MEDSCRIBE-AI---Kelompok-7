@@ -77,6 +77,20 @@
         </div>
     @endif
 
+    @if ($draf->review_warnings && ! $isFinalized && ! $isProcessing)
+        <div class="alert alert-warn">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+            <div class="flex-1">
+                <p class="font-semibold">Catatan penting hasil analisis AI</p>
+                <ul class="mt-1 list-disc list-inside">
+                    @foreach ($draf->review_warnings as $item)
+                        <li>{{ is_array($item) ? collect($item)->flatten()->filter(fn ($v) => is_scalar($v) && filled($v))->implode(' — ') : $item }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+    @endif
+
     @include('partials.form-errors')
 
     <form id="soap-form" method="POST" action="{{ route('dokter.soap.save', $kunjungan) }}" class="space-y-5" data-submit-loading>

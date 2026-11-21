@@ -5,7 +5,7 @@
 @section('content')
 @php
     $sudahDitinjau = in_array($workflowState, ['soap-ready', 'soap', 'completed'], true);
-    $terverifikasi = $finalisasi?->FINAL === true || $workflowState === 'completed';
+    $terverifikasi = $kunjungan->isSoapVerified() || $finalisasi?->FINAL === true || $workflowState === 'completed';
 
     $tahapWawancara = $workflowState === 'ttv' ? 'locked' : ($sudahDitinjau ? 'done' : 'active');
     $tahapSoap = ! $sudahDitinjau ? 'locked' : ($terverifikasi ? 'done' : 'active');
