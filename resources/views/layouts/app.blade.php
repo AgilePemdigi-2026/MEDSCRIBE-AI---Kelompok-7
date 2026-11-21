@@ -12,8 +12,11 @@
     <header class="sticky top-0 z-40 px-3 sm:px-6 lg:px-8 pt-3">
         <div class="max-w-[1280px] mx-auto flex items-center justify-between gap-3 rounded-full bg-white/90 backdrop-blur-md border border-border-subtle pl-3 pr-2 py-2 shadow-[0_8px_30px_-12px_rgba(18,32,86,0.18)]">
 
-            <a href="{{ route('dashboard') }}" class="rounded-full pr-2" aria-label="MedScribe AI, kembali ke dashboard">
+            <a href="{{ route('dashboard') }}" class="rounded-full pr-2 flex items-center gap-2.5" aria-label="MedScribe AI, kembali ke dashboard">
                 @include('partials.brand')
+                @if (Auth::user()?->isAdmin())
+                    <span class="chip chip-accent hidden sm:inline-flex">Admin RS</span>
+                @endif
             </a>
 
             <div class="hidden lg:flex items-center gap-2 px-4 min-h-10 rounded-full bg-soft-offwhite border border-border-subtle text-xs text-text-secondary">
@@ -25,12 +28,8 @@
 
             @auth
             @php
-                $names = explode(' ', Auth::user()->nama_lengkap);
-                $initials = '';
-                foreach (array_slice($names, 0, 2) as $n) {
-                    $initials .= strtoupper(substr($n, 0, 1));
-                }
-                $roleLabel = Auth::user()->isDokter() ? 'Dokter' : (Auth::user()->isPerawat() ? 'Perawat' : ucfirst(Auth::user()->role));
+                $initials = Auth::user()->inisial;
+                $roleLabel = Auth::user()->peran_label;
             @endphp
             <div class="flex items-center gap-1.5">
                 <div class="flex items-center gap-2.5 rounded-full bg-soft-offwhite border border-border-subtle pl-1 pr-1 md:pr-4 py-1">
@@ -51,6 +50,12 @@
             </div>
             @endauth
         </div>
+
+        @hasSection('subnav')
+            <div class="max-w-[1280px] mx-auto mt-3">
+                @yield('subnav')
+            </div>
+        @endif
     </header>
 
     @if (session()->hasAny(['status', 'info', 'warning', 'error']))
@@ -87,5 +92,6 @@
     @endauth
 
     @yield('scripts')
+    @stack('scripts')
 </body>
 </html>

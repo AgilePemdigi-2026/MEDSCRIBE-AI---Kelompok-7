@@ -22,7 +22,8 @@ document.addEventListener('submit', (event) => {
     const form = event.target;
     if (!(form instanceof HTMLFormElement) || !form.hasAttribute('data-submit-loading')) return;
 
-    const btn = form.querySelector('button[type="submit"]');
+    // event.submitter juga menangkap tombol di luar formulir yang memakai atribut form="...".
+    const btn = event.submitter ?? form.querySelector('button[type="submit"]');
     if (!btn) return;
 
     if (btn.dataset.busy === 'true') {
@@ -77,7 +78,8 @@ function openDialog(id, trigger = document.activeElement) {
 
     const target = dialog.querySelector('[autofocus], [data-dialog-focus]')
         ?? dialog.querySelector('.dialog button, .dialog [href], .dialog input, .dialog textarea, .dialog select');
-    requestAnimationFrame(() => target?.focus());
+    // Elemen sudah terlihat begitu kelas hidden dilepas, jadi fokus bisa dipindah saat itu juga.
+    target?.focus({ preventScroll: true });
 }
 
 function closeDialog(id) {

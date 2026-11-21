@@ -73,8 +73,8 @@
         -moz-osx-font-smoothing: grayscale;
     }
 
-    h1, h2, h3 { text-wrap: balance; }
-    p { text-wrap: pretty; }
+    h1, h2, h3 { text-wrap-style: balance; }
+    p { text-wrap-style: pretty; }
 
     ::selection {
         background-color: var(--color-royal-indigo);
@@ -408,6 +408,37 @@
     }
 
     .pill-nav > [aria-current] {
+        color: var(--color-pure-white);
+    }
+
+    /* Pembungkus pill-nav yang bisa digulir ke samping. overflow-x ikut memotong arah vertikal,
+       jadi beri ruang (padding) untuk bayangan indikator lalu tarik kembali dengan margin negatif. */
+    .pill-nav-scroll {
+        overflow-x: auto;
+        scrollbar-width: none;
+        padding: 0.25rem 0.75rem 1.25rem;
+        margin: -0.25rem -0.75rem -1.25rem;
+    }
+
+    .pill-nav-scroll::-webkit-scrollbar { display: none; }
+
+    /* Jumlah kecil di dalam item (mis. pendaftaran yang menunggu verifikasi). */
+    .pill-nav .pill-count {
+        min-width: 1.25rem;
+        padding: 0.05rem 0.45rem;
+        border-radius: 9999px;
+        background-color: var(--color-warning-bg);
+        border: 1px solid var(--color-warning-border);
+        color: var(--color-warning-text);
+        font-size: 0.6875rem;
+        font-weight: 600;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .pill-nav > [aria-current] .pill-count {
+        background-color: rgba(255, 255, 255, 0.16);
+        border-color: transparent;
         color: var(--color-pure-white);
     }
 
@@ -773,7 +804,7 @@
 
     /* Judul bagian di dalam kartu. */
     .section-title {
-        font-size: 1rem;
+        font-size: 1.125rem;
         line-height: 1.4;
         font-weight: 600;
         color: var(--color-medical-navy);

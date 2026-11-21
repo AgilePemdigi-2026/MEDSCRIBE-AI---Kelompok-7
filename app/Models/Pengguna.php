@@ -220,6 +220,33 @@ class Pengguna extends Authenticatable
     }
 
     /**
+     * Inisial dari dua kata pertama nama untuk avatar ("Dewi Pratiwi" -> "DP").
+     */
+    public function getInisialAttribute(): string
+    {
+        $initials = collect(preg_split('/\s+/', trim((string) $this->nama_lengkap)))
+            ->filter()
+            ->take(2)
+            ->map(fn (string $word) => mb_strtoupper(mb_substr($word, 0, 1)))
+            ->implode('');
+
+        return $initials !== '' ? $initials : 'U';
+    }
+
+    /**
+     * Label peran yang ditampilkan ke pengguna.
+     */
+    public function getPeranLabelAttribute(): string
+    {
+        return match ($this->role) {
+            'dokter'  => 'Dokter',
+            'perawat' => 'Perawat',
+            'admin'   => 'Administrator RS',
+            default   => ucfirst((string) $this->role),
+        };
+    }
+
+    /**
      * Scope query berdasarkan rumah sakit pengguna.
      */
     public function scopeForHospital(Builder $query, int $hospitalId): Builder

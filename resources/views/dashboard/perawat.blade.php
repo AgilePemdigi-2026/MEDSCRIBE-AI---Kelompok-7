@@ -243,7 +243,7 @@
         $namaBulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
         $adaFilter = $searchPasien || $filterTahun || $filterBulan || $filterTanggal;
     @endphp
-    <section class="card overflow-hidden rise" style="--i: 1" aria-labelledby="judulDaftarPasien">
+    <section class="card spotlight overflow-hidden rise" style="--i: 1" aria-labelledby="judulDaftarPasien">
         <div class="p-5 sm:p-6 space-y-5">
             <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-5">
                 <div>

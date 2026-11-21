@@ -3,117 +3,84 @@
 @section('title', 'Riwayat Aktivitas Admin - MedScribe AI')
 
 @section('content')
-<div class="space-y-6 rise">
+@php
+    $adaFilter = $search !== '' || ! empty($actionFilter);
+@endphp
 
-    {{-- Header Halaman --}}
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border-subtle">
-        <div>
-            <h1 class="text-2xl font-semibold tracking-tight text-medical-navy">Audit Log Aktivitas</h1>
-            <p class="text-xs text-text-secondary mt-0.5">Catatan audit seluruh tindakan administratif di {{ $hospital->hospital_name }}</p>
+<div class="space-y-6">
+    <x-page-header :eyebrow="'Audit Log Aktivitas · ' . $hospital->hospital_name"
+                   title="Riwayat Aktivitas Admin"
+                   subtitle="Setiap persetujuan, penolakan, penonaktifan, dan pengaktifan kembali tenaga medis tercatat di sini.">
+        <span class="chip"><span class="num font-semibold">{{ $logs->total() }}</span> catatan</span>
+    </x-page-header>
+
+    <section class="card spotlight overflow-hidden rise" style="--i: 1" aria-label="Daftar riwayat aktivitas">
+        <div class="p-5 sm:p-6">
+            @include('admin.partials.filter-toolbar', [
+                'route' => 'admin.activities',
+                'search' => $search,
+                'placeholder' => 'Nama staf atau alasan',
+                'select' => ['name' => 'action', 'label' => 'Jenis tindakan', 'selected' => $actionFilter ?? '', 'options' => [
+                    '' => 'Semua tindakan',
+                    'approve_staff' => 'Menyetujui pendaftaran',
+                    'reject_staff' => 'Menolak pendaftaran',
+                    'deactivate_staff' => 'Menonaktifkan tenaga medis',
+                    'reactivate_staff' => 'Mengaktifkan kembali',
+                ]],
+                'active' => $adaFilter,
+            ])
         </div>
-        <span class="tag-id bg-pale-lavender text-royal-indigo font-medium self-start sm:self-auto">
-            Total Log: {{ $logs->total() }} Catatan
-        </span>
-    </div>
 
-    {{-- Filter & Pencarian --}}
-    <div class="card p-4">
-        <form method="GET" action="{{ route('admin.activities') }}" class="flex flex-col sm:flex-row items-center gap-3">
-            <div class="relative flex-1 w-full">
-                <input type="text" name="cari" value="{{ $search }}"
-                       class="field pl-9 text-xs"
-                       placeholder="Cari berdasarkan nama staf atau alasan tindakan...">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-text-secondary absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-            </div>
-
-            <div class="flex items-center gap-2 w-full sm:w-auto">
-                <select name="action" class="field text-xs sm:w-52" onchange="this.form.submit()">
-                    <option value="" {{ empty($actionFilter) ? 'selected' : '' }}>Semua Jenis Tindakan</option>
-                    <option value="approve_staff" {{ $actionFilter === 'approve_staff' ? 'selected' : '' }}>Setujui Pendaftaran</option>
-                    <option value="reject_staff" {{ $actionFilter === 'reject_staff' ? 'selected' : '' }}>Tolak Pendaftaran</option>
-                    <option value="deactivate_staff" {{ $actionFilter === 'deactivate_staff' ? 'selected' : '' }}>Nonaktifkan Staf</option>
-                    <option value="reactivate_staff" {{ $actionFilter === 'reactivate_staff' ? 'selected' : '' }}>Aktifkan Kembali Staf</option>
-                </select>
-
-                <button type="submit" class="btn btn-primary text-xs py-2 px-4 flex-shrink-0">
-                    Filter
-                </button>
-
-                @if ($search !== '' || !empty($actionFilter))
-                    <a href="{{ route('admin.activities') }}" class="btn btn-secondary text-xs py-2 px-3 flex-shrink-0" title="Reset Filter">
-                        Reset
-                    </a>
-                @endif
-            </div>
-        </form>
-    </div>
-
-    {{-- Tabel Riwayat Audit --}}
-    <div class="card overflow-hidden">
         @if ($logs->isEmpty())
-            <div class="py-12 text-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-slate-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <p class="text-sm font-semibold text-medical-navy">Belum ada riwayat aktivitas</p>
-                <p class="text-xs text-text-secondary mt-1">
-                    {{ $search || $actionFilter ? 'Tidak ada catatan audit yang cocok dengan filter yang dipilih.' : 'Belum ada tindakan administratif yang tercatat di sistem rumah sakit ini.' }}
-                </p>
-            </div>
+            <x-empty-state class="border-t border-border-subtle"
+                           :title="$adaFilter ? 'Tidak ada catatan yang cocok' : 'Belum ada aktivitas'"
+                           :hint="$adaFilter ? 'Coba kata kunci lain atau hapus filter.' : 'Tindakan admin terhadap tenaga medis akan tercatat di sini.'"
+                           icon="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         @else
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs">
-                    <thead class="bg-soft-offwhite text-text-secondary border-b border-border-subtle">
+            <div class="overflow-x-auto border-t border-border-subtle">
+                <table class="table">
+                    <thead>
                         <tr>
-                            <th class="py-3 px-4 font-semibold">Waktu & Tanggal</th>
-                            <th class="py-3 px-4 font-semibold">Tindakan Admin</th>
-                            <th class="py-3 px-4 font-semibold">Tenaga Medis Terkait</th>
-                            <th class="py-3 px-4 font-semibold">Perubahan Status</th>
-                            <th class="py-3 px-4 font-semibold">Keterangan / Alasan</th>
-                            <th class="py-3 px-4 font-semibold">Eksekutor (Admin)</th>
+                            <th scope="col">Waktu</th>
+                            <th scope="col">Tindakan</th>
+                            <th scope="col">Tenaga Medis</th>
+                            <th scope="col" class="hidden lg:table-cell">Perubahan Status</th>
+                            <th scope="col" class="hidden md:table-cell">Alasan</th>
+                            <th scope="col" class="hidden xl:table-cell">Oleh</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-border-subtle/70">
+                    <tbody>
                         @foreach ($logs as $log)
-                            <tr class="hover:bg-soft-offwhite/40 transition-colors">
-                                <td class="py-3.5 px-4 text-text-secondary whitespace-nowrap">
-                                    <div class="font-medium text-medical-navy">{{ $log->created_at ? $log->created_at->translatedFormat('d M Y') : '-' }}</div>
-                                    <div class="text-[11px] text-text-secondary">{{ $log->created_at ? $log->created_at->format('H:i:s') : '-' }} WIB</div>
+                            @php $waktu = $log->created_at?->timezone('Asia/Jakarta')->locale('id'); @endphp
+                            <tr class="group">
+                                <td class="whitespace-nowrap">
+                                    @if ($waktu)
+                                        <p class="font-medium text-medical-navy">{{ $waktu->isoFormat('D MMM Y') }}</p>
+                                        <p class="text-xs text-text-secondary num">{{ $waktu->format('H:i') }} WIB</p>
+                                    @else
+                                        -
+                                    @endif
                                 </td>
-                                <td class="py-3.5 px-4 whitespace-nowrap">
-                                    <span class="inline-flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full border {{ $log->action_badge_class }}">
-                                        {{ $log->action_label }}
-                                    </span>
+                                <td><span class="status {{ $log->action_badge_class }}">{{ $log->action_label }}</span></td>
+                                <td>
+                                    <p class="font-semibold text-medical-navy transition-colors group-hover:text-royal-indigo-hover">{{ $log->target_name ?? '-' }}</p>
+                                    @if ($log->target_role)
+                                        <span class="chip mt-1">{{ ucfirst($log->target_role) }}</span>
+                                    @endif
                                 </td>
-                                <td class="py-3.5 px-4 font-semibold text-medical-navy">
-                                    <div class="leading-tight">{{ $log->target_name }}</div>
-                                    <span class="inline-block mt-0.5 text-[10px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded {{ $log->target_role === 'dokter' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-teal-50 text-teal-700 border border-teal-200' }}">
-                                        {{ ucfirst($log->target_role ?: 'Staf') }}
-                                    </span>
+                                <td class="hidden lg:table-cell whitespace-nowrap text-text-secondary">
+                                    {{ \App\Models\AdminAuditLog::statusLabel($log->status_before) }}
+                                    <span aria-hidden="true">→</span><span class="sr-only">menjadi</span>
+                                    <span class="font-semibold text-medical-navy">{{ \App\Models\AdminAuditLog::statusLabel($log->status_after) }}</span>
                                 </td>
-                                <td class="py-3.5 px-4 whitespace-nowrap">
-                                    <div class="flex items-center gap-1.5 text-[11px]">
-                                        <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono text-[10px]">
-                                            {{ $log->status_before ?: 'none' }}
-                                        </span>
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                                        </svg>
-                                        <span class="px-2 py-0.5 rounded bg-pale-lavender text-royal-indigo font-mono text-[10px] font-semibold">
-                                            {{ $log->status_after ?: 'none' }}
-                                        </span>
-                                    </div>
+                                <td class="hidden md:table-cell max-w-sm text-text-body">
+                                    <p class="line-clamp-2" title="{{ $log->reason }}">{{ $log->reason ?: '-' }}</p>
                                 </td>
-                                <td class="py-3.5 px-4 text-slate-600 max-w-sm">
-                                    <p class="text-[11px] leading-relaxed line-clamp-2" title="{{ $log->reason }}">
-                                        {{ $log->reason ?: '-' }}
-                                    </p>
-                                </td>
-                                <td class="py-3.5 px-4 whitespace-nowrap text-text-secondary">
-                                    <div class="font-medium text-medical-navy">{{ $log->admin ? $log->admin->nama_lengkap : 'Admin' }}</div>
-                                    <div class="text-[10px] text-text-secondary font-mono">IP: {{ $log->ip_address ?: '127.0.0.1' }}</div>
+                                <td class="hidden xl:table-cell text-text-secondary whitespace-nowrap">
+                                    {{ $log->admin?->nama_lengkap ?? '-' }}
+                                    @if ($log->ip_address)
+                                        <p class="text-xs num">IP {{ $log->ip_address }}</p>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach
@@ -122,13 +89,11 @@
             </div>
 
             @if ($logs->hasPages())
-                <div class="p-4 border-t border-border-subtle">
-                    {{ $logs->links() }}
+                <div class="p-4 sm:px-6 border-t border-border-subtle">
+                    {{ $logs->links(null, ['noun' => 'catatan']) }}
                 </div>
             @endif
         @endif
-    </div>
-
+    </section>
 </div>
 @endsection
-

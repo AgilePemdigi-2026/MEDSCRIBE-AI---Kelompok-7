@@ -126,7 +126,7 @@
                     <p class="text-xs text-text-secondary mt-0.5">Prioritas pemanggilan: pasien dengan status <span class="font-semibold text-success-text">Siap Periksa</span></p>
                 </div>
 
-                <nav aria-label="Saring status" class="-mx-1 px-1 overflow-x-auto [scrollbar-width:none]">
+                <nav aria-label="Saring status" class="pill-nav-scroll">
                     <div class="pill-nav">
                         @foreach ($filters as $value => $text)
                             @php $aktif = (string) request('status', '') === (string) $value; @endphp
@@ -151,12 +151,12 @@
                             @php
                                 $namaPasien = $antrean->pasien->nama_pasien ?? 'Pasien #' . $antrean->id_pasien;
                             @endphp
-                            <tr>
+                            <tr class="group">
                                 <td>
                                     <div class="flex items-center gap-3 min-w-[13rem]">
-                                        <span class="avatar w-9 h-9 bg-pale-lavender text-royal-indigo-hover text-xs" aria-hidden="true">{{ strtoupper(substr($namaPasien, 0, 1)) }}</span>
+                                        <span class="avatar w-9 h-9 bg-pale-lavender text-royal-indigo-hover text-xs transition-colors group-hover:bg-royal-indigo group-hover:border-royal-indigo group-hover:text-white" aria-hidden="true">{{ strtoupper(substr($namaPasien, 0, 1)) }}</span>
                                         <div>
-                                            <div class="font-semibold text-medical-navy text-sm">{{ $namaPasien }}</div>
+                                            <div class="font-semibold text-medical-navy text-sm transition-colors group-hover:text-royal-indigo-hover">{{ $namaPasien }}</div>
                                             <div class="text-[11px] text-text-secondary mt-0.5">
                                                 RM <span class="font-mono font-semibold text-royal-indigo-hover">{{ $antrean->pasien->no_rekam_medis ?? '-' }}</span>
                                                 @if ($antrean->pasien?->jenis_kelamin) · {{ $antrean->pasien->jenis_kelamin }} @endif

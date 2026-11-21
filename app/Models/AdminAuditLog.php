@@ -84,16 +84,31 @@ class AdminAuditLog extends Model
     }
 
     /**
-     * Badge status visual untuk UI log.
+     * Kelas .status (resources/css/app.css) untuk badge tindakan di log.
      */
     public function getActionBadgeClassAttribute(): string
     {
         return match ($this->action) {
-            'approve_staff'    => 'bg-emerald-50 text-emerald-700 border-emerald-200',
-            'reject_staff'     => 'bg-rose-50 text-rose-700 border-rose-200',
-            'deactivate_staff' => 'bg-amber-50 text-amber-700 border-amber-200',
-            'reactivate_staff' => 'bg-indigo-50 text-indigo-700 border-indigo-200',
-            default            => 'bg-slate-50 text-slate-700 border-slate-200',
+            'approve_staff'    => 'status-ok',
+            'reject_staff'     => 'status-danger',
+            'deactivate_staff' => 'status-warn',
+            'reactivate_staff' => 'status-active',
+            default            => 'status-muted',
+        };
+    }
+
+    /**
+     * Label bahasa Indonesia untuk nilai approval_status yang tersimpan di log.
+     */
+    public static function statusLabel(?string $status): string
+    {
+        return match (strtolower((string) $status)) {
+            'active', 'approved' => 'Aktif',
+            'pending'            => 'Menunggu verifikasi',
+            'rejected'           => 'Ditolak',
+            'inactive'           => 'Nonaktif',
+            ''                   => '-',
+            default              => ucfirst((string) $status),
         };
     }
 }
