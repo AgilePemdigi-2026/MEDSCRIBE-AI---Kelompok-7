@@ -1,6 +1,7 @@
 {{--
     Notifikasi sesi (flash) yang sama untuk semua layout: status, info, warning, error.
-    Parameter opsional: dismissible (default true). Pesan warning yang juga muncul sebagai
+    Parameter opsional: dismissible (default true), only (daftar jenis yang ditampilkan,
+    mis. ['info', 'warning', 'error']). Pesan warning yang juga muncul sebagai
     error validasi tidak ditampilkan dua kali.
 --}}
 @php
@@ -11,7 +12,8 @@
         ['key' => 'info', 'class' => 'alert-info', 'role' => 'status'],
         ['key' => 'warning', 'class' => 'alert-warn', 'role' => 'alert'],
         ['key' => 'error', 'class' => 'alert-danger', 'role' => 'alert'],
-    ])->filter(fn ($flash) => filled(session($flash['key'])) && ! in_array(session($flash['key']), $validationMessages, true));
+    ])->filter(fn ($flash) => filled(session($flash['key'])) && ! in_array(session($flash['key']), $validationMessages, true))
+      ->filter(fn ($flash) => ! isset($only) || in_array($flash['key'], $only, true));
 @endphp
 
 @foreach ($flashes as $flash)
