@@ -67,12 +67,16 @@ class CreateAdminCommand extends Command
         $hospital = null;
 
         if ($hospitalOption) {
-            $hospital = is_numeric($hospitalOption)
-                ? Hospital::find((int) $hospitalOption)
-                : Hospital::where('hospital_code', $hospitalOption)->first();
+            $hospital = Hospital::where('hospital_code', $hospitalOption)->first()
+                ?? (is_numeric($hospitalOption) ? Hospital::find((int) $hospitalOption) : null);
         }
 
         if (!$hospital) {
+            if ($this->option('no-interaction')) {
+                $this->error("Rumah sakit dengan kode/ID '{$hospitalOption}' tidak ditemukan.");
+                return self::FAILURE;
+            }
+
             $hospitals = Hospital::active()->orderBy('hospital_name')->get();
             if ($hospitals->isEmpty()) {
                 $this->error('Tidak ada data rumah sakit aktif di database. Jalankan seeder master data terlebih dahulu.');

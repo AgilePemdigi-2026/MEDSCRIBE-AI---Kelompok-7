@@ -576,7 +576,7 @@ class AdminHospitalTest extends TestCase
         // Buat 1 antrean hari ini untuk RS A
         $pasienA = Pasien::create([
             'hospital_id'    => $this->hospitalA->id,
-            'no_rekam_medis' => Carbon::now()->format('Ymd') . '-701',
+            'no_rekam_medis' => Carbon::now('Asia/Jakarta')->format('Ymd') . '-701',
             'nama_pasien'    => 'Pasien Antrean RS A',
             'tanggal_lahir'  => '1995-01-01',
             'jenis_kelamin'  => 'Laki-laki',
@@ -584,14 +584,14 @@ class AdminHospitalTest extends TestCase
         Antrean::create([
             'hospital_id'       => $this->hospitalA->id,
             'id_pasien'         => $pasienA->id_pasien,
-            'tanggal_kunjungan' => Carbon::today()->toDateString(),
+            'tanggal_kunjungan' => Carbon::today('Asia/Jakarta')->toDateString(),
             'status'            => 'Menunggu',
         ]);
 
         // Buat 1 antrean hari ini untuk RS B
         $pasienB = Pasien::create([
             'hospital_id'    => $this->hospitalB->id,
-            'no_rekam_medis' => Carbon::now()->format('Ymd') . '-702',
+            'no_rekam_medis' => Carbon::now('Asia/Jakarta')->format('Ymd') . '-702',
             'nama_pasien'    => 'Pasien Antrean RS B',
             'tanggal_lahir'  => '1996-02-02',
             'jenis_kelamin'  => 'Perempuan',
@@ -599,7 +599,7 @@ class AdminHospitalTest extends TestCase
         Antrean::create([
             'hospital_id'       => $this->hospitalB->id,
             'id_pasien'         => $pasienB->id_pasien,
-            'tanggal_kunjungan' => Carbon::today()->toDateString(),
+            'tanggal_kunjungan' => Carbon::today('Asia/Jakarta')->toDateString(),
             'status'            => 'Menunggu',
         ]);
 

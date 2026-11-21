@@ -6,9 +6,7 @@
 
 @section('subnav')
     @php
-        $pendingBadgeCount = \App\Models\Pengguna::where('hospital_id', Auth::user()?->hospital_id)
-            ->where('approval_status', 'pending')
-            ->count();
+        $pendingBadgeCount = $pendingBadgeCount ?? 0;
         $menuAdmin = [
             ['route' => 'admin.dashboard', 'label' => 'Dashboard'],
             ['route' => 'admin.doctors', 'label' => 'Dokter'],

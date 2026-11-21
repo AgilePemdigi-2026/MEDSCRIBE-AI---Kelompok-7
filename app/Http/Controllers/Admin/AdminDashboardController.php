@@ -44,7 +44,7 @@ class AdminDashboardController extends Controller
         $admin = $this->getAuthenticatedAdmin();
         $hospitalId = $admin->hospital_id;
         $hospital = $admin->hospital;
-        $today = Carbon::today()->toDateString();
+        $today = Carbon::today('Asia/Jakarta')->toDateString();
 
         // 1. KPI 1: Total Dokter Aktif (RS Terkait)
         $totalDokterAktif = Pengguna::where('hospital_id', $hospitalId)
@@ -103,9 +103,9 @@ class AdminDashboardController extends Controller
         $chartDates = [];
         $chartQueues = [];
         for ($i = 6; $i >= 0; $i--) {
-            $date = Carbon::today()->subDays($i);
+            $date = Carbon::today('Asia/Jakarta')->subDays($i);
             $dateStr = $date->toDateString();
-            $chartDates[] = $date->translatedFormat('d M');
+            $chartDates[] = $date->locale('id')->translatedFormat('d M');
             $chartQueues[] = Antrean::where('hospital_id', $hospitalId)
                 ->whereDate('tanggal_kunjungan', $dateStr)
                 ->where('status', '!=', 'Dibatalkan')

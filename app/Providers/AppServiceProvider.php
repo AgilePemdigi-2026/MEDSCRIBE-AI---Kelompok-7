@@ -3,11 +3,14 @@
 namespace App\Providers;
 
 use App\Contracts\SoapGenerationService;
+use App\Models\Pengguna;
 use App\Services\MockSoapGenerationService;
 use App\Services\OpenRouterSoapGenerationService;
 use Illuminate\Pagination\Paginator;
-use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\View;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -34,5 +37,14 @@ class AppServiceProvider extends ServiceProvider
 
         // Semua daftar berhalaman memakai navigasi halaman MedScribe, bukan tampilan bawaan Laravel.
         Paginator::defaultView('pagination.medscribe');
+
+        // Jumlah pendaftaran tertunda untuk badge navigasi admin.
+        View::composer('layouts.admin', function ($view) {
+            $hospitalId = Auth::user()?->hospital_id;
+            $pendingBadgeCount = $hospitalId
+                ? Pengguna::where('hospital_id', $hospitalId)->where('approval_status', 'pending')->count()
+                : 0;
+            $view->with('pendingBadgeCount', $pendingBadgeCount);
+        });
     }
 }
