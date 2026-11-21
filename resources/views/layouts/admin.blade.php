@@ -45,7 +45,7 @@
                     </span>
                 </div>
 
-                <button type="button" onclick="openModalLogout()" title="Keluar dari Sistem"
+                <button type="button" data-dialog-open="modalLogout" title="Keluar dari Sistem"
                         class="btn btn-icon btn-secondary hover:!border-danger-border hover:!text-danger-text hover:!bg-danger-bg">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -128,38 +128,10 @@
         </nav>
     </header>
 
-    {{-- Flash Notifications --}}
-    @if (session('status') || session('error') || session('warning') || session('info'))
-    <div class="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 w-full pt-4 space-y-3" role="status" aria-live="polite">
-        @if (session('status'))
-            <div id="flashNotificationStatus" class="alert alert-ok items-center rise">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" class="w-5 h-5 flex-shrink-0" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-                <span class="flex-1 font-medium text-xs sm:text-sm text-text-body">{{ session('status') }}</span>
-                <button type="button" onclick="document.getElementById('flashNotificationStatus')?.remove()" class="btn btn-ghost btn-icon btn-sm -my-2 -mr-2" aria-label="Tutup notifikasi">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-            </div>
-        @endif
-
-        @if (session('error'))
-            <div id="flashNotificationError" class="alert alert-danger items-center rise">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" class="w-5 h-5 flex-shrink-0" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                <span class="flex-1 font-medium text-xs sm:text-sm">{{ session('error') }}</span>
-                <button type="button" onclick="document.getElementById('flashNotificationError')?.remove()" class="btn btn-ghost btn-icon btn-sm -my-2 -mr-2" aria-label="Tutup notifikasi">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-            </div>
-        @endif
-
-        @if (session('warning'))
-            <div id="flashNotificationWarning" class="alert alert-warn items-center rise">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" class="w-5 h-5 flex-shrink-0" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <span class="flex-1 font-medium text-xs sm:text-sm">{{ session('warning') }}</span>
-                <button type="button" onclick="document.getElementById('flashNotificationWarning')?.remove()" class="btn btn-ghost btn-icon btn-sm -my-2 -mr-2" aria-label="Tutup notifikasi">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-            </div>
-        @endif
+    {{-- Notifikasi sesi (partial yang sama dengan layout dokter/perawat) --}}
+    @if (session()->hasAny(['status', 'info', 'warning', 'error']))
+    <div class="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 w-full pt-5 space-y-3" aria-live="polite">
+        @include('partials.flash')
     </div>
     @endif
 
@@ -176,48 +148,19 @@
         </div>
     </footer>
 
-    {{-- Modal Dialog Konfirmasi Logout --}}
-    <div id="modalLogout" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="modalLogoutTitle">
-        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModalLogout()"></div>
-        <div class="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
-            <div class="dialog w-full max-w-sm p-6 pointer-events-auto animate-dialog text-center bg-white rounded-[24px] shadow-2xl border border-border-subtle">
-                <span class="mx-auto avatar w-12 h-12 bg-danger-bg text-danger-solid border border-danger-border flex items-center justify-center rounded-full mb-3" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                </span>
-                <h2 id="modalLogoutTitle" class="text-lg font-semibold text-medical-navy">Konfirmasi Keluar</h2>
-                <p class="mt-1.5 text-xs text-text-secondary leading-relaxed">Apakah Anda yakin ingin keluar dari Panel Admin Rumah Sakit?</p>
-                <div class="mt-6 grid grid-cols-2 gap-2">
-                    <button type="button" onclick="closeModalLogout()" class="btn btn-secondary justify-center">Batal</button>
-                    <form method="POST" action="{{ route('logout') }}" class="m-0">
-                        @csrf
-                        <button type="submit" class="btn btn-danger w-full justify-center">Keluar</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
+    {{-- Konfirmasi keluar (komponen yang sama dengan layout dokter/perawat) --}}
+    <x-dialog id="modalLogout" tone="danger" title="Konfirmasi"
+              description="Apakah Anda yakin ingin keluar dari sistem MedScribe AI?"
+              icon="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1">
+        <x-slot:actions>
+            <button type="button" data-dialog-close data-dialog-focus class="btn btn-secondary">Batal</button>
+            <form method="POST" action="{{ route('logout') }}" class="m-0">
+                @csrf
+                <button type="submit" class="btn btn-danger w-full">Keluar</button>
+            </form>
+        </x-slot:actions>
+    </x-dialog>
 
-    <script>
-        function openModalLogout() {
-            const modal = document.getElementById('modalLogout');
-            if (!modal) return;
-            modal.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeModalLogout() {
-            const modal = document.getElementById('modalLogout');
-            if (!modal || modal.classList.contains('hidden')) return;
-            modal.classList.add('hidden');
-            document.body.style.overflow = '';
-        }
-
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') closeModalLogout();
-        });
-    </script>
     @yield('scripts')
 </body>
 </html>

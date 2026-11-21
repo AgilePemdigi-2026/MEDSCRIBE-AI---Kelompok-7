@@ -1,9 +1,10 @@
+{{-- Parameter opsional: noun (kata benda untuk ringkasan, default "data"), misalnya ->links(null, ['noun' => 'pasien']) --}}
 @if ($paginator->hasPages())
     <nav role="navigation" aria-label="Navigasi halaman" class="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
         <p class="text-text-secondary">
             Menampilkan <span class="num font-semibold text-medical-navy">{{ $paginator->firstItem() }}</span>
             sampai <span class="num font-semibold text-medical-navy">{{ $paginator->lastItem() }}</span>
-            dari <span class="num font-semibold text-medical-navy">{{ $paginator->total() }}</span> pasien
+            dari <span class="num font-semibold text-medical-navy">{{ $paginator->total() }}</span> {{ $noun ?? 'data' }}
         </p>
 
         <ul class="flex flex-wrap items-center gap-1 p-1 rounded-full bg-white border border-border-subtle">

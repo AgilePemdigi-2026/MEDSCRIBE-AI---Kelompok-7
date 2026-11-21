@@ -393,7 +393,7 @@
 
         @if ($daftarPasien->hasPages())
             <div class="px-5 sm:px-6 py-4 border-t border-border-subtle">
-                {{ $daftarPasien->links('pagination.medscribe') }}
+                {{ $daftarPasien->links(null, ['noun' => 'pasien']) }}
             </div>
         @endif
     </section>

@@ -56,6 +56,11 @@ window.addEventListener('pageshow', (event) => {
     });
 });
 
+// Tutup notifikasi: <div data-alert> ... <button data-alert-dismiss>
+document.addEventListener('click', (event) => {
+    event.target.closest('[data-alert-dismiss]')?.closest('[data-alert]')?.remove();
+});
+
 // Dialog bersama. Markup: <div id="x" data-dialog class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
 // dengan .dialog-backdrop dan .dialog di dalamnya. Buka lewat <button data-dialog-open="x"> atau openDialog('x'),
 // tutup lewat [data-dialog-close], klik latar, atau Escape. Fokus pindah ke [autofocus] / tombol pertama,
