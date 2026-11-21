@@ -4,14 +4,7 @@
     $peranSpeaker = ['doctor' => 'Dokter', 'patient' => 'Pasien'];
     $isFinalized = $kunjungan->isFinalized();
 
-    [$keteranganWawancara, $statusWawancara, $kelasStatusWawancara] = match (true) {
-        $isFinalized => ['Rekam medis telah difinalisasi. Data wawancara klinis terkunci.', 'Final (Terkunci)', 'status-ok'],
-        $mode === 'ttv' => ['Terbuka setelah perawat mengisi TTV.', 'Menunggu TTV', 'status-muted'],
-        $mode === 'interview' => ['Mulai wawancara dan rekam percakapan klinis dengan pasien.', 'Belum dimulai', 'status-active'],
-        $mode === 'recording' => ['Rekam percakapan klinis dengan transkripsi langsung (real-time).', 'Sesi berlangsung', 'status-active'],
-        $mode === 'transcript' => ['Periksa teks dan peran pembicara sebelum verifikasi dan draf SOAP.', 'Perlu ditinjau', 'status-warn'],
-        default => ['Transkrip sudah ditinjau dan diverifikasi untuk draf SOAP.', 'Selesai', 'status-ok'],
-    };
+    // $keteranganWawancara, $statusWawancara, $kelasStatusWawancara dihitung di rekam-medis.blade.php.
 @endphp
 
 @include('dashboard.rekam-medis.kepala-tahap', [
@@ -28,11 +21,11 @@
 <div class="border-t border-border-subtle p-5 sm:p-6 space-y-5">
 
     @if ($isFinalized)
-        <div class="flex items-center gap-3 p-4 rounded-[18px] bg-emerald-50/70 border border-emerald-200 text-sm text-emerald-900">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-            <div class="flex-1">
-                <p class="font-semibold">Rekam Medis Telah Difinalisasi</p>
-                <p class="text-xs text-emerald-700 mt-0.5">Seluruh rekaman audio dan transkrip wawancara telah dikunci permanen untuk menjaga integritas data klinis.</p>
+        <div class="alert alert-ok" role="status">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+            <div class="flex-1 text-text-body">
+                <p class="font-semibold text-medical-navy">Rekam medis sudah final</p>
+                <p class="mt-0.5">Rekaman audio dan transkrip wawancara tidak bisa diubah lagi.</p>
             </div>
         </div>
     @endif
@@ -40,7 +33,7 @@
     {{-- Mode 1: Interview Belum Dimulai --}}
     @if ($mode === 'interview' && ! $isFinalized)
         <div class="flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
-            <p class="text-sm text-text-body max-w-md">Mikrofon dan transkripsi langsung (real-time) akan aktif setelah Anda menekan tombol Mulai Wawancara.</p>
+            <p class="text-sm text-text-body max-w-md">Mikrofon dan transkrip langsung aktif setelah Anda menekan Mulai Wawancara.</p>
             <form method="POST" action="{{ route('dokter.interview.start', $kunjungan) }}" data-submit-loading>
                 @csrf
                 <button type="submit" class="btn btn-primary" data-loading-text="Memulai...">
@@ -53,7 +46,7 @@
     {{-- Mode 2: Sesi Perekaman & Transkripsi Real-Time --}}
     @elseif ($mode === 'recording' && ! $isFinalized)
         @php($batasMenit = max(1, intdiv((int) config('medscribe.audio.max_duration_seconds'), 60)))
-        <div id="recording-console" class="rounded-[22px] bg-soft-offwhite border border-border-subtle p-5 sm:p-6 space-y-5">
+        <div id="recording-console" class="rounded-(--radius-panel) bg-soft-offwhite border border-border-subtle p-5 sm:p-6 space-y-5">
             <div class="flex items-center justify-between gap-3">
                 <span id="recording-state" class="status status-active">Siap merekam</span>
                 <span class="text-[11px] text-text-secondary">Maks. {{ $batasMenit }} menit</span>
@@ -68,19 +61,19 @@
             </div>
 
             {{-- Wadah Transkripsi Langsung (Real-Time Live STT) --}}
-            <div id="live-stt-wrapper" class="rounded-[18px] bg-white border border-border-subtle p-4 shadow-sm space-y-3">
+            <div id="live-stt-wrapper" class="rounded-(--radius-panel) bg-white border border-border-subtle p-4 space-y-3">
                 <div class="flex items-center justify-between gap-2 pb-2.5 border-b border-border-subtle text-xs">
                     <span class="font-semibold text-medical-navy flex items-center gap-2">
-                        <span id="live-indicator-dot" class="relative flex h-2.5 w-2.5">
+                        <span id="live-indicator-dot" class="relative flex h-2.5 w-2.5 invisible" aria-hidden="true">
                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger-dot opacity-75"></span>
                             <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-danger-dot"></span>
                         </span>
-                        Transkripsi Langsung (Real-Time)
+                        Transkrip langsung
                     </span>
-                    <span id="stt-engine-badge" class="tag-id text-[10px] bg-pale-lavender text-royal-indigo font-medium">Web Speech API (id-ID)</span>
+                    <span id="stt-engine-badge" class="chip chip-accent">Bahasa Indonesia</span>
                 </div>
                 <div id="live-stt-body" class="max-h-48 overflow-y-auto space-y-2 text-sm leading-relaxed text-text-body font-normal">
-                    <p id="live-stt-placeholder" class="text-xs text-text-secondary italic">Menunggu rekaman dimulai... Tekan Mulai Rekaman untuk memulai wawancara.</p>
+                    <p id="live-stt-placeholder" class="text-xs text-text-secondary">Tekan Mulai Rekaman. Ucapan akan tertulis di sini.</p>
                     <div id="live-stt-content" class="space-y-1.5">
                         <span id="live-stt-final" class="text-medical-navy font-normal"></span>
                         <span id="live-stt-interim" class="text-royal-indigo italic opacity-75"></span>
@@ -88,10 +81,10 @@
                 </div>
             </div>
 
-            {{-- Browser capability notice jika Web Speech API tidak didukung --}}
-            <div id="stt-fallback-notice" class="hidden alert alert-warn text-xs">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <span>Browser Anda tidak mendukung streaming Web Speech API secara native. Silakan gunakan browser Google Chrome atau Microsoft Edge untuk transkripsi klinis real-time bahasa Indonesia.</span>
+            {{-- Pemberitahuan bila browser tidak punya Web Speech API --}}
+            <div id="stt-fallback-notice" class="hidden alert alert-warn">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span class="text-text-body">Browser ini belum bisa menulis transkrip langsung. Gunakan Google Chrome atau Microsoft Edge.</span>
             </div>
 
             {{-- Kontrol Aksi Rekaman & Transkripsi (State Machine Lifecycle) --}}
@@ -136,66 +129,39 @@
                 </div>
 
                 {{-- State: PROCESSING Indicator --}}
-                <div id="processing-indicator" hidden class="flex items-center gap-3 py-2 px-5 rounded-[14px] bg-pale-lavender text-royal-indigo text-xs font-medium shadow-sm">
-                    <svg class="animate-spin h-4 w-4 text-royal-indigo" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                    </svg>
-                    <span id="processing-label">Memproses rekaman & draf SOAP...</span>
+                <div id="processing-indicator" hidden class="flex items-center gap-3 min-h-11 px-5 rounded-(--radius-field) bg-pale-lavender text-royal-indigo-hover text-sm font-medium">
+                    <span class="spinner" aria-hidden="true"></span>
+                    <span id="processing-label">Memproses rekaman…</span>
                 </div>
             </div>
 
             <p id="recording-message" class="text-xs text-text-secondary text-center min-h-4 transition-colors" role="status"></p>
         </div>
 
-        {{-- Modal Konfirmasi Ulangi Rekaman --}}
-        <div id="modalUlangiRekaman" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="modalUlangiJudul">
-            <div class="dialog-backdrop" id="backdrop-ulangi"></div>
-            <div class="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
-                <div class="dialog w-full max-w-md p-6 pointer-events-auto animate-dialog space-y-4">
-                    <div class="flex items-start gap-3.5">
-                        <span class="w-10 h-10 rounded-xl bg-danger-bg text-danger-text flex items-center justify-center flex-shrink-0" aria-hidden="true">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                        </span>
-                        <div>
-                            <h3 id="modalUlangiJudul" class="text-base font-semibold text-medical-navy">Ulangi Rekaman?</h3>
-                            <p class="text-xs text-text-secondary mt-1.5 leading-relaxed">
-                                Apakah Anda yakin ingin mengulang rekaman dari awal? Seluruh transkrip dan durasi rekaman saat ini akan dihapus.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2 pt-2">
-                        <button type="button" id="btn-batal-ulangi" class="btn btn-secondary">
-                            Batal
-                        </button>
-                        <button type="button" id="btn-konfirmasi-ulangi" class="btn btn-danger">
-                            Ulangi Rekaman
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {{-- Konfirmasi ulangi rekaman --}}
+        <x-dialog id="modalUlangiRekaman" tone="danger" title="Ulangi rekaman?"
+                  description="Transkrip dan durasi rekaman saat ini akan dihapus, lalu rekaman dimulai dari awal."
+                  icon="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+            <x-slot:actions>
+                <button type="button" class="btn btn-secondary" data-dialog-close data-dialog-focus>Batal</button>
+                <button type="button" id="btn-konfirmasi-ulangi" class="btn btn-danger">Ulangi Rekaman</button>
+            </x-slot:actions>
+        </x-dialog>
     @endif
 
     {{-- Audio player bila rekaman tersimpan --}}
     @if ($rekamanAudio && ! in_array($mode, ['interview'], true))
-        <div class="rounded-[18px] bg-soft-offwhite border border-border-subtle p-3">
-            <p class="px-1 pb-2 text-[11px] font-medium text-text-secondary">Rekaman audio wawancara klinis</p>
+        <div class="panel !p-3">
+            <p class="px-1 pb-2 text-xs font-medium text-text-secondary">Rekaman audio wawancara klinis</p>
             <audio controls preload="none" class="w-full h-10" src="{{ route('dokter.rekam-medis.stream-audio', $antrean->id_antrean) }}">Browser tidak mendukung pemutar audio.</audio>
         </div>
     @endif
 
     {{-- Mode 3: Review Transkrip Wawancara (Step 1 Review) --}}
     @if ($mode === 'transcript' && ! $isFinalized)
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-                <h3 class="text-sm font-semibold text-medical-navy">Review Transkrip Wawancara</h3>
-                <p class="mt-1 text-xs text-text-secondary">Periksa teks dan peran pembicara (Dokter / Pasien) sebelum memverifikasi dan menyusun draf SOAP.</p>
-            </div>
-            <span class="tag-id bg-pale-lavender text-royal-indigo font-medium text-xs">Perlu Verifikasi</span>
+        <div>
+            <h3 class="text-sm font-semibold text-medical-navy">Tinjau transkrip wawancara</h3>
+            <p class="mt-1 text-xs text-text-secondary">Periksa teks dan peran pembicara (dokter atau pasien), lalu verifikasi untuk menyusun draf SOAP.</p>
         </div>
 
         @if ($segments)
@@ -203,7 +169,7 @@
             <div class="flex flex-col sm:flex-row sm:items-center justify-end gap-3 pt-2">
                 <p id="transcript-message" class="text-xs text-text-secondary sm:mr-auto" role="status"></p>
                 <button type="button" id="save-transcript" class="btn btn-secondary">
-                    Simpan Koreksi
+                    <span>Simpan Koreksi</span>
                 </button>
                 <button type="button" id="verify-transcript-button" class="btn btn-primary">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
@@ -227,10 +193,10 @@
 
     {{-- Transkrip yang sudah diverifikasi (SOAP ready / SOAP / Selesai / Final) --}}
     @if (in_array($mode, ['soap-ready', 'soap', 'completed'], true) || $isFinalized)
-        <details class="group rounded-[18px] border border-border-subtle" @if ($isFinalized) open @endif>
+        <details class="group rounded-(--radius-panel) border border-border-subtle" @if ($isFinalized) open @endif>
             <summary class="flex items-center justify-between gap-3 px-4 min-h-12 text-sm font-medium text-medical-navy list-none cursor-pointer">
                 <span class="flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-success-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     Transkrip yang telah diverifikasi
                 </span>
                 <span class="flex items-center gap-2 text-xs font-normal text-text-secondary">
@@ -298,21 +264,35 @@
 
     const byId = (id) => document.getElementById(id);
     const escapeHtml = (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
-    const message = (text, error = false) => {
+    // tone: 'error' | 'ok' | kosong (info). Nilai true tetap dianggap error.
+    const message = (text, tone = '') => {
         const el = byId('recording-message') || byId('transcript-message');
-        if (el) {
-            el.textContent = text;
-            el.classList.toggle('text-danger-text', error);
-            el.classList.toggle('text-text-secondary', !error);
-        }
+        if (!el) return;
+        const kind = tone === true ? 'error' : tone;
+        el.textContent = text;
+        el.classList.toggle('text-danger-text', kind === 'error');
+        el.classList.toggle('text-success-text', kind === 'ok');
+        el.classList.toggle('text-text-secondary', kind !== 'error' && kind !== 'ok');
+    };
+
+    // Pola loading tombol yang sama dengan data-submit-loading: spinner + label sementara.
+    const setLoading = (button, label) => {
+        button.dataset.original = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner" aria-hidden="true"></span><span></span>';
+        button.lastElementChild.textContent = label;
+    };
+    const resetLoading = (button) => {
+        button.disabled = false;
+        if (button.dataset.original) button.innerHTML = button.dataset.original;
     };
 
     const RECORDING_STATES = {
         ready: ['status-active', 'Siap merekam'],
         live: ['status-danger is-live', 'Merekam'],
         speaking: ['status-danger is-live', 'Mendengarkan ucapan...'],
-        paused: ['status-warn', 'Rekaman Dijeda'],
-        processing: ['status-warn', 'Memproses Rekaman...'],
+        paused: ['status-warn', 'Dijeda'],
+        processing: ['status-warn', 'Memproses…'],
         completed: ['status-ok', 'Selesai'],
         error: ['status-danger', 'Gagal'],
     };
@@ -339,6 +319,8 @@
         const pausedActions = byId('paused-actions');
         const processingIndicator = byId('processing-indicator');
         const sttBadge = byId('stt-engine-badge');
+        // Titik merah hanya menyala saat benar-benar merekam.
+        byId('live-indicator-dot')?.classList.toggle('invisible', recordingLifecycle !== 'recording');
 
         if (recordingLifecycle === 'idle') {
             show('record-button', true);
@@ -346,32 +328,32 @@
             show('paused-actions', false);
             show('processing-indicator', false);
             if (recordBtn) recordBtn.disabled = false;
-            if (sttBadge) sttBadge.textContent = 'Web Speech API (id-ID)';
+            if (sttBadge) sttBadge.textContent = 'Bahasa Indonesia';
         } else if (recordingLifecycle === 'recording') {
             show('record-button', false);
             show('stop-button', true);
             show('paused-actions', false);
             show('processing-indicator', false);
             if (stopBtn) stopBtn.disabled = false;
-            if (sttBadge) sttBadge.textContent = 'Mendengarkan Langsung';
+            if (sttBadge) sttBadge.textContent = 'Mendengarkan';
         } else if (recordingLifecycle === 'paused') {
             show('record-button', false);
             show('stop-button', false);
             show('paused-actions', true);
             show('processing-indicator', false);
-            if (sttBadge) sttBadge.textContent = 'Transkrip Tersimpan (Dijeda)';
+            if (sttBadge) sttBadge.textContent = 'Dijeda';
         } else if (recordingLifecycle === 'processing') {
             show('record-button', false);
             show('stop-button', false);
             show('paused-actions', false);
             show('processing-indicator', true);
-            if (sttBadge) sttBadge.textContent = 'Memproses dengan OpenRouter...';
+            if (sttBadge) sttBadge.textContent = 'Memproses';
         } else if (recordingLifecycle === 'error') {
             show('record-button', false);
             show('stop-button', false);
             show('paused-actions', true);
             show('processing-indicator', false);
-            if (sttBadge) sttBadge.textContent = 'Siap Diproses Ulang';
+            if (sttBadge) sttBadge.textContent = 'Siap diproses ulang';
         }
     }
 
@@ -506,7 +488,7 @@
                     setRecordingState('live');
                     const ph = byId('live-stt-placeholder');
                     if (ph && !finalTranscript && !interimTranscript) {
-                        ph.textContent = 'Sedang mendengarkan percakapan klinis... Suara Anda akan langsung tertulis di sini.';
+                        ph.textContent = 'Mendengarkan… Ucapan akan langsung tertulis di sini.';
                     }
                 }
             };
@@ -560,15 +542,16 @@
                     return;
                 }
                 if (e.error === 'network') {
-                    message('Gagal terhubung ke server Speech Recognition. Pastikan koneksi internet stabil, nonaktifkan VPN/Adblock, dan gunakan Google Chrome resmi (bukan Brave/Firefox).', true);
+                    message('Transkrip otomatis terputus. Periksa koneksi internet, lalu coba lagi di Google Chrome atau Microsoft Edge.', 'error');
                     const ph = byId('live-stt-placeholder');
                     if (ph && !finalTranscript && !interimTranscript) {
-                        ph.innerHTML = '<span class="text-amber-700 font-medium">⚠️ Pengenalan suara otomatis terkendala koneksi/browser.</span><br><span class="text-text-secondary text-[11px]">Anda dapat merekam audio, lalu menekan tombol <b>Hentikan</b> dan memasukkan transkrip sebelum menekan <b>Proses Rekaman</b>.</span>';
+                        ph.textContent = 'Transkrip otomatis belum bisa berjalan. Rekaman audio tetap berlangsung.';
+                        ph.classList.add('text-warning-text');
                     }
                     return;
                 }
                 if (e.error === 'not-allowed') {
-                    message('Izin mikrofon untuk Speech Recognition ditolak oleh browser. Silakan izinkan akses mikrofon pada address bar.', true);
+                    message('Akses mikrofon ditolak. Izinkan mikrofon lewat ikon di kolom alamat browser.', 'error');
                     return;
                 }
                 if (e.error === 'audio-capture') {
@@ -636,7 +619,7 @@
 
                 setRecordingState('live');
                 updateControlButtons();
-                message('Merekam dan transkripsi klinis aktif...');
+                message('Merekam…');
             } catch (error) {
                 recordingLifecycle = 'idle';
                 isExplicitlyPaused = true;
@@ -728,7 +711,7 @@
 
             setRecordingState('live');
             updateControlButtons();
-            message('Melanjutkan rekaman dan transkripsi klinis...');
+            message('Merekam lagi…');
         } catch (err) {
             recordingLifecycle = 'paused';
             updateControlButtons();
@@ -739,21 +722,8 @@
     byId('resume-button')?.addEventListener('click', resumeRecordingSession);
 
     // 4. Action: Ulangi Rekaman dengan Modal Konfirmasi (Phase 4.B)
-    function bukaModalUlangi() {
-        const modal = byId('modalUlangiRekaman');
-        if (modal) {
-            modal.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-        }
-    }
-
-    function tutupModalUlangi() {
-        const modal = byId('modalUlangiRekaman');
-        if (modal) {
-            modal.classList.add('hidden');
-            document.body.style.overflow = '';
-        }
-    }
+    const bukaModalUlangi = () => window.openDialog?.('modalUlangiRekaman');
+    const tutupModalUlangi = () => window.closeDialog?.('modalUlangiRekaman');
 
     function konfirmasiUlangiRekaman() {
         isExplicitlyPaused = true;
@@ -792,11 +762,9 @@
     }
 
     byId('retry-button')?.addEventListener('click', bukaModalUlangi);
-    byId('btn-batal-ulangi')?.addEventListener('click', tutupModalUlangi);
-    byId('backdrop-ulangi')?.addEventListener('click', tutupModalUlangi);
     byId('btn-konfirmasi-ulangi')?.addEventListener('click', konfirmasiUlangiRekaman);
 
-    // 5. Action: Proses Rekaman (Menyimpan transkrip & memicu OpenRouter SOAP - Phase 5)
+    // 5. Action: Proses Rekaman (menyimpan transkrip dan menyusun draf SOAP lewat AI - Phase 5)
     async function processRecordingSession() {
         if (recordingLifecycle === 'recording') {
             pauseRecordingSession();
@@ -821,20 +789,20 @@
         setRecordingState('processing');
         updateControlButtons();
 
-        byId('processing-label').textContent = 'Menyiapkan transkrip klinis...';
-        message('Menyiapkan transkrip klinis...');
+        byId('processing-label').textContent = 'Menyiapkan transkrip…';
+        message('Menyiapkan transkrip…');
 
         const p1 = setTimeout(() => {
             if (recordingLifecycle === 'processing') {
-                byId('processing-label').textContent = 'Mengolah transkrip dan data TTV melalui OpenRouter...';
-                message('Mengolah transkrip dan data TTV melalui OpenRouter...');
+                byId('processing-label').textContent = 'Menyusun draf SOAP dari transkrip dan TTV…';
+                message('Menyusun draf SOAP dari transkrip dan TTV…');
             }
         }, 800);
 
         const p2 = setTimeout(() => {
             if (recordingLifecycle === 'processing') {
-                byId('processing-label').textContent = 'Menyimpan draf SOAP...';
-                message('Menyimpan draf SOAP...');
+                byId('processing-label').textContent = 'Menyimpan draf SOAP…';
+                message('Menyimpan draf SOAP…');
             }
         }, 2200);
 
@@ -882,7 +850,7 @@
             if (res.ok && data.success !== false) {
                 recordingLifecycle = 'completed';
                 setRecordingState('completed');
-                message('Draf SOAP berhasil dibuat. Silakan tinjau hasilnya sebelum melanjutkan.');
+                message('Draf SOAP berhasil dibuat. Tinjau hasilnya sebelum melanjutkan.', 'ok');
 
                 setTimeout(() => {
                     window.location.href = data.redirect_url || (window.location.pathname + '#soap');
@@ -897,7 +865,7 @@
             recordingLifecycle = 'error';
             setRecordingState('error');
             updateControlButtons();
-            message('Gagal memproses rekaman: ' + err.message + ' Anda dapat menekan tombol Proses Rekaman untuk mencoba kembali.', true);
+            message('Gagal memproses rekaman: ' + err.message + ' Tekan Proses Rekaman untuk mencoba lagi.', 'error');
         }
     }
 
@@ -911,8 +879,8 @@
         segments.forEach((s, i) => {
             const ambiguous = s.reviewStatus === 'ambiguous';
             const row = document.createElement('div');
-            row.className = 'rounded-[18px] border p-4 ' + (ambiguous ? 'bg-amber-50/60 border-amber-200' : 'bg-soft-offwhite border-border-subtle');
-            row.innerHTML = `<div class="flex items-center justify-between gap-2 text-[11px] text-text-secondary"><span class="num">${Number(s.startTime || 0).toFixed(1)}–${Number(s.endTime || 0).toFixed(1)} dtk</span>${ambiguous ? '<span class="status status-warn">Perlu diperiksa</span>' : ''}</div>`
+            row.className = 'rounded-(--radius-panel) border p-4 ' + (ambiguous ? 'bg-warning-bg border-warning-border' : 'bg-soft-offwhite border-border-subtle');
+            row.innerHTML = `<div class="flex items-center justify-between gap-2 text-[11px] text-text-secondary"><span class="num">${Number(s.startTime || 0).toFixed(1)}–${Number(s.endTime || 0).toFixed(1)} dtk</span>${ambiguous ? '<span class="status status-warn">Perlu ditinjau</span>' : ''}</div>`
                 + `<label class="sr-only" for="segment-text-${i}">Teks bagian ${i + 1}</label><textarea id="segment-text-${i}" data-index="${i}" rows="2" class="transcript-text field mt-2 leading-relaxed">${escapeHtml(s.text)}</textarea>`
                 + `<div class="grid grid-cols-2 gap-2 mt-2"><label class="sr-only" for="segment-speaker-${i}">Pembicara bagian ${i + 1}</label><select id="segment-speaker-${i}" data-speaker="${i}" class="speaker-role field"><option value="unknown">Pembicara tidak dikenal</option><option value="doctor" ${s.speakerRole === 'doctor' ? 'selected' : ''}>Dokter</option><option value="patient" ${s.speakerRole === 'patient' ? 'selected' : ''}>Pasien</option></select>`
                 + `<label class="sr-only" for="segment-status-${i}">Status bagian ${i + 1}</label><select id="segment-status-${i}" data-status="${i}" class="review-status field"><option value="confirmed" ${s.reviewStatus === 'confirmed' ? 'selected' : ''}>Terkonfirmasi</option><option value="ambiguous" ${ambiguous ? 'selected' : ''}>Ambigu</option><option value="edited" ${s.reviewStatus === 'edited' ? 'selected' : ''}>Diedit</option></select></div>`;
@@ -943,27 +911,18 @@
     byId('save-transcript')?.addEventListener('click', async () => {
         syncSegments();
         const button = byId('save-transcript');
-        button.disabled = true;
-        button.textContent = 'Menyimpan...';
+        setLoading(button, 'Menyimpan…');
         try {
             const res = await fetch(audioConfig.transcript, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, Accept: 'application/json' },
                 body: JSON.stringify({ segments, speakerMap })
             });
-            if (res.ok) {
-                message('Koreksi transkrip berhasil disimpan.');
-                button.disabled = false;
-                button.textContent = 'Simpan Koreksi';
-            } else {
-                button.disabled = false;
-                button.textContent = 'Simpan Koreksi';
-                message('Koreksi transkrip gagal disimpan.', true);
-            }
+            message(res.ok ? 'Koreksi transkrip tersimpan.' : 'Koreksi transkrip gagal disimpan.', res.ok ? 'ok' : 'error');
         } catch (error) {
-            button.disabled = false;
-            button.textContent = 'Simpan Koreksi';
-            message('Koneksi terputus saat menyimpan review.', true);
+            message('Koneksi terputus saat menyimpan koreksi.', 'error');
+        } finally {
+            resetLoading(button);
         }
     });
 
@@ -976,16 +935,8 @@
                 return message('Transkrip tidak boleh kosong sebelum diverifikasi.', true);
             }
 
-            verifyTranscriptBtn.disabled = true;
-            const originalContent = verifyTranscriptBtn.innerHTML;
-            verifyTranscriptBtn.innerHTML = `
-                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>Memverifikasi & Menyusun SOAP...</span>
-            `;
-            message('Memverifikasi transkrip wawancara dan menyusun draf SOAP otomatis...');
+            setLoading(verifyTranscriptBtn, 'Menyusun draf SOAP…');
+            message('Memverifikasi transkrip dan menyusun draf SOAP…');
 
             try {
                 const res = await fetch(audioConfig.verify, {
@@ -995,17 +946,15 @@
                 });
                 const data = await res.json().catch(() => ({}));
                 if (res.ok && data.success) {
-                    message('Transkrip berhasil diverifikasi! Mengalihkan ke Draf SOAP...');
+                    message('Transkrip terverifikasi. Membuka draf SOAP…', 'ok');
                     window.location.href = data.redirect_url || (window.location.pathname + '#soap');
                     window.location.reload();
                 } else {
-                    verifyTranscriptBtn.disabled = false;
-                    verifyTranscriptBtn.innerHTML = originalContent;
-                    message(data.message || 'Verifikasi transkrip gagal.', true);
+                    resetLoading(verifyTranscriptBtn);
+                    message(data.message || 'Verifikasi transkrip gagal.', 'error');
                 }
             } catch (error) {
-                verifyTranscriptBtn.disabled = false;
-                verifyTranscriptBtn.innerHTML = originalContent;
+                resetLoading(verifyTranscriptBtn);
                 message('Gagal menghubungi server untuk verifikasi transkrip.', true);
             }
         });
@@ -1020,15 +969,7 @@
                 return message('Transkrip wawancara wajib diisi.', true);
             }
 
-            verifyManualBtn.disabled = true;
-            const originalContent = verifyManualBtn.innerHTML;
-            verifyManualBtn.innerHTML = `
-                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>Memverifikasi & Menyusun SOAP...</span>
-            `;
+            setLoading(verifyManualBtn, 'Menyusun draf SOAP…');
 
             try {
                 const res = await fetch(audioConfig.verify, {
@@ -1041,13 +982,11 @@
                     window.location.href = data.redirect_url || (window.location.pathname + '#soap');
                     window.location.reload();
                 } else {
-                    verifyManualBtn.disabled = false;
-                    verifyManualBtn.innerHTML = originalContent;
-                    message(data.message || 'Verifikasi transkrip gagal.', true);
+                    resetLoading(verifyManualBtn);
+                    message(data.message || 'Verifikasi transkrip gagal.', 'error');
                 }
             } catch (error) {
-                verifyManualBtn.disabled = false;
-                verifyManualBtn.innerHTML = originalContent;
+                resetLoading(verifyManualBtn);
                 message('Gagal menghubungi server.', true);
             }
         });

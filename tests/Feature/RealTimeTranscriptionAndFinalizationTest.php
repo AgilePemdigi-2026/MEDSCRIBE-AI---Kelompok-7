@@ -400,7 +400,7 @@ class RealTimeTranscriptionAndFinalizationTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee('Setujui & Finalisasi Rekam Medis');
-        $response->assertDontSee('Preview SOAP (PDF)');
+        $response->assertDontSee('Pratinjau SOAP (PDF)');
     }
 
     /**
@@ -427,7 +427,7 @@ class RealTimeTranscriptionAndFinalizationTest extends TestCase
         );
 
         $response->assertStatus(200);
-        $response->assertSee('Preview SOAP (PDF)');
+        $response->assertSee('Pratinjau SOAP (PDF)');
         $response->assertSee(route('dokter.soap.preview', $this->kunjungan));
         $response->assertDontSee('id="btn-finalisasi-action"', false);
     }

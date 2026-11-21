@@ -6,8 +6,8 @@
 @php
     $persen = fn ($n) => $totalAntrean > 0 ? round($n / $totalAntrean * 100) : 0;
     $filters = [
-        '' => 'Semua status',
-        'Siap Periksa' => 'Siap periksa',
+        '' => 'Semua',
+        'Siap Periksa' => 'Siap Periksa',
         'Menunggu TTV' => 'Menunggu TTV',
         'Selesai' => 'Selesai',
     ];
@@ -45,18 +45,8 @@
 
         {{-- Ringkasan antrean: total, jumlah per status beserta proporsinya, dan protokol klinis --}}
         <aside class="card-navy spotlight lg:col-span-4 lg:col-start-9 lg:row-start-1 lg:sticky lg:top-28 rise" style="--i: 1" aria-labelledby="judulRingkasan">
-            {{-- Hiasan: cincin konsentris samar yang menggemakan bentuk donat --}}
-            <svg class="absolute -right-24 -top-24 w-72 h-72 text-white/[0.06] pointer-events-none" viewBox="0 0 200 200" fill="none" stroke="currentColor" aria-hidden="true">
-                <circle cx="100" cy="100" r="40" /><circle cx="100" cy="100" r="62" /><circle cx="100" cy="100" r="84" />
-            </svg>
-
             <div class="relative p-6 pb-5">
-                <div class="flex items-center justify-between gap-3">
-                    <h2 id="judulRingkasan" class="text-base font-semibold">Ringkasan Antrean</h2>
-                    <span class="px-2.5 py-1 rounded-full bg-white/10 border border-white/10 text-[11px] text-[#CBD1EA]">
-                        {{ \Carbon\Carbon::now('Asia/Jakarta')->locale('id')->isoFormat('D MMM Y') }}
-                    </span>
-                </div>
+                <h2 id="judulRingkasan" class="text-base font-semibold">Ringkasan Antrean Hari Ini</h2>
 
                 {{-- Donat: tiap segmen = proporsi status dari total antrean --}}
                 <figure class="mt-6 flex flex-col sm:flex-row lg:flex-col 2xl:flex-row items-center gap-6">
@@ -75,19 +65,19 @@
                         </svg>
                         <div class="absolute inset-0 flex flex-col items-center justify-center">
                             <span class="text-[2.5rem] leading-none font-semibold tracking-[-0.05em] num" data-ticker="{{ $totalAntrean }}">{{ $totalAntrean }}</span>
-                            <span class="mt-1 text-[11px] text-[#A5ADD8]">Total Antrean</span>
+                            <span class="mt-1 text-[11px] text-on-navy-muted">Total Antrean</span>
                         </div>
                     </div>
 
                     <figcaption class="w-full">
                         <dl class="space-y-1">
                             @foreach ($segmen as [$label, $n, $warna])
-                                <div class="flex items-center gap-2.5 px-2.5 py-2 rounded-[12px] transition-colors hover:bg-white/[0.07]">
+                                <div class="flex items-center gap-2.5 px-2.5 py-2 rounded-(--radius-field) transition-colors hover:bg-white/[0.07]">
                                     <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {{ $warna }}" aria-hidden="true"></span>
-                                    <dt class="flex-1 text-[13px] text-[#E4E7F4]">{{ $label }}</dt>
+                                    <dt class="flex-1 text-[13px] text-white/90">{{ $label }}</dt>
                                     <dd class="text-right whitespace-nowrap">
                                         <span class="text-sm font-semibold num" data-ticker="{{ $n }}">{{ $n }}</span>
-                                        <span class="ml-1 text-[11px] text-[#A5ADD8] num">{{ $persen($n) }}%</span>
+                                        <span class="ml-1 text-[11px] text-on-navy-muted num">{{ $persen($n) }}%</span>
                                     </dd>
                                 </div>
                             @endforeach
@@ -97,23 +87,22 @@
             </div>
 
             {{-- Sorotan siap periksa: tindakan utama dokter --}}
-            <div class="relative mx-4 p-4 rounded-[20px] bg-royal-indigo/90 border border-white/15 shadow-[0_12px_28px_-14px_rgba(88,101,220,0.9)] flex items-center gap-3">
+            <div class="relative mx-4 p-4 rounded-(--radius-panel) bg-royal-indigo border border-white/15 flex items-center gap-3">
                 <span class="avatar w-10 h-10 bg-white text-royal-indigo" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </span>
                 <p class="flex-1 text-sm leading-snug">
                     <span class="font-semibold num">{{ $siapPeriksa }} pasien</span> siap dipanggil sekarang
                 </p>
                 @if ($siapPeriksa > 0)
-                    <a href="{{ route('dokter.dashboard', ['status' => 'Siap Periksa']) }}" class="btn btn-sm bg-white text-medical-navy hover:bg-pale-lavender">Lihat</a>
+                    <a href="{{ route('dokter.dashboard', ['status' => 'Siap Periksa']) }}" class="btn btn-secondary btn-sm">Lihat</a>
                 @endif
             </div>
 
-            <div class="relative m-4 mt-3 p-4 rounded-[20px] bg-white/[0.05] border border-white/10 flex gap-3">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0 text-[#A5ADD8]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-                <p class="text-xs leading-relaxed text-[#CBD1EA]">
-                    <span class="font-semibold text-white">Protokol Klinis:</span>
-                    Pasien berstatus "Menunggu TTV" terkunci secara sistematis dan memerlukan verifikasi tanda vital oleh perawat sebelum dokter dapat memulai pemeriksaan.
+            <div class="relative m-4 mt-3 p-4 rounded-(--radius-panel) bg-white/[0.05] border border-white/10 flex gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0 text-on-navy-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                <p class="text-xs leading-relaxed text-on-navy-soft">
+                    Pasien berstatus <span class="font-semibold text-white">Menunggu TTV</span> baru bisa diperiksa setelah perawat mengisi tanda-tanda vitalnya.
                 </p>
             </div>
         </aside>
@@ -122,8 +111,8 @@
         <section class="card spotlight lg:col-span-8 lg:col-start-1 lg:row-start-1 overflow-hidden rise" style="--i: 2" aria-labelledby="judulAntrean">
             <div class="relative p-5 sm:p-6 flex flex-col gap-4">
                 <div>
-                    <h2 id="judulAntrean" class="text-lg font-semibold text-medical-navy">Antrean Pasien Poliklinik</h2>
-                    <p class="text-xs text-text-secondary mt-0.5">Prioritas pemanggilan: pasien dengan status <span class="font-semibold text-success-text">Siap Periksa</span></p>
+                    <h2 id="judulAntrean" class="section-title">Antrean Pasien Poliklinik</h2>
+                    <p class="section-subtitle">Panggil lebih dulu pasien berstatus <span class="font-semibold text-success-text">Siap Periksa</span>.</p>
                 </div>
 
                 <nav aria-label="Saring status" class="pill-nav-scroll">
@@ -157,9 +146,9 @@
                                         <span class="avatar w-9 h-9 bg-pale-lavender text-royal-indigo-hover text-xs transition-colors group-hover:bg-royal-indigo group-hover:border-royal-indigo group-hover:text-white" aria-hidden="true">{{ strtoupper(substr($namaPasien, 0, 1)) }}</span>
                                         <div>
                                             <div class="font-semibold text-medical-navy text-sm transition-colors group-hover:text-royal-indigo-hover">{{ $namaPasien }}</div>
-                                            <div class="text-[11px] text-text-secondary mt-0.5">
-                                                RM <span class="font-mono font-semibold text-royal-indigo-hover">{{ $antrean->pasien->no_rekam_medis ?? '-' }}</span>
-                                                @if ($antrean->pasien?->jenis_kelamin) · {{ $antrean->pasien->jenis_kelamin }} @endif
+                                            <div class="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-text-secondary">
+                                                <span class="tag-id"><span class="sr-only">No. RM </span>{{ $antrean->pasien->no_rekam_medis ?? '-' }}</span>
+                                                @if ($antrean->pasien?->jenis_kelamin)<span>{{ $antrean->pasien->jenis_kelamin }}</span>@endif
                                             </div>
                                         </div>
                                     </div>
@@ -187,11 +176,14 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="!py-12 text-center">
-                                    <p class="text-sm font-semibold text-medical-navy">Tidak ada data antrean yang sesuai filter.</p>
-                                    @if (request('status'))
-                                        <a href="{{ route('dokter.dashboard') }}" class="link text-xs inline-flex min-h-11 items-center">Tampilkan semua status</a>
-                                    @endif
+                                <td colspan="4" class="!p-0">
+                                    <x-empty-state :title="request('status') ? 'Tidak ada pasien dengan status ini' : 'Antrean masih kosong'"
+                                                   :hint="request('status') ? 'Pilih status lain atau tampilkan semua antrean.' : 'Pasien yang didaftarkan perawat akan muncul di sini.'"
+                                                   icon="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z">
+                                        @if (request('status'))
+                                            <a href="{{ route('dokter.dashboard') }}" class="btn btn-soft">Tampilkan semua</a>
+                                        @endif
+                                    </x-empty-state>
                                 </td>
                             </tr>
                         @endforelse

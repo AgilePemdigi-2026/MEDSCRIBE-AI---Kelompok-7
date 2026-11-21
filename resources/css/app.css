@@ -321,32 +321,6 @@
         color: var(--color-medical-navy);
     }
 
-    /* Aksi yang memanggil AI: pil lavender berbingkai gradien indigo, ikon kilau berputar saat hover. */
-    .btn-ai {
-        color: var(--color-royal-indigo-hover);
-        background:
-            linear-gradient(var(--color-lavender-mist), var(--color-lavender-mist)) padding-box,
-            linear-gradient(120deg, var(--color-border-hover), var(--color-royal-indigo) 50%, var(--color-border-hover)) border-box;
-        background-size: 100% 100%, 200% 100%;
-        background-position: 0 0, 100% 0;
-        border: 1px solid transparent;
-        transition: background-position 600ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 220ms ease, color 180ms ease, transform 160ms cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .btn-ai:hover:not(:disabled) {
-        color: var(--color-royal-indigo-active);
-        background-position: 0 0, 0 0;
-        box-shadow: 0 8px 22px -10px rgba(88, 101, 220, 0.55);
-    }
-
-    .btn-ai .ai-spark {
-        transition: transform 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-
-    .btn-ai:hover:not(:disabled) .ai-spark {
-        transform: rotate(72deg) scale(1.1);
-    }
-
     .btn-danger {
         background-color: var(--color-danger-solid);
         color: var(--color-pure-white);
@@ -863,6 +837,48 @@
         background-color: var(--color-pale-lavender);
         border-color: var(--color-border-hover);
         color: var(--color-royal-indigo-hover);
+    }
+
+    /* ---------- Kotak centang dan kartu pilihan (tindak lanjut, persetujuan finalisasi) ---------- */
+    .checkbox {
+        width: 1.1rem;
+        height: 1.1rem;
+        flex-shrink: 0;
+        accent-color: var(--color-royal-indigo);
+        cursor: pointer;
+    }
+
+    .option-card {
+        position: relative;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 1rem;
+        border-radius: var(--radius-panel);
+        border: 1px solid var(--color-border-subtle);
+        background-color: var(--color-pure-white);
+        cursor: pointer;
+        transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    .option-card:hover {
+        border-color: var(--color-border-hover);
+    }
+
+    .option-card:has(:checked) {
+        border-color: var(--color-royal-indigo);
+        background-color: var(--color-pale-lavender);
+        box-shadow: 0 0 0 3px rgba(88, 101, 220, 0.15);
+    }
+
+    .option-card:has(:disabled) {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .option-card:has(:focus-visible) {
+        outline: 2px solid var(--color-royal-indigo);
+        outline-offset: 2px;
     }
 
     /* ---------- Panel di dalam kartu (ringkasan, catatan, daftar keterangan) ---------- */

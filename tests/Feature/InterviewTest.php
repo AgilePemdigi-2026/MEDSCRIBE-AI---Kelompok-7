@@ -262,7 +262,7 @@ class InterviewTest extends TestCase
         $response = $this->actingAs($this->dokter)->followingRedirects()->get(route('dokter.interview.show', $this->kunjungan));
 
         $response->assertOk()
-            ->assertSee('Review Transkrip Wawancara')
+            ->assertSee('Tinjau transkrip wawancara')
             ->assertSee('Simpan Koreksi')
             ->assertDontSee('id="recording-console"');
     }
@@ -295,8 +295,8 @@ class InterviewTest extends TestCase
             ->followingRedirects()->get(route('dokter.interview.show', $this->kunjungan));
 
         $response->assertOk()
-            ->assertSee('Transkripsi Langsung (Real-Time)')
-            ->assertSee('Web Speech API')
+            ->assertSee('Transkrip langsung')
+            ->assertSee('id="stt-engine-badge"', false)
             ->assertSee('id="process-button"', false)
             ->assertSee('id="resume-button"', false)
             ->assertSee('id="retry-button"', false);

@@ -160,7 +160,7 @@ class TindakLanjutMedisBDDTest extends BDDTestCase
         $this->and('Status kunjungan menjadi "Resep Tersimpan" dan halaman menampilkan ringkasan resep');
         $this->assertSame(Kunjungan::STATUS_RESEP_TERSIMPAN, $this->kunjungan->fresh()->status);
         $this->bukaRekamMedis()
-            ->assertSee('Resep Obat')
+            ->assertSee('E-Resep')
             ->assertSee('Paracetamol')
             ->assertSee('Amoksisilin')
             ->assertDontSee('tindak-lanjut-form', false);
@@ -203,7 +203,7 @@ class TindakLanjutMedisBDDTest extends BDDTestCase
 
         $this->and('Status kunjungan menjadi "Rujukan Lab Tersimpan"');
         $this->assertSame(Kunjungan::STATUS_RUJUKAN_LAB_TERSIMPAN, $this->kunjungan->fresh()->status);
-        $this->bukaRekamMedis()->assertSee('Rujukan Laboratorium')->assertSee('58410-2');
+        $this->bukaRekamMedis()->assertSee('Rujukan Lab')->assertSee('58410-2');
     }
 
     /**
@@ -235,7 +235,7 @@ class TindakLanjutMedisBDDTest extends BDDTestCase
 
         $this->and('Status kunjungan menjadi "Rujukan Lab & Resep Tersimpan"');
         $this->assertSame(Kunjungan::STATUS_RUJUKAN_LAB_RESEP_TERSIMPAN, $this->kunjungan->fresh()->status);
-        $this->bukaRekamMedis()->assertSee('Resep Obat + Rujukan Lab');
+        $this->bukaRekamMedis()->assertSee('E-Resep + Rujukan Lab');
     }
 
     /**
@@ -263,7 +263,7 @@ class TindakLanjutMedisBDDTest extends BDDTestCase
 
         $this->and('Status kunjungan menjadi "Selesai Tanpa Tindakan Lanjut"');
         $this->assertSame(Kunjungan::STATUS_SELESAI_TANPA_TINDAKAN_LANJUT, $this->kunjungan->fresh()->status);
-        $this->bukaRekamMedis()->assertSee('Selesai Tanpa Tindakan Lanjut');
+        $this->bukaRekamMedis()->assertSee('Tanpa Tindak Lanjut');
     }
 
     /**

@@ -12,16 +12,16 @@
 @section('content')
 <div class="doc-page">
 
-    <div class="print-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white border border-border-subtle">
+    <div class="print-hidden card p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div class="doc-bar-kiri">
             @include('partials.back-link', ['href' => route('dokter.rekam-medis', $antrean->id_antrean) . '#finalisasi', 'label' => 'Kembali ke rekam medis'])
             <div>
-                <h1 class="text-sm font-semibold text-medical-navy leading-tight">Pratinjau dokumen SOAP</h1>
+                <h1 class="section-title leading-tight">Pratinjau dokumen SOAP</h1>
                 <p class="text-xs text-text-secondary">Ukuran A4 tegak. Pilih "Simpan sebagai PDF" di dialog cetak untuk menyimpan berkas.</p>
             </div>
         </div>
         <div class="flex items-center gap-2.5">
-            <span class="status status-ok text-xs">Final</span>
+            <span class="status status-ok">Final</span>
             <button type="button" onclick="cetakDokumenSoap()" id="btn-download-pdf" class="btn btn-primary">Cetak / Simpan PDF</button>
         </div>
     </div>
@@ -70,15 +70,16 @@
                     @if ($pemeriksaanAwal)
                         <table class="doc-ttv">
                             <tr>
-                                <th>TD</th><th>Nadi</th><th>Suhu</th><th>RR</th><th>SpO2</th><th>BB / TB</th>
+                                <th>Tekanan darah</th><th>Nadi</th><th>Suhu</th><th>Pernapasan</th><th>SpO2</th><th>Berat badan</th><th>Tinggi badan</th>
                             </tr>
                             <tr>
                                 <td>{!! $nilai($pemeriksaanAwal->tekanan_darah, 'mmHg') !!}</td>
-                                <td>{!! $nilai($pemeriksaanAwal->nadi, 'x/mnt') !!}</td>
+                                <td>{!! $nilai($pemeriksaanAwal->nadi, 'x/menit') !!}</td>
                                 <td>{!! $nilai($pemeriksaanAwal->suhu_tubuh, '°C') !!}</td>
-                                <td>{!! $nilai($pemeriksaanAwal->laju_pernapasan, 'x/mnt') !!}</td>
+                                <td>{!! $nilai($pemeriksaanAwal->laju_pernapasan, 'x/menit') !!}</td>
                                 <td>{!! $nilai($pemeriksaanAwal->saturasi_oksigen, '%') !!}</td>
-                                <td>{!! (filled($pemeriksaanAwal->berat_badan) || filled($pemeriksaanAwal->tinggi_badan)) ? $nilai($pemeriksaanAwal->berat_badan, 'kg') . ' / ' . $nilai($pemeriksaanAwal->tinggi_badan, 'cm') : $tidakDicatat !!}</td>
+                                <td>{!! $nilai(filled($pemeriksaanAwal->berat_badan) ? $pemeriksaanAwal->berat_badan + 0 : null, 'kg') !!}</td>
+                                <td>{!! $nilai(filled($pemeriksaanAwal->tinggi_badan) ? $pemeriksaanAwal->tinggi_badan + 0 : null, 'cm') !!}</td>
                             </tr>
                         </table>
                         @if ($pemeriksaanAwal->catatan)
@@ -105,7 +106,7 @@
                     <p class="doc-text">{{ $draf?->plan_text ?: 'Tidak dicatat.' }}</p>
 
                     @if ($tindakLanjut && $tindakLanjut->eResep->isNotEmpty())
-                        <h3 class="doc-sub">Resep</h3>
+                        <h3 class="doc-sub">E-Resep</h3>
                         <table class="doc-table">
                             <thead><tr><th class="w-num">No</th><th>Obat</th><th>Sediaan</th><th>Dosis</th><th>Aturan pakai</th><th class="w-num">Jml</th></tr></thead>
                             <tbody>
@@ -124,7 +125,7 @@
                     @endif
 
                     @if ($tindakLanjut && $tindakLanjut->rujukanLab)
-                        <h3 class="doc-sub">Rujukan laboratorium</h3>
+                        <h3 class="doc-sub">Rujukan lab</h3>
                         <ul class="doc-list">
                             @foreach ($tindakLanjut->rujukanLab->parameter as $param)
                                 <li>{{ $param->nama_pemeriksaan }}@if ($param->kode_loinc) <span class="doc-code">LOINC {{ $param->kode_loinc }}</span>@endif</li>
@@ -136,7 +137,7 @@
                     @endif
 
                     @if ($tindakLanjut && $tindakLanjut->jenis_tindak_lanjut === \App\Models\TindakLanjut::JENIS_TANPA_TINDAKAN)
-                        <p class="doc-note">Selesai tanpa resep maupun rujukan laboratorium.</p>
+                        <p class="doc-note">Tanpa tindak lanjut: pasien selesai tanpa e-resep dan tanpa rujukan lab.</p>
                     @endif
 
                     @if ($finalisasi?->catatan_finalisasi)
@@ -168,9 +169,9 @@
         --navy: var(--color-medical-navy, #122056);
         --accent: var(--color-royal-indigo, #5865DC);
         --muted: var(--color-text-secondary, #69718B);
-        --rule: #C9CEE0;
+        --rule: var(--color-border-hover, #C9CEE0);
         width: 100%; max-width: 210mm; min-height: 297mm; margin: 0 auto 3rem;
-        padding: 18mm 16mm; background: #fff; color: var(--ink);
+        padding: 18mm 16mm; background: var(--color-pure-white, #fff); color: var(--ink);
         border: 1px solid var(--color-border-subtle, #E4E7F4); border-radius: 2px;
         box-shadow: 0 1px 3px rgba(18, 32, 86, .08);
         font-size: 12.5px; line-height: 1.55;
@@ -201,7 +202,7 @@
     .doc-ttv, .doc-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
     .doc-ttv th, .doc-table th { text-align: left; font-weight: 500; color: var(--muted); padding: 4px 8px 4px 0; border-bottom: 1px solid var(--rule); }
     .doc-ttv td, .doc-table td { padding: 5px 8px 5px 0; vertical-align: top; }
-    .doc-table tbody tr + tr td { border-top: 1px solid #EEF0F7; }
+    .doc-table tbody tr + tr td { border-top: 1px solid var(--color-border-subtle, #E4E7F4); }
     .doc-table .w-num { width: 2.5em; text-align: right; padding-right: 12px; font-variant-numeric: tabular-nums; }
     .doc-list { padding-left: 1.1em; list-style: disc; }
     .doc-ttd { display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: end; margin-top: 22px; }

@@ -79,7 +79,7 @@ class DokterRekamMedisTest extends TestCase
         $response->assertSee($this->pasien->nama_pasien);
         $response->assertSee('TTV & Catatan Perawat', false);
         $response->assertSee('Rekam Wawancara Klinis');
-        $response->assertSee('Review dan Edit Draf SOAP');
+        $response->assertSee('Tinjau dan Edit Draf SOAP');
 
         // Pastikan draf SOAP dan kontrol AI tidak tampil di halaman
         $response->assertDontSee('Draf Catatan Medis (SOAP)');

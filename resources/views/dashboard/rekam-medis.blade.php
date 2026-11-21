@@ -10,11 +10,62 @@
     $tahapWawancara = $workflowState === 'ttv' ? 'locked' : ($sudahDitinjau ? 'done' : 'active');
     $tahapSoap = ! $sudahDitinjau ? 'locked' : ($terverifikasi ? 'done' : 'active');
 
+    $isFinalized = $kunjungan->isFinalized();
+
+    // Syarat kelayakan finalisasi (dipakai stepper dan tahap 4).
+    $draf = $soap['draf'] ?? null;
+    $soapSelesai = $kunjungan->isSoapVerified()
+        && $draf
+        && filled(trim($draf->subjective_text ?? ''))
+        && filled(trim($draf->objective_text ?? ''))
+        && filled(trim($draf->assessment_text ?? ''))
+        && filled(trim($draf->plan_text ?? ''));
+    $ttvSelesai = $pemeriksaanAwal !== null
+        && filled($pemeriksaanAwal->tekanan_darah)
+        && $pemeriksaanAwal->nadi
+        && $pemeriksaanAwal->suhu_tubuh;
+    $wawancaraSelesai = $wawancara !== null
+        && filled(trim($wawancara->transkrip ?? ''))
+        && $wawancara->transcript_reviewed_at !== null;
+    $tindakLanjutSelesai = $tindakLanjut !== null;
+    $semuaSyaratTerpenuhi = $soapSelesai && $ttvSelesai && $wawancaraSelesai && $tindakLanjutSelesai;
+
+    // Label status tiap tahap. Satu sumber untuk kepala tahap dan stepper di kolom kiri.
+    [$keteranganWawancara, $statusWawancara, $kelasStatusWawancara] = match (true) {
+        $isFinalized => ['Rekam medis sudah final. Data wawancara tidak bisa diubah.', 'Final', 'status-ok'],
+        $workflowState === 'ttv' => ['Terbuka setelah perawat mengisi TTV.', 'Menunggu TTV', 'status-muted'],
+        $workflowState === 'interview' => ['Mulai wawancara dan rekam percakapan klinis dengan pasien.', 'Belum dimulai', 'status-active'],
+        $workflowState === 'recording' => ['Rekam percakapan klinis. Transkrip muncul langsung saat berbicara.', 'Sesi berlangsung', 'status-active'],
+        $workflowState === 'transcript' => ['Periksa teks dan peran pembicara sebelum membuat draf SOAP.', 'Perlu ditinjau', 'status-warn'],
+        default => ['Transkrip sudah ditinjau dan dipakai untuk draf SOAP.', 'Selesai', 'status-ok'],
+    };
+
+    [$statusSoap, $kelasStatusSoap] = match (true) {
+        $isFinalized => ['Final', 'status-ok'],
+        $tahapSoap === 'locked' => ['Terkunci', 'status-muted'],
+        $terverifikasi => ['Terverifikasi', 'status-ok'],
+        default => ['Perlu ditinjau', 'status-warn'],
+    };
+
+    [$statusTindakLanjut, $kelasStatusTindakLanjut] = match ($tahapTindakLanjut) {
+        'done' => ['Tersimpan', 'status-ok'],
+        'active' => ['Siap diisi', 'status-active'],
+        'locked' => ['Terkunci', 'status-muted'],
+        default => ['Belum tersedia', 'status-muted'],
+    };
+
+    [$statusFinalisasiLabel, $statusFinalisasiClass] = match (true) {
+        $isFinalized => ['Final', 'status-ok'],
+        $semuaSyaratTerpenuhi => ['Siap difinalisasi', 'status-active'],
+        $tahapFinalisasi === 'active' => ['Belum lengkap', 'status-warn'],
+        default => ['Terkunci', 'status-muted'],
+    };
+
     $navigasi = [
-        ['wawancara', 'Wawancara Klinis', $tahapWawancara],
-        ['soap', 'Draf SOAP', $tahapSoap],
-        ['tindak-lanjut', 'Tindak Lanjut', $tahapTindakLanjut],
-        ['finalisasi', 'Finalisasi', $tahapFinalisasi],
+        ['wawancara', 'Wawancara Klinis', $tahapWawancara, $statusWawancara],
+        ['soap', 'Draf SOAP', $tahapSoap, $statusSoap],
+        ['tindak-lanjut', 'Tindak Lanjut', $tahapTindakLanjut, $statusTindakLanjut],
+        ['finalisasi', 'Finalisasi', $tahapFinalisasi, $statusFinalisasiLabel],
     ];
 @endphp
 
@@ -33,7 +84,7 @@
         <aside class="lg:col-span-4 space-y-6 lg:sticky lg:top-28">
             <section class="card-lavender spotlight p-5 sm:p-6 rise" style="--i: 1" aria-label="Identitas pasien">
                 <div class="relative flex items-start gap-4">
-                    <span class="avatar w-14 h-14 text-xl bg-white text-royal-indigo shadow-[0_10px_24px_-10px_rgba(88,101,220,0.6)]" aria-hidden="true">
+                    <span class="avatar w-14 h-14 text-xl bg-white text-royal-indigo" aria-hidden="true">
                         {{ strtoupper(substr($pasien->nama_pasien, 0, 1)) }}
                     </span>
                     <div class="min-w-0">
@@ -42,7 +93,7 @@
                             {{ $umur ? $umur . ' tahun' : 'Umur belum diisi' }} · {{ $pasien->jenis_kelamin ?? '-' }}
                         </p>
                         <div class="mt-3 flex flex-wrap gap-2">
-                            <span class="tag-id bg-white">RM {{ $pasien->no_rekam_medis }}</span>
+                            <span class="tag-id bg-white"><span class="sr-only">No. RM </span>{{ $pasien->no_rekam_medis }}</span>
                             <span class="tag-id tag-id-muted bg-white/80">A-{{ str_pad($antrean->id_antrean, 3, '0', STR_PAD_LEFT) }}</span>
                         </div>
                     </div>
@@ -54,7 +105,7 @@
 
             <section class="card p-5 sm:p-6 space-y-4 rise" style="--i: 2" aria-labelledby="judulTTV">
                 <div class="flex items-center justify-between gap-2">
-                    <h2 id="judulTTV" class="text-base font-semibold text-medical-navy">TTV & Catatan Perawat</h2>
+                    <h2 id="judulTTV" class="section-title">TTV & Catatan Perawat</h2>
                     @unless ($pemeriksaanAwal)
                         <span class="status status-warn">Belum diisi</span>
                     @endunless
@@ -67,12 +118,14 @@
                         <div class="vital"><dt class="vital-label">Suhu</dt><dd class="vital-value">{{ $pemeriksaanAwal->suhu_tubuh ?? '-' }}<span class="vital-unit">°C</span></dd></div>
                         <div class="vital"><dt class="vital-label">Pernapasan</dt><dd class="vital-value">{{ $pemeriksaanAwal->laju_pernapasan ?? '-' }}<span class="vital-unit">x/menit</span></dd></div>
                         <div class="vital"><dt class="vital-label">SpO2</dt><dd class="vital-value">{{ $pemeriksaanAwal->saturasi_oksigen ?? '-' }}<span class="vital-unit">%</span></dd></div>
-                        <div class="vital"><dt class="vital-label">BB / TB</dt><dd class="vital-value">{{ $pemeriksaanAwal->berat_badan ?? '-' }}<span class="vital-unit">kg</span> {{ $pemeriksaanAwal->tinggi_badan ?? '-' }}<span class="vital-unit">cm</span></dd></div>
+                        <div class="vital"><dt class="vital-label">Berat Badan</dt><dd class="vital-value">{{ $pemeriksaanAwal->berat_badan !== null ? $pemeriksaanAwal->berat_badan + 0 : '-' }}<span class="vital-unit">kg</span></dd></div>
+                        <div class="vital"><dt class="vital-label">Tinggi Badan</dt><dd class="vital-value">{{ $pemeriksaanAwal->tinggi_badan !== null ? $pemeriksaanAwal->tinggi_badan + 0 : '-' }}<span class="vital-unit">cm</span></dd></div>
                     </dl>
 
                     @if ($pemeriksaanAwal->catatan)
-                        <div class="p-4 rounded-[18px] bg-pale-lavender border border-border-hover text-sm">
-                            <p class="text-text-body leading-relaxed">{{ $pemeriksaanAwal->catatan }}</p>
+                        <div class="panel text-sm">
+                            <p class="font-semibold text-medical-navy">Catatan perawat</p>
+                            <p class="mt-0.5 text-text-body leading-relaxed">{{ $pemeriksaanAwal->catatan }}</p>
                         </div>
                     @endif
 
@@ -86,16 +139,14 @@
                         </p>
                     @endif
                 @else
-                    <p class="py-6 text-center text-xs text-text-secondary bg-soft-offwhite rounded-[18px] border border-dashed border-border-hover">
-                        Perawat belum mengisi pemeriksaan awal.
-                    </p>
+                    <x-empty-state class="!py-6" title="TTV belum diisi" hint="Perawat belum mengisi pemeriksaan awal pasien ini." />
                 @endif
             </section>
 
             {{-- Stepper vertikal (pola 21st.dev "Vertical Titled Stepper"): garis penghubung hijau untuk tahap yang selesai. --}}
             <nav class="card p-5 sm:p-6 rise hidden lg:block" style="--i: 3" aria-label="Tahap rekam medis">
                 <ol>
-                    @foreach ($navigasi as $i => [$anchor, $label, $keadaan])
+                    @foreach ($navigasi as $i => [$anchor, $label, $keadaan, $labelStatus])
                         <li class="relative">
                             @unless ($loop->last)
                                 <span @class([
@@ -104,7 +155,7 @@
                                     'bg-border-subtle' => $keadaan !== 'done',
                                 ]) aria-hidden="true"></span>
                             @endunless
-                            <a href="#{{ $anchor }}" class="group flex items-start gap-3 rounded-[14px] {{ $loop->last ? '' : 'pb-6' }}" @if ($keadaan === 'active') aria-current="step" @endif>
+                            <a href="#{{ $anchor }}" class="group flex items-start gap-3 rounded-(--radius-field) {{ $loop->last ? '' : 'pb-6' }}" @if ($keadaan === 'active') aria-current="step" @endif>
                                 <span @class([
                                     'avatar w-8 h-8 text-xs transition-transform group-hover:scale-105',
                                     'bg-success-dot text-white' => $keadaan === 'done',
@@ -121,7 +172,7 @@
                                 <span class="pt-1 min-w-0">
                                     <span class="block text-sm leading-tight transition-colors group-hover:text-royal-indigo {{ in_array($keadaan, ['done', 'active'], true) ? 'font-semibold text-medical-navy' : 'font-medium text-text-secondary' }}">{{ $label }}</span>
                                     <span class="block mt-0.5 text-[11px] text-text-secondary">
-                                        {{ ['done' => 'Selesai', 'active' => 'Sedang dikerjakan', 'locked' => 'Terkunci', 'soon' => 'Belum tersedia'][$keadaan] }}
+                                        {{ $labelStatus }}
                                     </span>
                                 </span>
                             </a>
