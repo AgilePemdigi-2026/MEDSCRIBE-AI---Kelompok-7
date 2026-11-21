@@ -42,19 +42,31 @@
     --color-danger-text: #B91C1C;
     --color-danger-solid: #DC2626;
     --color-danger-border: #FECACA;
+    --color-danger-dot: #EF4444;
+
+    /* Lavender turunan untuk permukaan sekunder (hover tombol lembut, isian tombol AI, gradien kartu). */
+    --color-lavender-hover: #E2E2FB;
+    --color-lavender-mist: #F5F5FE;
+    --color-lavender-deep: #DCDFF8;
+
+    /* Teks di atas kartu navy (.card-navy): judul pakai putih, sisanya dua tingkat ini. */
+    --color-on-navy-soft: #CBD1EA;
+    --color-on-navy-muted: #A5ADD8;
 
     --radius-card: 24px;
     --radius-field: 14px;
+    /* Panel di dalam kartu: alert, kotak TTV, ringkasan, kartu pilihan. */
+    --radius-panel: 18px;
 }
 
 @layer base {
     html {
-        background-color: #FAFAFD;
+        background-color: var(--color-soft-offwhite);
     }
 
     body {
-        background-color: #FAFAFD;
-        color: #20294A;
+        background-color: var(--color-soft-offwhite);
+        color: var(--color-text-body);
         font-family: var(--font-sans);
         font-feature-settings: "cv02", "cv03", "cv04", "cv11";
         -webkit-font-smoothing: antialiased;
@@ -65,8 +77,8 @@
     p { text-wrap: pretty; }
 
     ::selection {
-        background-color: #5865DC;
-        color: #FFFFFF;
+        background-color: var(--color-royal-indigo);
+        color: var(--color-pure-white);
     }
 
     a[href],
@@ -89,7 +101,7 @@
     }
 
     :focus-visible {
-        outline: 2px solid #5865DC;
+        outline: 2px solid var(--color-royal-indigo);
         outline-offset: 2px;
     }
 
@@ -105,7 +117,7 @@
 
 /* Latar: semburat lavender lembut di sudut, menggantikan pola titik lama yang ramai. */
 .app-backdrop {
-    background-color: #FAFAFD;
+    background-color: var(--color-soft-offwhite);
     background-image:
         radial-gradient(1200px 600px at 100% -10%, rgba(88, 101, 220, 0.08), transparent 60%),
         radial-gradient(900px 500px at -10% 110%, rgba(238, 238, 253, 0.9), transparent 60%);
@@ -116,8 +128,8 @@
     /* ---------- Permukaan ---------- */
     .card {
         position: relative;
-        background-color: #FFFFFF;
-        border: 1px solid #E4E7F4;
+        background-color: var(--color-pure-white);
+        border: 1px solid var(--color-border-subtle);
         border-radius: var(--radius-card);
         box-shadow: 0 1px 2px rgba(18, 32, 86, 0.04), 0 8px 24px -12px rgba(18, 32, 86, 0.10);
     }
@@ -129,15 +141,15 @@
 
     .card-hover:hover {
         transform: translateY(-3px);
-        border-color: #CBD1EA;
+        border-color: var(--color-border-hover);
         box-shadow: 0 2px 4px rgba(18, 32, 86, 0.04), 0 18px 36px -14px rgba(88, 101, 220, 0.35);
     }
 
     /* Kartu navy: blok penekanan (antrean, daftar tugas), seperti panel gelap di referensi. */
     .card-navy {
         position: relative;
-        background-color: #122056;
-        color: #FFFFFF;
+        background-color: var(--color-medical-navy);
+        color: var(--color-pure-white);
         border-radius: var(--radius-card);
         box-shadow: 0 18px 40px -18px rgba(18, 32, 86, 0.55);
         overflow: hidden;
@@ -149,8 +161,8 @@
         border-radius: var(--radius-card);
         background:
             radial-gradient(120% 90% at 100% 0%, rgba(88, 101, 220, 0.35), transparent 60%),
-            linear-gradient(160deg, #EEEEFD 0%, #DCDFF8 100%);
-        border: 1px solid #CBD1EA;
+            linear-gradient(160deg, var(--color-pale-lavender) 0%, var(--color-lavender-deep) 100%);
+        border: 1px solid var(--color-border-hover);
         overflow: hidden;
     }
 
@@ -181,21 +193,12 @@
     }
 
     /* ---------- Tipografi angka ---------- */
-    .stat-number {
-        font-size: 2.75rem;
-        line-height: 1;
-        font-weight: 600;
-        letter-spacing: -0.04em;
-        color: #122056;
-        font-variant-numeric: tabular-nums;
-    }
-
     .num { font-variant-numeric: tabular-nums; }
 
     .eyebrow {
         font-size: 0.8125rem;
         font-weight: 500;
-        color: #69718B;
+        color: var(--color-text-secondary);
     }
 
     /* ---------- Tombol (pil) ---------- */
@@ -246,18 +249,18 @@
     }
 
     .btn-primary {
-        background-color: #5865DC;
-        color: #FFFFFF;
+        background-color: var(--color-royal-indigo);
+        color: var(--color-pure-white);
         box-shadow: 0 2px 10px rgba(88, 101, 220, 0.24);
     }
 
     .btn-primary:hover:not(:disabled) {
-        background-color: #4854C9;
+        background-color: var(--color-royal-indigo-hover);
         box-shadow: 0 8px 22px -6px rgba(88, 101, 220, 0.55);
     }
 
     .btn-primary:active:not(:disabled) {
-        background-color: #3D47B0;
+        background-color: var(--color-royal-indigo-active);
     }
 
     /* Kilau menyapu saat hover (diadaptasi dari 21st.dev "Shiny Button"). */
@@ -278,52 +281,52 @@
     }
 
     .btn-navy {
-        background-color: #122056;
-        color: #FFFFFF;
+        background-color: var(--color-medical-navy);
+        color: var(--color-pure-white);
     }
 
     .btn-navy:hover:not(:disabled) {
-        background-color: #0c163d;
+        background-color: var(--color-medical-navy-dark);
         box-shadow: 0 8px 22px -8px rgba(18, 32, 86, 0.6);
     }
 
     .btn-secondary {
-        background-color: #FFFFFF;
-        border-color: #E4E7F4;
-        color: #122056;
+        background-color: var(--color-pure-white);
+        border-color: var(--color-border-subtle);
+        color: var(--color-medical-navy);
     }
 
     .btn-secondary:hover:not(:disabled) {
-        border-color: #5865DC;
-        color: #4854C9;
+        border-color: var(--color-royal-indigo);
+        color: var(--color-royal-indigo-hover);
         box-shadow: 0 6px 16px -8px rgba(88, 101, 220, 0.45);
     }
 
     .btn-soft {
-        background-color: #EEEEFD;
-        color: #122056;
+        background-color: var(--color-pale-lavender);
+        color: var(--color-medical-navy);
     }
 
     .btn-soft:hover:not(:disabled) {
-        background-color: #E2E2FB;
+        background-color: var(--color-lavender-hover);
     }
 
     .btn-ghost {
         background-color: transparent;
-        color: #69718B;
+        color: var(--color-text-secondary);
     }
 
     .btn-ghost:hover:not(:disabled) {
-        background-color: #EEEEFD;
-        color: #122056;
+        background-color: var(--color-pale-lavender);
+        color: var(--color-medical-navy);
     }
 
     /* Aksi yang memanggil AI: pil lavender berbingkai gradien indigo, ikon kilau berputar saat hover. */
     .btn-ai {
-        color: #4854C9;
+        color: var(--color-royal-indigo-hover);
         background:
-            linear-gradient(#F5F5FE, #F5F5FE) padding-box,
-            linear-gradient(120deg, #CBD1EA, #5865DC 50%, #CBD1EA) border-box;
+            linear-gradient(var(--color-lavender-mist), var(--color-lavender-mist)) padding-box,
+            linear-gradient(120deg, var(--color-border-hover), var(--color-royal-indigo) 50%, var(--color-border-hover)) border-box;
         background-size: 100% 100%, 200% 100%;
         background-position: 0 0, 100% 0;
         border: 1px solid transparent;
@@ -331,7 +334,7 @@
     }
 
     .btn-ai:hover:not(:disabled) {
-        color: #3D47B0;
+        color: var(--color-royal-indigo-active);
         background-position: 0 0, 0 0;
         box-shadow: 0 8px 22px -10px rgba(88, 101, 220, 0.55);
     }
@@ -345,28 +348,28 @@
     }
 
     .btn-danger {
-        background-color: #DC2626;
-        color: #FFFFFF;
+        background-color: var(--color-danger-solid);
+        color: var(--color-pure-white);
     }
 
     .btn-danger:hover:not(:disabled) {
-        background-color: #B91C1C;
+        background-color: var(--color-danger-text);
         box-shadow: 0 8px 20px -8px rgba(220, 38, 38, 0.55);
     }
 
     .btn-danger-quiet {
-        background-color: #FFFFFF;
-        border-color: #E4E7F4;
-        color: #B91C1C;
+        background-color: var(--color-pure-white);
+        border-color: var(--color-border-subtle);
+        color: var(--color-danger-text);
     }
 
     .btn-danger-quiet:hover:not(:disabled) {
-        background-color: #FEF2F2;
-        border-color: #FECACA;
+        background-color: var(--color-danger-bg);
+        border-color: var(--color-danger-border);
     }
 
     .link {
-        color: #4854C9;
+        color: var(--color-royal-indigo-hover);
         font-weight: 500;
         text-underline-offset: 4px;
     }
@@ -383,8 +386,8 @@
         gap: 0.25rem;
         padding: 0.3rem;
         border-radius: 9999px;
-        background-color: #FFFFFF;
-        border: 1px solid #E4E7F4;
+        background-color: var(--color-pure-white);
+        border: 1px solid var(--color-border-subtle);
     }
 
     .pill-nav > a,
@@ -399,28 +402,13 @@
         border-radius: 9999px;
         font-size: 0.8125rem;
         font-weight: 500;
-        color: #20294A;
+        color: var(--color-text-body);
         white-space: nowrap;
         transition: color 220ms ease;
     }
 
     .pill-nav > [aria-current] {
-        color: #FFFFFF;
-    }
-
-    .pill-nav .pill-count {
-        font-size: 0.75rem;
-        font-variant-numeric: tabular-nums;
-        padding: 0.05rem 0.45rem;
-        border-radius: 9999px;
-        background-color: #EEEEFD;
-        color: #4854C9;
-        transition: background-color 220ms ease, color 220ms ease;
-    }
-
-    .pill-nav > [aria-current] .pill-count {
-        background-color: rgba(255, 255, 255, 0.16);
-        color: #FFFFFF;
+        color: var(--color-pure-white);
     }
 
     /* Indikator aktif (navy) dan bayangan hover (lavender) digeser oleh JS. */
@@ -436,12 +424,12 @@
     }
 
     .pill-nav .pill-indicator {
-        background-color: #122056;
+        background-color: var(--color-medical-navy);
         box-shadow: 0 6px 16px -6px rgba(18, 32, 86, 0.55);
     }
 
     .pill-nav .pill-hover {
-        background-color: #EEEEFD;
+        background-color: var(--color-pale-lavender);
         opacity: 0;
     }
 
@@ -451,7 +439,7 @@
 
     /* Tanpa JS: indikator tetap terlihat lewat warna latar item aktif. */
     .pill-nav:not(.is-enhanced) > [aria-current] {
-        background-color: #122056;
+        background-color: var(--color-medical-navy);
     }
 
     /* ---------- Formulir ---------- */
@@ -460,24 +448,24 @@
         margin-bottom: 0.375rem;
         font-size: 0.8125rem;
         font-weight: 600;
-        color: #122056;
+        color: var(--color-medical-navy);
     }
 
     .field-label .req {
-        color: #DC2626;
+        color: var(--color-danger-solid);
     }
 
     .field-hint {
         margin-top: 0.375rem;
         font-size: 0.75rem;
-        color: #69718B;
+        color: var(--color-text-secondary);
     }
 
     .field-error {
         margin-top: 0.375rem;
         font-size: 0.75rem;
         font-weight: 500;
-        color: #B91C1C;
+        color: var(--color-danger-text);
     }
 
     .field {
@@ -485,10 +473,10 @@
         width: 100%;
         min-height: 2.75rem;
         padding: 0.55rem 0.9rem;
-        background-color: #FAFAFD;
-        border: 1px solid #E4E7F4;
+        background-color: var(--color-soft-offwhite);
+        border: 1px solid var(--color-border-subtle);
         border-radius: var(--radius-field);
-        color: #20294A;
+        color: var(--color-text-body);
         font-size: 1rem;
         transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
     }
@@ -502,31 +490,38 @@
     }
 
     .field:hover:not(:disabled):not([readonly]) {
-        border-color: #CBD1EA;
-        background-color: #FFFFFF;
+        border-color: var(--color-border-hover);
+        background-color: var(--color-pure-white);
     }
 
     .field:focus {
         outline: none;
-        background-color: #FFFFFF;
-        border-color: #5865DC;
+        background-color: var(--color-pure-white);
+        border-color: var(--color-royal-indigo);
         box-shadow: 0 0 0 4px rgba(88, 101, 220, 0.15);
     }
 
     .field[readonly] {
         background-color: rgba(238, 238, 253, 0.5);
-        border-color: #CBD1EA;
-        color: #122056;
+        border-color: var(--color-border-hover);
+        color: var(--color-medical-navy);
         font-weight: 600;
     }
 
+    .field:disabled {
+        background-color: var(--color-soft-offwhite);
+        border-color: var(--color-border-subtle);
+        color: var(--color-text-secondary);
+        opacity: 0.75;
+    }
+
     .field.is-invalid {
-        border-color: #DC2626;
+        border-color: var(--color-danger-solid);
     }
 
     .field-num {
         font-weight: 600;
-        color: #122056;
+        color: var(--color-medical-navy);
         font-variant-numeric: tabular-nums;
     }
 
@@ -550,7 +545,7 @@
         align-items: center;
         font-size: 0.75rem;
         font-weight: 600;
-        color: #69718B;
+        color: var(--color-text-secondary);
         pointer-events: none;
     }
 
@@ -564,13 +559,13 @@
         width: 1rem;
         height: 1rem;
         transform: translateY(-50%);
-        color: #69718B;
+        color: var(--color-text-secondary);
         pointer-events: none;
         transition: color 180ms ease;
     }
 
     .field-icon:focus-within > svg {
-        color: #5865DC;
+        color: var(--color-royal-indigo);
     }
 
     /* ---------- Pesan ---------- */
@@ -579,7 +574,7 @@
         align-items: flex-start;
         gap: 0.625rem;
         padding: 0.8rem 1rem;
-        border-radius: 18px;
+        border-radius: var(--radius-panel);
         border: 1px solid transparent;
         font-size: 0.8125rem;
         line-height: 1.5;
@@ -592,10 +587,10 @@
         margin-top: 0.1rem;
     }
 
-    .alert-ok { background-color: #ECFDF5; color: #047857; border-color: #A7F3D0; }
-    .alert-warn { background-color: #FFFBEB; color: #B45309; border-color: #FDE68A; }
-    .alert-danger { background-color: #FEF2F2; color: #B91C1C; border-color: #FECACA; }
-    .alert-info { background-color: #EEEEFD; color: #122056; border-color: #CBD1EA; }
+    .alert-ok { background-color: var(--color-success-bg); color: var(--color-success-text); border-color: var(--color-success-border); }
+    .alert-warn { background-color: var(--color-warning-bg); color: var(--color-warning-text); border-color: var(--color-warning-border); }
+    .alert-danger { background-color: var(--color-danger-bg); color: var(--color-danger-text); border-color: var(--color-danger-border); }
+    .alert-info { background-color: var(--color-pale-lavender); color: var(--color-medical-navy); border-color: var(--color-border-hover); }
 
     /* ---------- Status (pil dengan titik) ---------- */
     .status {
@@ -620,16 +615,16 @@
         flex-shrink: 0;
     }
 
-    .status-ok { background-color: #ECFDF5; color: #047857; border-color: #A7F3D0; }
-    .status-ok::before { background-color: #10B981; }
-    .status-warn { background-color: #FFFBEB; color: #B45309; border-color: #FDE68A; }
-    .status-warn::before { background-color: #F59E0B; }
-    .status-active { background-color: #EEEEFD; color: #4854C9; border-color: #CBD1EA; }
-    .status-active::before { background-color: #5865DC; }
-    .status-danger { background-color: #FEF2F2; color: #B91C1C; border-color: #FECACA; }
-    .status-danger::before { background-color: #DC2626; }
-    .status-muted { background-color: #FAFAFD; color: #69718B; border-color: #CBD1EA; }
-    .status-muted::before { background-color: #69718B; }
+    .status-ok { background-color: var(--color-success-bg); color: var(--color-success-text); border-color: var(--color-success-border); }
+    .status-ok::before { background-color: var(--color-success-dot); }
+    .status-warn { background-color: var(--color-warning-bg); color: var(--color-warning-text); border-color: var(--color-warning-border); }
+    .status-warn::before { background-color: var(--color-warning-dot); }
+    .status-active { background-color: var(--color-pale-lavender); color: var(--color-royal-indigo-hover); border-color: var(--color-border-hover); }
+    .status-active::before { background-color: var(--color-royal-indigo); }
+    .status-danger { background-color: var(--color-danger-bg); color: var(--color-danger-text); border-color: var(--color-danger-border); }
+    .status-danger::before { background-color: var(--color-danger-solid); }
+    .status-muted { background-color: var(--color-soft-offwhite); color: var(--color-text-secondary); border-color: var(--color-border-hover); }
+    .status-muted::before { background-color: var(--color-text-secondary); }
 
     /* Kode identitas (No. RM, antrean, kunjungan) dalam huruf mono seperti versi asli. */
     .tag-id {
@@ -637,9 +632,9 @@
         align-items: center;
         padding: 0.15rem 0.6rem;
         border-radius: 9999px;
-        background-color: #EEEEFD;
-        border: 1px solid #CBD1EA;
-        color: #4854C9;
+        background-color: var(--color-pale-lavender);
+        border: 1px solid var(--color-border-hover);
+        color: var(--color-royal-indigo-hover);
         font-family: var(--font-mono);
         font-size: 0.75rem;
         font-weight: 600;
@@ -647,39 +642,9 @@
     }
 
     .tag-id-muted {
-        background-color: #FAFAFD;
-        border-color: #E4E7F4;
-        color: #122056;
-    }
-
-    /* ---------- Bilah progres (seperti baris persentase di referensi) ---------- */
-    .bar {
-        position: relative;
-        height: 2.25rem;
-        border-radius: 9999px;
-        overflow: hidden;
-        background-color: #FAFAFD;
-        border: 1px solid #E4E7F4;
-    }
-
-    /* Arsiran diagonal: sisa yang belum terisi. */
-    .bar-hatch {
-        background-image: repeating-linear-gradient(-45deg, #E4E7F4 0 1px, transparent 1px 7px);
-    }
-
-    .bar-fill {
-        position: absolute;
-        inset-block: 0;
-        left: 0;
-        display: flex;
-        align-items: center;
-        padding-left: 0.85rem;
-        border-radius: 9999px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        white-space: nowrap;
-        width: 0;
-        transition: width 1100ms cubic-bezier(0.16, 1, 0.3, 1);
+        background-color: var(--color-soft-offwhite);
+        border-color: var(--color-border-subtle);
+        color: var(--color-medical-navy);
     }
 
     /* ---------- Nilai tanda vital ---------- */
@@ -689,16 +654,16 @@
         justify-content: space-between;
         gap: 0.5rem;
         padding: 0.9rem 1rem;
-        border-radius: 18px;
-        background-color: #FAFAFD;
-        border: 1px solid #E4E7F4;
+        border-radius: var(--radius-panel);
+        background-color: var(--color-soft-offwhite);
+        border: 1px solid var(--color-border-subtle);
         min-width: 0;
         container-type: inline-size;
         transition: border-color 200ms ease, transform 260ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 260ms ease;
     }
 
     .vital:hover {
-        border-color: #CBD1EA;
+        border-color: var(--color-border-hover);
         transform: translateY(-2px);
         box-shadow: 0 10px 22px -14px rgba(88, 101, 220, 0.45);
     }
@@ -706,7 +671,7 @@
     .vital-label {
         font-size: 0.75rem;
         font-weight: 500;
-        color: #69718B;
+        color: var(--color-text-secondary);
     }
 
     /* Angka mengecil mengikuti lebar kartu; satuan turun baris bila tetap tidak muat. */
@@ -720,7 +685,7 @@
         line-height: 1;
         font-weight: 600;
         letter-spacing: -0.03em;
-        color: #122056;
+        color: var(--color-medical-navy);
         font-variant-numeric: tabular-nums;
         overflow-wrap: anywhere;
     }
@@ -729,7 +694,7 @@
         font-size: 0.75rem;
         font-weight: 500;
         letter-spacing: 0;
-        color: #69718B;
+        color: var(--color-text-secondary);
         white-space: nowrap;
     }
 
@@ -746,21 +711,21 @@
         padding: 0.75rem 1.25rem;
         font-size: 0.75rem;
         font-weight: 500;
-        color: #69718B;
-        background-color: #FAFAFD;
-        border-bottom: 1px solid #E4E7F4;
+        color: var(--color-text-secondary);
+        background-color: var(--color-soft-offwhite);
+        border-bottom: 1px solid var(--color-border-subtle);
         white-space: nowrap;
     }
 
     .table tbody td {
         padding: 0.9rem 1.25rem;
-        border-bottom: 1px solid #E4E7F4;
+        border-bottom: 1px solid var(--color-border-subtle);
         vertical-align: middle;
         transition: background-color 160ms ease;
     }
 
     .table tbody tr:last-child td { border-bottom: 0; }
-    .table tbody tr:hover td { background-color: #FAFAFD; }
+    .table tbody tr:hover td { background-color: var(--color-soft-offwhite); }
 
     /* ---------- Dialog ---------- */
     .dialog-backdrop {
@@ -772,8 +737,8 @@
     }
 
     .dialog {
-        background-color: #FFFFFF;
-        border: 1px solid #E4E7F4;
+        background-color: var(--color-pure-white);
+        border: 1px solid var(--color-border-subtle);
         border-radius: var(--radius-card);
         box-shadow: 0 24px 60px -16px rgba(18, 32, 86, 0.35);
     }
@@ -787,6 +752,148 @@
         border-radius: 9999px;
         font-weight: 600;
         user-select: none;
+    }
+
+    /* ---------- Kepala halaman: eyebrow + judul + subjudul ---------- */
+    .page-title {
+        font-size: clamp(1.75rem, 2.6vw, 2.5rem);
+        line-height: 1.1;
+        font-weight: 600;
+        letter-spacing: -0.04em;
+        color: var(--color-medical-navy);
+    }
+
+    .page-subtitle {
+        margin-top: 0.5rem;
+        max-width: 65ch;
+        font-size: 0.875rem;
+        line-height: 1.6;
+        color: var(--color-text-secondary);
+    }
+
+    /* Judul bagian di dalam kartu. */
+    .section-title {
+        font-size: 1rem;
+        line-height: 1.4;
+        font-weight: 600;
+        color: var(--color-medical-navy);
+    }
+
+    .section-subtitle {
+        margin-top: 0.125rem;
+        font-size: 0.8125rem;
+        color: var(--color-text-secondary);
+    }
+
+    /* ---------- Chip: label atau filter yang bukan status (peran, jenis kelamin, filter aktif) ---------- */
+    .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.25rem 0.7rem;
+        border-radius: 9999px;
+        border: 1px solid var(--color-border-subtle);
+        background-color: var(--color-soft-offwhite);
+        color: var(--color-medical-navy);
+        font-size: 0.75rem;
+        font-weight: 500;
+        line-height: 1.3;
+        white-space: nowrap;
+    }
+
+    .chip-accent {
+        background-color: var(--color-pale-lavender);
+        border-color: var(--color-border-hover);
+        color: var(--color-royal-indigo-hover);
+    }
+
+    /* ---------- Panel di dalam kartu (ringkasan, catatan, daftar keterangan) ---------- */
+    .panel {
+        padding: 0.9rem 1rem;
+        border-radius: var(--radius-panel);
+        border: 1px solid var(--color-border-subtle);
+        background-color: var(--color-soft-offwhite);
+    }
+
+    /* ---------- Keadaan kosong ---------- */
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 3.5rem 1.5rem;
+        text-align: center;
+    }
+
+    .empty-state > svg {
+        width: 2.75rem;
+        height: 2.75rem;
+        margin-bottom: 0.5rem;
+        color: var(--color-border-hover);
+    }
+
+    .empty-state-title {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: var(--color-medical-navy);
+    }
+
+    .empty-state-hint {
+        max-width: 42ch;
+        font-size: 0.8125rem;
+        color: var(--color-text-secondary);
+    }
+
+    /* ---------- Spinner tunggal untuk semua status memproses ---------- */
+    .spinner {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        flex-shrink: 0;
+        border-radius: 9999px;
+        border: 2px solid currentColor;
+        border-right-color: transparent;
+        animation: spinnerTurn 700ms linear infinite;
+    }
+
+    /* ---------- Dialog: ikon, judul, isi, tombol ---------- */
+    .dialog-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 3rem;
+        height: 3rem;
+        border-radius: 9999px;
+        border: 1px solid var(--color-border-hover);
+        background-color: var(--color-pale-lavender);
+        color: var(--color-royal-indigo);
+    }
+
+    .dialog-icon > svg { width: 1.25rem; height: 1.25rem; }
+
+    .dialog-icon-danger { background-color: var(--color-danger-bg); border-color: var(--color-danger-border); color: var(--color-danger-solid); }
+    .dialog-icon-warn { background-color: var(--color-warning-bg); border-color: var(--color-warning-border); color: var(--color-warning-text); }
+    .dialog-icon-ok { background-color: var(--color-success-bg); border-color: var(--color-success-border); color: var(--color-success-text); }
+
+    .dialog-title {
+        margin-top: 1rem;
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--color-medical-navy);
+    }
+
+    .dialog-body {
+        margin-top: 0.375rem;
+        font-size: 0.875rem;
+        line-height: 1.6;
+        color: var(--color-text-secondary);
+    }
+
+    .dialog-actions {
+        margin-top: 1.5rem;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem;
     }
 }
 
@@ -816,13 +923,16 @@
     }
 }
 
+@keyframes spinnerTurn {
+    to { transform: rotate(360deg); }
+}
+
 @keyframes recPulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.3; }
 }
 
-/* Satu-satunya animasi berulang: indikator saat mikrofon benar-benar merekam. */
-.rec-dot,
+/* Animasi berulang hanya dua: .spinner saat memproses, dan titik ini saat mikrofon benar-benar merekam. */
 .status.is-live::before {
     animation: recPulse 1.4s ease-in-out infinite;
 }
@@ -834,7 +944,7 @@
     touch-action: pan-y;
     cursor: grab;
     user-select: none;
-    border-radius: 18px;
+    border-radius: var(--radius-panel);
 }
 
 .polaroid-stage:active {
@@ -842,7 +952,7 @@
 }
 
 .polaroid-stage:focus-visible {
-    outline: 2px solid #FFFFFF;
+    outline: 2px solid var(--color-pure-white);
     outline-offset: 4px;
 }
 
@@ -868,7 +978,7 @@
     width: 216px;
     margin: 0;
     padding: 10px 10px 0;
-    background-color: #FFFFFF;
+    background-color: var(--color-pure-white);
     border-radius: 6px;
     box-shadow: 0 18px 36px -14px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.18);
     transform-origin: 50% 0;
@@ -904,13 +1014,13 @@
     font-size: 1.3rem;
     line-height: 1.1;
     font-weight: 600;
-    color: #122056;
+    color: var(--color-medical-navy);
 }
 
 .polaroid-role {
     font-size: 0.6875rem;
     font-weight: 500;
-    color: #69718B;
+    color: var(--color-text-secondary);
 }
 
 /* Jepitan kayu di atas tiap foto. */
@@ -922,7 +1032,7 @@
     height: 26px;
     margin-left: -7px;
     border-radius: 3px;
-    background: linear-gradient(180deg, #E4E7F4, #CBD1EA);
+    background: linear-gradient(180deg, var(--color-border-subtle), var(--color-border-hover));
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
@@ -935,7 +1045,7 @@
     height: 4px;
     margin-left: -2px;
     border-radius: 9999px;
-    background-color: #69718B;
+    background-color: var(--color-text-secondary);
 }
 
 .polaroid-btn {
@@ -945,7 +1055,7 @@
     width: 2.75rem;
     height: 2.75rem;
     border-radius: 9999px;
-    color: #FFFFFF;
+    color: var(--color-pure-white);
     background-color: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.15);
     transition: background-color 180ms ease, transform 160ms ease;
@@ -960,7 +1070,7 @@
 }
 
 .polaroid-btn:focus-visible {
-    outline: 2px solid #FFFFFF;
+    outline: 2px solid var(--color-pure-white);
     outline-offset: 2px;
 }
 
@@ -989,11 +1099,3 @@
 .donut-seg:hover {
     stroke-width: 15;
 }
-
-/* Cincin timer (21st.dev "Circular Progress") */
-.ring-track { stroke: #EEEEFD; }
-.ring-value {
-    stroke: #5865DC;
-    transition: stroke-dashoffset 300ms linear, stroke 300ms ease;
-}
-.ring-value.is-recording { stroke: #DC2626; }

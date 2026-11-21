@@ -34,7 +34,10 @@ document.addEventListener('submit', (event) => {
     btn.disabled = true;
     btn.setAttribute('aria-busy', 'true');
     const label = btn.querySelector('[data-label]');
-    if (label && btn.dataset.loadingText) label.textContent = btn.dataset.loadingText;
+    if (label && btn.dataset.loadingText) {
+        label.dataset.original = label.textContent;
+        label.textContent = btn.dataset.loadingText;
+    }
     btn.querySelector('[data-spinner]')?.classList.remove('hidden');
     btn.querySelector('[data-icon]')?.classList.add('hidden');
 });
@@ -46,9 +49,66 @@ window.addEventListener('pageshow', (event) => {
         btn.dataset.busy = 'false';
         btn.disabled = false;
         btn.removeAttribute('aria-busy');
+        const label = btn.querySelector('[data-label]');
+        if (label?.dataset.original) label.textContent = label.dataset.original;
         btn.querySelector('[data-spinner]')?.classList.add('hidden');
         btn.querySelector('[data-icon]')?.classList.remove('hidden');
     });
+});
+
+// Dialog bersama. Markup: <div id="x" data-dialog class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true">
+// dengan .dialog-backdrop dan .dialog di dalamnya. Buka lewat <button data-dialog-open="x"> atau openDialog('x'),
+// tutup lewat [data-dialog-close], klik latar, atau Escape. Fokus pindah ke [autofocus] / tombol pertama,
+// lalu kembali ke pemicu saat ditutup.
+const openDialogs = [];
+
+function openDialog(id, trigger = document.activeElement) {
+    const dialog = document.getElementById(id);
+    if (!dialog || !dialog.classList.contains('hidden')) return;
+
+    dialog.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    openDialogs.push({ dialog, trigger });
+
+    const target = dialog.querySelector('[autofocus], [data-dialog-focus]')
+        ?? dialog.querySelector('.dialog button, .dialog [href], .dialog input, .dialog textarea, .dialog select');
+    requestAnimationFrame(() => target?.focus());
+}
+
+function closeDialog(id) {
+    const index = id
+        ? openDialogs.findIndex((entry) => entry.dialog.id === id)
+        : openDialogs.length - 1;
+    if (index < 0) return;
+
+    const [{ dialog, trigger }] = openDialogs.splice(index, 1);
+    dialog.classList.add('hidden');
+    if (openDialogs.length === 0) document.body.style.overflow = '';
+    if (trigger instanceof HTMLElement && document.contains(trigger)) trigger.focus();
+}
+
+window.openDialog = openDialog;
+window.closeDialog = closeDialog;
+
+document.addEventListener('click', (event) => {
+    const opener = event.target.closest('[data-dialog-open]');
+    if (opener) {
+        openDialog(opener.dataset.dialogOpen, opener);
+        return;
+    }
+
+    const dialog = event.target.closest('[data-dialog]');
+    if (!dialog) return;
+    const isBackdrop = event.target.classList.contains('dialog-backdrop') && !dialog.hasAttribute('data-dialog-static');
+    if (isBackdrop || event.target.closest('[data-dialog-close]')) closeDialog(dialog.id);
+});
+
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || openDialogs.length === 0) return;
+    const { dialog } = openDialogs[openDialogs.length - 1];
+    if (dialog.hasAttribute('data-dialog-static')) return;
+    event.preventDefault();
+    closeDialog(dialog.id);
 });
 
 // Spotlight: cahaya lembut mengikuti kursor di kartu .spotlight (21st.dev "Spotlight Card").
@@ -79,18 +139,6 @@ function runTickers() {
         };
         el.textContent = '0';
         requestAnimationFrame(step);
-    });
-}
-
-// Bilah progres: isi dari 0 ke persentase sebenarnya setelah halaman tampil.
-function runBars() {
-    document.querySelectorAll('[data-bar]').forEach((el) => {
-        const width = `${Math.max(0, Math.min(100, parseFloat(el.dataset.bar) || 0))}%`;
-        if (reduceMotion) {
-            el.style.width = width;
-        } else {
-            requestAnimationFrame(() => requestAnimationFrame(() => { el.style.width = width; }));
-        }
     });
 }
 
@@ -164,7 +212,6 @@ function enhancePillNav(nav) {
 function init() {
     document.querySelectorAll('.pill-nav').forEach(enhancePillNav);
     runTickers();
-    runBars();
 }
 
 if (document.readyState === 'loading') {
