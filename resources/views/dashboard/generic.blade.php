@@ -6,7 +6,7 @@
 <div class="max-w-xl mx-auto card spotlight p-8 text-center rise">
     <div class="relative">
         <span class="mx-auto avatar w-14 h-14 bg-pale-lavender text-royal-indigo" aria-hidden="true">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+            <x-icon name="user" class="w-6 h-6" />
         </span>
         <h1 class="mt-4 text-2xl font-semibold tracking-tight text-medical-navy">Selamat datang, {{ $user->nama_lengkap }}</h1>
         <p class="text-sm text-text-secondary mt-1.5">

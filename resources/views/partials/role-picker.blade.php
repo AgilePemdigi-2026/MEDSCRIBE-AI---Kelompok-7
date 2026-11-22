@@ -10,10 +10,10 @@
                 <input type="radio" name="role" value="{{ $value }}" class="sr-only peer" {{ old('role', 'dokter') === $value ? 'checked' : '' }}>
                 <span class="flex items-center justify-between">
                     <span class="avatar w-8 h-8 bg-white border border-border-subtle text-royal-indigo transition-colors group-has-checked:bg-royal-indigo group-has-checked:border-royal-indigo group-has-checked:text-white" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $icon }}" /></svg>
+                        <x-icon :path="$icon" />
                     </span>
                     <span class="w-5 h-5 rounded-full border-2 border-border-hover flex items-center justify-center transition-colors group-has-checked:border-royal-indigo group-has-checked:bg-royal-indigo" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-white opacity-0 group-has-checked:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                        <x-icon name="check" class="w-3 h-3 text-white opacity-0 group-has-checked:opacity-100" />
                     </span>
                 </span>
                 <span>

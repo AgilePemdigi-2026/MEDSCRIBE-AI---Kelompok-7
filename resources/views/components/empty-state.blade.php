@@ -11,9 +11,7 @@
 ])
 
 <div {{ $attributes->class(['empty-state']) }}>
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" d="{{ $icon }}" />
-    </svg>
+    <x-icon :path="$icon" stroke="1.5" static />
     <p class="empty-state-title">{{ $title }}</p>
     @if ($hint)
         <p class="empty-state-hint">{{ $hint }}</p>

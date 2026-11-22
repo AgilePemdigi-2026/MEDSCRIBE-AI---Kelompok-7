@@ -62,7 +62,7 @@
 
         {{-- Error dari validasi di browser dan dari server (fetch) tampil dengan gaya yang sama. --}}
         <div id="tindak-lanjut-client-error" class="alert alert-danger" role="alert" hidden>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+            <x-icon name="triangle-alert" aria-hidden="true" />
             <p class="flex-1 font-medium" data-error-text></p>
         </div>
 
@@ -79,7 +79,7 @@
                                    @checked(in_array($nilai, $opsiLama, true)) @if ($nilai !== 'tanpa_tindakan' && $tanpaDipilih) disabled @endif>
                             <span class="min-w-0">
                                 <span class="flex items-center gap-2 text-sm font-semibold text-medical-navy">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-royal-indigo" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $ikonOpsi }}" /></svg>
+                                    <x-icon :path="$ikonOpsi" class="h-4 w-4 text-royal-indigo" />
                                     {{ $judulOpsi }}
                                 </span>
                                 <span class="mt-1 block text-xs leading-relaxed text-text-secondary">{{ $ketOpsi }}</span>
@@ -99,7 +99,7 @@
                         <p class="mt-0.5 text-xs text-text-secondary">Isi satu kartu untuk setiap obat.</p>
                     </div>
                     <button type="button" id="tambah-obat" class="btn btn-secondary btn-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                        <x-icon name="plus" class="w-4 h-4" aria-hidden="true" />
                         Tambah Obat
                     </button>
                 </div>
@@ -126,7 +126,7 @@
 
                 @if ($parameterLoinc->isEmpty())
                     <div class="alert alert-warn">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <x-icon name="circle-alert" aria-hidden="true" />
                         <span class="flex-1 text-text-body">Katalog parameter LOINC belum tersedia. Hubungi admin rumah sakit sebelum membuat rujukan lab.</span>
                     </div>
                 @endif
@@ -159,7 +159,7 @@
             </div>
 
             <div id="info-tanpa-tindakan" class="alert alert-info" hidden>
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <x-icon name="info" aria-hidden="true" />
                 <span class="flex-1 text-text-body">Pasien akan ditandai selesai tanpa e-resep dan tanpa rujukan lab.</span>
             </div>
 
@@ -413,7 +413,7 @@
 @elseif ($tahapTindakLanjut === 'locked')
     <div class="border-t border-border-subtle p-5 sm:p-6">
         <div class="alert alert-info">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+            <x-icon name="lock" aria-hidden="true" />
             <span class="flex-1 text-text-body">Verifikasi draf SOAP untuk membuka tindak lanjut medis.</span>
         </div>
     </div>

@@ -89,7 +89,7 @@
             {{-- Sorotan siap periksa: tindakan utama dokter --}}
             <div class="relative mx-4 p-4 rounded-(--radius-panel) bg-royal-indigo border border-white/15 flex items-center gap-3">
                 <span class="avatar w-10 h-10 bg-white text-royal-indigo" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <x-icon name="circle-check" class="w-5 h-5" />
                 </span>
                 <p class="flex-1 text-sm leading-snug">
                     <span class="font-semibold num">{{ $siapPeriksa }} pasien</span> siap dipanggil sekarang
@@ -100,7 +100,7 @@
             </div>
 
             <div class="relative m-4 mt-3 p-4 rounded-(--radius-panel) bg-white/[0.05] border border-white/10 flex gap-3">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0 text-on-navy-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                <x-icon name="shield-check" class="w-5 h-5 flex-shrink-0 text-on-navy-muted" aria-hidden="true" />
                 <p class="text-xs leading-relaxed text-on-navy-soft">
                     Pasien berstatus <span class="font-semibold text-white">Menunggu TTV</span> baru bisa diperiksa setelah perawat mengisi tanda-tanda vitalnya.
                 </p>
@@ -159,11 +159,11 @@
                                     @if (in_array($antrean->status, ['Siap Periksa', 'Sedang Diperiksa', 'Draf SOAP Tersedia', 'SOAP Terverifikasi']))
                                         <a href="{{ route('dokter.rekam-medis', $antrean->id_antrean) }}" class="btn btn-primary btn-sm group">
                                             Buka Rekam Medis
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                                            <x-icon name="chevron-right" class="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                                         </a>
                                     @elseif ($antrean->status === 'Menunggu TTV')
                                         <button type="button" disabled class="btn btn-secondary btn-sm" title="Menunggu perawat menyelesaikan TTV">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                            <x-icon name="lock" class="w-3.5 h-3.5" aria-hidden="true" />
                                             Menunggu TTV
                                         </button>
                                     @elseif (! $antrean->kunjungan)
@@ -173,7 +173,7 @@
                                         </button>
                                     @else
                                         <a href="{{ route('dokter.rekam-medis', $antrean->id_antrean) }}" class="btn btn-secondary btn-sm" title="Lihat berkas rekam medis yang telah selesai">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-royal-indigo" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                            <x-icon name="check" class="w-3.5 h-3.5 text-royal-indigo" aria-hidden="true" />
                                             Lihat Berkas
                                         </a>
                                     @endif

@@ -46,7 +46,7 @@
         <div {{ $attributes->class(['dialog w-full p-6 pointer-events-auto animate-dialog', $width]) }}>
             <div class="text-center">
                 <span class="dialog-icon {{ $toneClass }}" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $iconPath }}" /></svg>
+                    <x-icon :path="$iconPath" static />
                 </span>
                 <h2 id="{{ $id }}-title" class="dialog-title">{{ $title }}</h2>
                 @if ($description)

@@ -22,7 +22,7 @@
 
     @if ($modeLengkapi)
         <div class="alert alert-info rise" role="status">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <x-icon name="info" aria-hidden="true" />
             <div class="flex-1 text-text-body">
                 <p class="font-semibold text-medical-navy">{{ $labelIzin }} Anda belum diisi</p>
                 <p class="mt-0.5">Isi agar tercetak di dokumen SOAP. Kalau nomornya belum terbit, lewati dulu. Halaman ini akan muncul lagi saat Anda masuk berikutnya.</p>

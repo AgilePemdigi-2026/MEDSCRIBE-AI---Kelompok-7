@@ -15,7 +15,7 @@
         <div>
             <label for="email" class="field-label">Alamat Email <span class="req" aria-hidden="true">*</span></label>
             <div class="field-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.206" /></svg>
+                <x-icon name="at-sign" aria-hidden="true" />
                 <input type="email" name="email" id="email" value="{{ old('email') }}" required autofocus autocomplete="email"
                        placeholder="nama@medscribe.id" class="field @error('email') is-invalid @enderror">
             </div>

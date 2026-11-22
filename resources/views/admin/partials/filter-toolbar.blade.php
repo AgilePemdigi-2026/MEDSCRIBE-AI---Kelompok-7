@@ -7,7 +7,7 @@
     <div class="sm:w-72">
         <label for="cari-{{ $route }}" class="field-label">Cari</label>
         <div class="field-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            <x-icon name="search" aria-hidden="true" />
             <input type="search" id="cari-{{ $route }}" name="cari" value="{{ $search }}" placeholder="{{ $placeholder }}" class="field">
         </div>
     </div>

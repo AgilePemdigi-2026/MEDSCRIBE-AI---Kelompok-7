@@ -20,9 +20,7 @@
             </a>
 
             <div class="hidden lg:flex min-w-0 items-center gap-2 px-4 min-h-10 rounded-full bg-soft-offwhite border border-border-subtle text-xs text-text-secondary">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-royal-indigo" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
+                <x-icon name="calendar" class="w-3.5 h-3.5 text-royal-indigo" aria-hidden="true" />
                 {{-- Nama RS hanya tampil kalau akun memang terikat ke RS; tanpa nama karangan. --}}
                 <span class="truncate whitespace-nowrap" title="{{ Auth::user()?->hospital?->hospital_name }}">{{ \Carbon\Carbon::now('Asia/Jakarta')->locale('id')->isoFormat('D MMMM Y') }}@if (Auth::user()?->hospital) · {{ Auth::user()->hospital->hospital_name }}@endif</span>
             </div>
@@ -52,9 +50,7 @@
 
                 <button type="button" data-dialog-open="modalLogout" title="Keluar dari Sistem"
                         class="btn btn-icon btn-secondary hover:!border-danger-border hover:!text-danger-text hover:!bg-danger-bg">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
+                    <x-icon name="log-out" class="w-[18px] h-[18px]" aria-hidden="true" />
                     <span class="sr-only">Keluar</span>
                 </button>
             </div>

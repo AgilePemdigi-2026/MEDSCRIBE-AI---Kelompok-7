@@ -41,7 +41,7 @@
     <div class="border-t border-border-subtle p-5 sm:p-6 space-y-6">
 
         <div class="alert alert-ok" role="status">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+            <x-icon name="lock" aria-hidden="true" />
             <div class="flex-1 text-text-body">
                 <p class="font-semibold text-medical-navy">Rekam medis sudah final</p>
                 <p class="mt-0.5">
@@ -147,7 +147,7 @@
         <div class="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-border-subtle">
             @include('partials.back-link', ['href' => '#soap', 'label' => 'Kembali ke SOAP'])
             <a href="{{ route('dokter.soap.preview', $kunjungan) }}" id="btn-preview-soap" class="btn btn-primary">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                <x-icon name="file-text" class="w-4 h-4" aria-hidden="true" />
                 <span>Pratinjau SOAP (PDF)</span>
             </a>
         </div>
@@ -164,7 +164,7 @@
 
         @unless ($semuaSyaratTerpenuhi)
             <div id="finalisasi-syarat-belum" class="alert alert-warn" role="status">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <x-icon name="circle-alert" aria-hidden="true" />
                 <span class="flex-1 text-text-body">Finalisasi bisa dilakukan setelah semua syarat di atas terpenuhi.</span>
             </div>
         @endunless
@@ -195,7 +195,7 @@
             </div>
 
             <div id="finalisasi-error" class="alert alert-danger" role="alert" hidden>
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                <x-icon name="triangle-alert" aria-hidden="true" />
                 <p class="flex-1 font-medium" data-error-text></p>
             </div>
 
@@ -203,7 +203,7 @@
                 @include('partials.back-link', ['href' => '#soap', 'label' => 'Kembali ke SOAP'])
                 <button type="button" id="btn-finalisasi-action" class="btn btn-primary" @disabled(! $semuaSyaratTerpenuhi)
                         @unless ($semuaSyaratTerpenuhi) aria-describedby="finalisasi-syarat-belum" @endunless>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    <x-icon name="check" class="w-4 h-4" aria-hidden="true" />
                     <span>Setujui &amp; Finalisasi Rekam Medis</span>
                 </button>
             </div>
@@ -306,7 +306,7 @@
     {{-- Tahap finalisasi belum terbuka --}}
     <div class="border-t border-border-subtle p-5 sm:p-6">
         <div class="alert alert-info">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+            <x-icon name="lock" aria-hidden="true" />
             <span class="flex-1 text-text-body">Finalisasi terbuka setelah draf SOAP diverifikasi.</span>
         </div>
     </div>

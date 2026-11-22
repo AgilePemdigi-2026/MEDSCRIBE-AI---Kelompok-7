@@ -36,7 +36,7 @@
 @endphp
 
 <span class="avatar w-12 h-12 border {{ $t['avatar'] }}" aria-hidden="true">
-    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="{{ $icon }}" /></svg>
+    <x-icon :path="$icon" class="w-5 h-5" />
 </span>
 <h1 class="mt-4 text-[1.9rem] leading-tight font-semibold tracking-[-0.03em] text-medical-navy">{{ $title }}</h1>
 <p class="mt-1.5 text-sm text-text-secondary">{{ $subtitle }}</p>
@@ -47,7 +47,7 @@
     @include('partials.form-errors')
 
     <div class="alert {{ $t['alert'] }}" role="status">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        <x-icon name="info" aria-hidden="true" />
         <div class="flex-1 min-w-0 text-text-body space-y-3">
             <p>{{ $slot }}</p>
             @if ($reasonLabel)
@@ -85,14 +85,14 @@
     <div class="grid gap-2.5">
         @if ($reload)
             <a href="{{ route('dashboard') }}" class="btn btn-primary w-full">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                <x-icon name="refresh-cw" class="w-4 h-4" aria-hidden="true" />
                 Muat ulang status
             </a>
         @endif
         <form method="POST" action="{{ route('logout') }}" class="m-0">
             @csrf
             <button type="submit" class="btn btn-danger-quiet w-full">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                <x-icon name="log-out" class="w-4 h-4" aria-hidden="true" />
                 Keluar
             </button>
         </form>

@@ -25,7 +25,7 @@
                 'bg-white text-warning-text border-warning-border' => ! $terpenuhi,
             ]) aria-hidden="true">
                 @if ($terpenuhi)
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    <x-icon name="check" class="w-3.5 h-3.5" />
                 @else
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01" /></svg>
                 @endif

@@ -32,7 +32,7 @@
 
     @if ($isFinalized)
         <div class="alert alert-ok" role="status">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+            <x-icon name="lock" aria-hidden="true" />
             <div class="flex-1 text-text-body">
                 <p class="font-semibold text-medical-navy">Rekam medis sudah final</p>
                 <p class="mt-0.5">Draf SOAP sudah disetujui dan tidak bisa diubah lagi.</p>
@@ -52,7 +52,7 @@
 
     @if ($soap['generationError'] && ! $isProcessing)
         <div class="alert alert-danger">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+            <x-icon name="triangle-alert" aria-hidden="true" />
             <span class="flex-1">{{ $soap['generationError'] }}</span>
         </div>
     @endif
@@ -73,7 +73,7 @@
     {{-- Satu kotak untuk semua hal yang perlu dicek dokter, supaya tidak menumpuk tiga alert kuning. --}}
     @if ($drafBerubah || $kelompokCatatan)
         <div class="alert alert-warn" role="status">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <x-icon name="circle-alert" aria-hidden="true" />
             <div class="flex-1 min-w-0 text-text-body">
                 <p class="font-semibold text-warning-text">Periksa dulu sebelum memverifikasi</p>
 
@@ -166,7 +166,7 @@
         <details class="group rounded-(--radius-panel) border border-border-subtle" @if ($errors->hasAny(['nama_pasien', 'no_rekam_medis', 'tanggal_lahir', 'jenis_kelamin'])) open @endif>
             <summary class="flex items-center justify-between gap-3 px-4 min-h-12 text-sm font-medium text-medical-navy list-none cursor-pointer">
                 <span>Koreksi data identitas pasien</span>
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-text-secondary transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                <x-icon name="chevron-down" class="w-4 h-4 text-text-secondary transition-transform group-open:rotate-180" aria-hidden="true" />
             </summary>
             <div class="border-t border-border-subtle p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -196,7 +196,7 @@
             <div class="flex flex-col-reverse sm:flex-row sm:items-center gap-3 pt-2">
                 @if ($pakaiOpenRouter)
                     <button type="button" id="regenerate-button" class="btn btn-soft sm:mr-auto">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true" data-icon><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        <x-icon name="refresh-cw" class="w-4 h-4" aria-hidden="true" data-icon />
                         <span class="spinner hidden" aria-hidden="true" data-spinner></span>
                         <span data-label>Buat Ulang Draf AI</span>
                     </button>
@@ -208,7 +208,7 @@
                     <span data-label>Simpan Koreksi</span>
                 </button>
                 <button type="button" id="verify-button" class="btn btn-primary">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    <x-icon name="check" class="w-4 h-4" aria-hidden="true" />
                     <span>{{ $terverifikasi ? 'Verifikasi Ulang' : 'Verifikasi SOAP' }}</span>
                 </button>
             </div>

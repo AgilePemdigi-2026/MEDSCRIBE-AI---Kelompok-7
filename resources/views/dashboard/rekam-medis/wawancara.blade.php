@@ -22,7 +22,7 @@
 
     @if ($isFinalized)
         <div class="alert alert-ok" role="status">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+            <x-icon name="lock" aria-hidden="true" />
             <div class="flex-1 text-text-body">
                 <p class="font-semibold text-medical-navy">Rekam medis sudah final</p>
                 <p class="mt-0.5">Rekaman audio dan transkrip wawancara tidak bisa diubah lagi.</p>
@@ -37,7 +37,7 @@
             <form method="POST" action="{{ route('dokter.interview.start', $kunjungan) }}" data-submit-loading>
                 @csrf
                 <button type="submit" class="btn btn-primary" data-loading-text="Memulai...">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                    <x-icon name="mic" class="w-4 h-4" aria-hidden="true" />
                     <span data-label>Mulai Wawancara</span>
                 </button>
             </form>
@@ -83,7 +83,7 @@
 
             {{-- Pemberitahuan bila browser tidak punya Web Speech API --}}
             <div id="stt-fallback-notice" class="hidden alert alert-warn">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <x-icon name="circle-alert" aria-hidden="true" />
                 <span class="text-text-body">Browser ini belum bisa menulis transkrip langsung. Gunakan Google Chrome atau Microsoft Edge.</span>
             </div>
 
@@ -91,7 +91,7 @@
             <div class="flex flex-wrap items-center justify-center gap-3">
                 {{-- State: IDLE --}}
                 <button type="button" id="record-button" class="btn btn-primary">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                    <x-icon name="mic" class="w-4 h-4" aria-hidden="true" />
                     <span>Mulai Rekaman</span>
                 </button>
 
@@ -105,25 +105,19 @@
                 <div id="paused-actions" hidden class="flex flex-wrap items-center justify-center gap-3">
                     {{-- 1. Lanjutkan --}}
                     <button type="button" id="resume-button" class="btn btn-secondary">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                            <path d="M6.3 2.841A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                        </svg>
+                        <x-icon name="play" />
                         <span>Lanjutkan</span>
                     </button>
 
                     {{-- 2. Ulangi Rekaman --}}
                     <button type="button" id="retry-button" class="btn btn-danger-quiet">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
+                        <x-icon name="refresh-cw" class="w-4 h-4" aria-hidden="true" />
                         <span>Ulangi Rekaman</span>
                     </button>
 
                     {{-- 3. Proses Rekaman --}}
                     <button type="button" id="process-button" class="btn btn-primary">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
+                        <x-icon name="circle-check" class="w-4 h-4" aria-hidden="true" />
                         <span>Proses Rekaman</span>
                     </button>
                 </div>
@@ -172,7 +166,7 @@
                     <span>Simpan Koreksi</span>
                 </button>
                 <button type="button" id="verify-transcript-button" class="btn btn-primary">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    <x-icon name="check" class="w-4 h-4" aria-hidden="true" />
                     <span>Verifikasi Transkripsi</span>
                 </button>
             </div>
@@ -183,7 +177,7 @@
                 <div class="flex flex-col sm:flex-row sm:items-center justify-end gap-3 pt-2">
                     <p id="transcript-message" class="text-xs text-text-secondary sm:mr-auto" role="status"></p>
                     <button type="button" id="verify-manual-transcript-button" class="btn btn-primary">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                        <x-icon name="check" class="w-4 h-4" aria-hidden="true" />
                         <span>Verifikasi Transkripsi</span>
                     </button>
                 </div>
@@ -196,12 +190,12 @@
         <details class="group rounded-(--radius-panel) border border-border-subtle" @if ($isFinalized) open @endif>
             <summary class="flex items-center justify-between gap-3 px-4 min-h-12 text-sm font-medium text-medical-navy list-none cursor-pointer">
                 <span class="flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-success-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <x-icon name="circle-check" class="w-4 h-4 text-success-text" aria-hidden="true" />
                     Transkrip yang telah diverifikasi
                 </span>
                 <span class="flex items-center gap-2 text-xs font-normal text-text-secondary">
                     {{ count($segments) }} bagian
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                    <x-icon name="chevron-down" class="w-4 h-4 transition-transform group-open:rotate-180" aria-hidden="true" />
                 </span>
             </summary>
             <ol class="border-t border-border-subtle divide-y divide-border-subtle">

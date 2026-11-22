@@ -1318,3 +1318,92 @@
         animation: none;
     }
 }
+
+/* ---------- Ikon beranimasi (<x-icon>, Lucide) ----------
+   Ikon diam secara default. Gerak satu kali saat tombol/tautan induknya di-hover, difokus keyboard,
+   atau ditekan; tidak ada animasi berulang. Mati otomatis untuk pengguna "kurangi gerakan". */
+.ikon {
+    flex-shrink: 0;
+    overflow: visible;
+}
+
+.ikon[data-gerak] {
+    transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ikon .ikon-tutup,
+.ikon .ikon-kait,
+.ikon .ikon-jarum {
+    transition: transform 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-box: fill-box;
+}
+
+.ikon .ikon-tutup { transform-origin: 100% 100%; }
+.ikon .ikon-kait { transform-origin: 50% 100%; }
+.ikon .ikon-jarum { transform-origin: 0% 100%; }
+
+@media (prefers-reduced-motion: no-preference) {
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) > .ikon[data-gerak="kanan"],
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) > * > .ikon[data-gerak="kanan"] { transform: translateX(3px); }
+
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) > .ikon[data-gerak="kiri"],
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) > * > .ikon[data-gerak="kiri"] { transform: translateX(-3px); }
+
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) > .ikon[data-gerak="turun"],
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) > * > .ikon[data-gerak="turun"] { transform: translateY(2px); }
+
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) > .ikon[data-gerak="putar"],
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) > * > .ikon[data-gerak="putar"] { transform: rotate(180deg); transition-duration: 500ms; }
+
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) > .ikon[data-gerak="putar-balik"],
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) > * > .ikon[data-gerak="putar-balik"] { transform: rotate(-180deg); transition-duration: 500ms; }
+
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) > .ikon[data-gerak="putar-90"],
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) > * > .ikon[data-gerak="putar-90"] { transform: rotate(90deg); }
+
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) > .ikon[data-gerak="lompat"],
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) > * > .ikon[data-gerak="lompat"] { transform: translateY(-2px); }
+
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) > .ikon[data-gerak="denyut"],
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) > * > .ikon[data-gerak="denyut"] { animation: ikonDenyut 520ms ease-out; }
+
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) > .ikon[data-gerak="goyang"],
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) > * > .ikon[data-gerak="goyang"] { animation: ikonGoyang 520ms ease-in-out; }
+
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) > .ikon[data-gerak="kedip"],
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) > * > .ikon[data-gerak="kedip"] { animation: ikonKedip 360ms ease-in-out; }
+
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) .ikon[data-gerak="tutup"] .ikon-tutup { transform: translate(1px, -2px) rotate(12deg); }
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) .ikon[data-gerak="kait"] .ikon-kait { transform: translateY(-2px); }
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) .ikon[data-gerak="putar-jarum"] .ikon-jarum { transform: rotate(40deg); }
+
+    /* Centang tergambar ulang dari awal. */
+    :is(a, button, summary, label, .btn, [role="button"]):is(:hover, :focus-visible) .ikon[data-gerak="gambar"] .ikon-garis {
+        stroke-dasharray: 1;
+        animation: ikonGambar 420ms ease-out;
+    }
+
+    /* Saat ditekan: sedikit mengecil, terasa seperti tombol fisik. */
+    :is(a, button, .btn, [role="button"]):active .ikon[data-gerak] { scale: 0.9; }
+}
+
+@keyframes ikonDenyut {
+    0%, 100% { transform: scale(1); }
+    45% { transform: scale(1.18); }
+}
+
+@keyframes ikonGoyang {
+    0%, 100% { transform: rotate(0); }
+    25% { transform: rotate(-12deg); }
+    60% { transform: rotate(9deg); }
+}
+
+@keyframes ikonKedip {
+    0%, 100% { transform: scaleY(1); }
+    50% { transform: scaleY(0.15); }
+}
+
+@keyframes ikonGambar {
+    from { stroke-dashoffset: 1; }
+    to { stroke-dashoffset: 0; }
+}
