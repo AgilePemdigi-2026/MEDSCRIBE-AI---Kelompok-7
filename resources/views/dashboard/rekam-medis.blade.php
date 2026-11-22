@@ -158,6 +158,47 @@
                 @endif
             </section>
 
+            {{-- Riwayat singkat: kunjungan lain pasien ini. Rekam medis final bisa dibuka baca-saja. --}}
+            <section class="card p-5 sm:p-6 space-y-4 rise" style="--i: 3" aria-labelledby="judulRiwayatSingkat">
+                <div class="flex items-center justify-between gap-2">
+                    <h2 id="judulRiwayatSingkat" class="section-title">Riwayat kunjungan</h2>
+                    <span class="text-[11px] text-text-secondary num">{{ $jumlahRiwayat }} sebelumnya</span>
+                </div>
+
+                @if ($riwayatKunjungan->isNotEmpty())
+                    <ul class="divide-y divide-border-subtle text-sm">
+                        @foreach ($riwayatKunjungan as $riwayat)
+                            @php $riwayatFinal = $riwayat->isFinalized(); @endphp
+                            <li class="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                                <div class="min-w-0">
+                                    <p class="font-semibold text-medical-navy">{{ \Carbon\Carbon::parse($riwayat->tanggal)->locale('id')->isoFormat('D MMM Y') }}</p>
+                                    <p class="text-[11px] text-text-secondary truncate">
+                                        @if ($riwayatFinal && $riwayat->drafSoap?->kode_icd10)
+                                            {{ $riwayat->drafSoap->kode_icd10 }} · {{ \Illuminate\Support\Str::limit($riwayat->drafSoap->assessment_text, 40) }}
+                                        @else
+                                            {{ $riwayatFinal ? 'Final' : ($riwayat->status ?: 'Belum ada status') }}
+                                        @endif
+                                    </p>
+                                </div>
+                                @if ($riwayatFinal)
+                                    <a href="{{ route('dokter.soap.preview', ['kunjungan' => $riwayat->id_kunjungan, 'kembali' => 'pasien']) }}" class="btn btn-secondary btn-sm shrink-0">
+                                        Lihat<span class="sr-only"> rekam medis {{ \Carbon\Carbon::parse($riwayat->tanggal)->locale('id')->isoFormat('D MMM Y') }}</span>
+                                    </a>
+                                @else
+                                    <span class="status status-muted shrink-0">Belum final</span>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
+                    <a href="{{ route('dokter.pasien.show', $pasien->id_pasien) }}" class="btn btn-soft btn-sm w-full">
+                        <x-icon name="history" class="w-3.5 h-3.5" aria-hidden="true" />
+                        Semua riwayat pasien
+                    </a>
+                @else
+                    <p class="text-sm text-text-secondary">Ini kunjungan pertama pasien.</p>
+                @endif
+            </section>
+
             {{-- Stepper vertikal (pola 21st.dev "Vertical Titled Stepper"): garis penghubung hijau untuk tahap yang selesai. --}}
             <nav class="card p-5 sm:p-6 rise hidden lg:block" style="--i: 3" aria-label="Tahap rekam medis">
                 <ol>

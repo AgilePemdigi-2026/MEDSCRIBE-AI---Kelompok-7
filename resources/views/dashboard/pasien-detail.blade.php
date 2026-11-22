@@ -16,6 +16,9 @@
         <span class="font-semibold text-medical-navy" aria-current="page">{{ $pasien->nama_pasien }}</span>
     </nav>
 
+    {{-- Mis. penolakan hapus registrasi karena pasien sudah punya riwayat pemeriksaan dokter. --}}
+    @include('partials.form-errors')
+
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
         {{-- Kartu identitas pasien --}}
@@ -52,7 +55,11 @@
                     @endif
                 </dl>
 
-                <div class="mt-6">
+                <div class="mt-6 grid gap-2">
+                    <button type="button" data-dialog-open="modalEditPasien" class="btn btn-secondary btn-sm w-full">
+                        <x-icon name="square-pen" class="w-3.5 h-3.5" aria-hidden="true" />
+                        Edit identitas
+                    </button>
                     <button type="button" onclick="openModalHapusPasien({{ $pasien->id_pasien }}, '{{ addslashes($pasien->nama_pasien) }}', '{{ $pasien->no_rekam_medis }}')"
                             class="btn btn-danger-quiet btn-sm w-full" title="Hapus / Batalkan Registrasi Pasien">
                         <x-icon name="trash-2" class="w-3.5 h-3.5" aria-hidden="true" />
@@ -147,5 +154,138 @@
     </div>
 </div>
 
+@php $errEdit = $errors->editPasien; @endphp
+{{-- ========== DIALOG: Edit identitas pasien (No. RM dan rumah sakit tetap) ========== --}}
+<div id="modalEditPasien" data-dialog class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="modalEditTitle">
+    <div class="dialog-backdrop"></div>
+
+    <div class="fixed inset-0 overflow-y-auto pointer-events-none">
+        <div class="min-h-full flex items-start justify-center px-4 py-8 sm:py-12">
+            <div class="dialog w-full max-w-2xl pointer-events-auto animate-dialog">
+                <div class="flex items-start justify-between gap-4 p-6 sm:px-8">
+                    <div class="flex items-center gap-3">
+                        <span class="avatar w-11 h-11 bg-pale-lavender text-royal-indigo" aria-hidden="true">
+                            <x-icon name="square-pen" class="w-5 h-5" />
+                        </span>
+                        <div>
+                            <h2 id="modalEditTitle" class="section-title">Edit identitas pasien</h2>
+                            <p class="section-subtitle">No. RM <span class="tag-id">{{ $pasien->no_rekam_medis }}</span> tidak berubah, riwayat kunjungan tetap tersambung.</p>
+                        </div>
+                    </div>
+                    <button type="button" data-dialog-close class="btn btn-ghost btn-icon btn-sm -mr-2" aria-label="Tutup dialog">
+                        <x-icon name="x" class="w-4 h-4" aria-hidden="true" />
+                    </button>
+                </div>
+
+                <form method="POST" action="{{ route('perawat.pasien.update', $pasien->id_pasien) }}" id="formEditPasien" class="p-6 pt-0 sm:px-8 space-y-6" data-submit-loading>
+                    @csrf
+                    @method('PUT')
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="sm:col-span-2">
+                            <label for="edit_nama_pasien" class="field-label">Nama lengkap <span class="req" aria-hidden="true">*</span></label>
+                            <input type="text" id="edit_nama_pasien" name="nama_pasien" required maxlength="100" autocomplete="off" data-dialog-focus
+                                   value="{{ old('nama_pasien', $pasien->nama_pasien) }}" placeholder="Sesuai kartu identitas"
+                                   class="field {{ $errEdit->has('nama_pasien') ? 'is-invalid' : '' }}">
+                            @if ($errEdit->has('nama_pasien'))<p class="field-error">{{ $errEdit->first('nama_pasien') }}</p>@endif
+                        </div>
+
+                        <div>
+                            <label for="edit_tanggal_lahir" class="field-label">Tanggal lahir</label>
+                            <input type="date" id="edit_tanggal_lahir" name="tanggal_lahir" max="{{ now('Asia/Jakarta')->toDateString() }}"
+                                   value="{{ old('tanggal_lahir', $pasien->tanggal_lahir?->toDateString()) }}"
+                                   class="field {{ $errEdit->has('tanggal_lahir') ? 'is-invalid' : '' }}">
+                            @if ($errEdit->has('tanggal_lahir'))<p class="field-error">{{ $errEdit->first('tanggal_lahir') }}</p>@endif
+                        </div>
+
+                        <div>
+                            <label for="edit_umur" class="field-label">Umur</label>
+                            <div class="field-unit">
+                                <input type="number" id="edit_umur" name="umur" min="0" max="130" placeholder="0"
+                                       value="{{ old('umur', $pasien->umur) }}"
+                                       class="field field-num {{ $errEdit->has('umur') ? 'is-invalid' : '' }}">
+                                <span class="unit">tahun</span>
+                            </div>
+                            @if ($errEdit->has('umur'))<p class="field-error">{{ $errEdit->first('umur') }}</p>@endif
+                            <p class="field-hint">Terisi dari tanggal lahir. Isi perkiraan kalau tanggal lahir tidak diketahui.</p>
+                        </div>
+
+                        <div>
+                            <label for="edit_jenis_kelamin" class="field-label">Jenis kelamin</label>
+                            @php $jkLama = old('jenis_kelamin', $pasien->jenis_kelamin); @endphp
+                            <select id="edit_jenis_kelamin" name="jenis_kelamin" class="field {{ $errEdit->has('jenis_kelamin') ? 'is-invalid' : '' }}">
+                                <option value="">Belum diketahui</option>
+                                <option value="Laki-laki" @selected($jkLama === 'Laki-laki')>Laki-laki</option>
+                                <option value="Perempuan" @selected($jkLama === 'Perempuan')>Perempuan</option>
+                            </select>
+                            @if ($errEdit->has('jenis_kelamin'))<p class="field-error">{{ $errEdit->first('jenis_kelamin') }}</p>@endif
+                        </div>
+
+                        <div>
+                            <label for="edit_no_hp" class="field-label">No. HP</label>
+                            <input type="tel" id="edit_no_hp" name="no_hp" inputmode="tel" autocomplete="off" maxlength="20"
+                                   value="{{ old('no_hp', $pasien->no_hp) }}" placeholder="08xxxxxxxxxx"
+                                   class="field num {{ $errEdit->has('no_hp') ? 'is-invalid' : '' }}">
+                            @if ($errEdit->has('no_hp'))<p class="field-error">{{ $errEdit->first('no_hp') }}</p>@endif
+                        </div>
+
+                        <div>
+                            <label for="edit_nik" class="field-label">NIK</label>
+                            <input type="text" id="edit_nik" name="nik" inputmode="numeric" autocomplete="off" maxlength="16"
+                                   value="{{ old('nik', $pasien->nik) }}" placeholder="16 digit"
+                                   class="field num {{ $errEdit->has('nik') ? 'is-invalid' : '' }}">
+                            @if ($errEdit->has('nik'))<p class="field-error">{{ $errEdit->first('nik') }}</p>@endif
+                        </div>
+
+                        <div>
+                            <label for="edit_no_bpjs" class="field-label">No. BPJS</label>
+                            <input type="text" id="edit_no_bpjs" name="no_bpjs" inputmode="numeric" autocomplete="off" maxlength="13"
+                                   value="{{ old('no_bpjs', $pasien->no_bpjs) }}" placeholder="13 digit"
+                                   class="field num {{ $errEdit->has('no_bpjs') ? 'is-invalid' : '' }}">
+                            @if ($errEdit->has('no_bpjs'))<p class="field-error">{{ $errEdit->first('no_bpjs') }}</p>@endif
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between gap-2 pt-5 border-t border-border-subtle">
+                        <button type="button" data-dialog-close class="btn btn-secondary">Batal</button>
+                        @include('partials.submit-button', ['id' => 'btnSimpanEditPasien', 'label' => 'Simpan perubahan', 'loading' => 'Menyimpan...', 'class' => 'px-6'])
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 @include('partials.modal-hapus-pasien')
+@endsection
+
+@section('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Buka otomatis saat validasi gagal, atau dari tombol "Edit" di Daftar Pasien (?edit=1).
+        @if ($errEdit->any() || request()->boolean('edit'))
+            window.openDialog?.('modalEditPasien');
+        @endif
+
+        const tglLahir = document.getElementById('edit_tanggal_lahir');
+        const umur = document.getElementById('edit_umur');
+        tglLahir?.addEventListener('change', function () {
+            if (!this.value) return;
+            const lahir = new Date(this.value + 'T00:00:00');
+            const kini = new Date();
+            let usia = kini.getFullYear() - lahir.getFullYear();
+            const belumUlangTahun = kini.getMonth() < lahir.getMonth()
+                || (kini.getMonth() === lahir.getMonth() && kini.getDate() < lahir.getDate());
+            if (belumUlangTahun) usia--;
+            if (usia >= 0) umur.value = usia;
+        });
+
+        // Spasi atau tanda hubung yang ikut tersalin dibuang dari NIK dan BPJS.
+        ['edit_nik', 'edit_no_bpjs'].forEach(function (id) {
+            document.getElementById(id)?.addEventListener('input', function () {
+                this.value = this.value.replace(/\D/g, '');
+            });
+        });
+    });
+</script>
 @endsection

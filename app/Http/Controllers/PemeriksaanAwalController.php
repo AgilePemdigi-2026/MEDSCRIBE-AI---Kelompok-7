@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StorePasienPemeriksaanRequest;
+use App\Http\Requests\UpdatePasienIdentitasRequest;
 use App\Models\Antrean;
 use App\Models\DrafSoap;
 use App\Models\Hospital;
@@ -431,6 +432,42 @@ class PemeriksaanAwalController extends Controller
             ->get();
 
         return view('dashboard.pasien-detail', compact('user', 'pasien', 'riwayatKunjungan'));
+    }
+
+    /**
+     * Memperbaiki identitas pasien (nama, tanggal lahir, umur, jenis kelamin, kontak, NIK, BPJS).
+     * No. RM dan rumah sakit tetap. Menerapkan validasi Multi-Tenancy rumah sakit.
+     */
+    public function updatePasien(UpdatePasienIdentitasRequest $request, int $id): RedirectResponse
+    {
+        $user = Auth::user();
+        $pasien = Pasien::findOrFail($id);
+
+        if ($user->hospital_id && $pasien->hospital_id && (int) $pasien->hospital_id !== (int) $user->hospital_id) {
+            abort(403, 'Akses ditolak: Anda tidak memiliki wewenang untuk mengubah data pasien dari rumah sakit lain.');
+        }
+
+        $validated = $request->validated();
+
+        // Sama dengan registrasi: umur dari form diutamakan, kalau kosong dihitung dari tanggal lahir.
+        $umur = $validated['umur'] ?? null;
+        if ($umur === null && filled($validated['tanggal_lahir'] ?? null)) {
+            $umur = (int) Carbon::parse($validated['tanggal_lahir'], 'Asia/Jakarta')->diffInYears(Carbon::now('Asia/Jakarta'));
+        }
+
+        $pasien->update([
+            'nama_pasien'   => trim($validated['nama_pasien']),
+            'tanggal_lahir' => $validated['tanggal_lahir'] ?? null,
+            'umur'          => $umur,
+            'jenis_kelamin' => $validated['jenis_kelamin'] ?? null,
+            'nik'           => $validated['nik'] ?? null,
+            'no_bpjs'       => $validated['no_bpjs'] ?? null,
+            'no_hp'         => $validated['no_hp'] ?? null,
+        ]);
+
+        return redirect()
+            ->route('perawat.pasien.show', $pasien->id_pasien)
+            ->with('status', 'Identitas pasien ' . $pasien->nama_pasien . ' berhasil diperbarui.');
     }
 
     /**

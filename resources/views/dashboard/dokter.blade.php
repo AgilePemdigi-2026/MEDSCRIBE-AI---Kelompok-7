@@ -39,6 +39,9 @@
         <h1 class="mt-2 text-[clamp(1.75rem,2.6vw,2.75rem)] leading-[1.1] font-semibold tracking-[-0.04em] text-medical-navy">
             Selamat datang, <span class="text-royal-indigo">{{ Auth::user()->nama_lengkap }}</span>
         </h1>
+        <div class="mt-4">
+            @include('partials.dokter-nav')
+        </div>
     </section>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

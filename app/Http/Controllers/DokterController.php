@@ -138,6 +138,17 @@ class DokterController extends Controller
         $pasien = $antrean->pasien;
         $umur = $pasien->usia_label;
 
+        // Kunjungan lain pasien ini, sebagai riwayat singkat di samping pemeriksaan.
+        $riwayatQuery = Kunjungan::where('id_pasien', $pasien->id_pasien)
+            ->where('id_kunjungan', '!=', $kunjungan->id_kunjungan);
+        $jumlahRiwayat = (clone $riwayatQuery)->count();
+        $riwayatKunjungan = $riwayatQuery
+            ->with(['drafSoap', 'finalisasi'])
+            ->orderByDesc('tanggal')
+            ->orderByDesc('id_kunjungan')
+            ->limit(5)
+            ->get();
+
         // 7. Katalog ICD-10: saran AI, label kode terpilih, dan sumber isian
         $icd10Catalog = app(Icd10Catalog::class);
         $drafSoap = $soap['draf'] ?? null;
@@ -167,7 +178,9 @@ class DokterController extends Controller
             'saranIcd10',
             'icd10Label',
             'icd10LabelResmi',
-            'icd10Ic10'
+            'icd10Ic10',
+            'riwayatKunjungan',
+            'jumlahRiwayat'
         ));
     }
 
@@ -430,10 +443,11 @@ class DokterController extends Controller
             }
         }
 
-        $this->authorizeKunjungan($kunjungan, $user->id_pengguna);
-
-        // Ketentuan Keamanan & Konsistensi: Dokumen SOAP hanya dapat dipratinjau jika sudah final
+        // Rekam medis final bersifat baca-saja, jadi boleh dibuka semua dokter RS yang sama
+        // sebagai riwayat pasien. Yang belum final tetap hanya untuk dokter pemeriksanya.
         if (! $kunjungan->isFinalized()) {
+            $this->authorizeKunjungan($kunjungan, $user->id_pengguna);
+
             return redirect()
                 ->to(route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean]) . '#finalisasi')
                 ->with('warning', 'Pratinjau SOAP hanya tersedia setelah rekam medis berhasil disetujui dan difinalisasi.');
@@ -474,6 +488,15 @@ class DokterController extends Controller
 
         $umur = $pasien->usia_label;
 
+        // Dibuka dari riwayat pasien, atau oleh dokter lain: kembali ke halaman riwayat, bukan ke pemeriksaan.
+        $kembaliKeRiwayat = $request->query('kembali') === 'pasien'
+            || (int) $kunjungan->id_dokter !== (int) $user->id_pengguna
+            || ! $antrean;
+        $kembaliUrl = $kembaliKeRiwayat
+            ? route('dokter.pasien.show', $pasien->id_pasien)
+            : route('dokter.rekam-medis', $antrean->id_antrean) . '#finalisasi';
+        $kembaliLabel = $kembaliKeRiwayat ? 'Kembali ke riwayat pasien' : 'Kembali ke rekam medis';
+
         $icdDescription = null;
         if ($draf?->kode_icd10) {
             $icd10Catalog = app(\App\Services\Icd10Catalog::class);
@@ -498,7 +521,9 @@ class DokterController extends Controller
             'idKunjunganCode',
             'umur',
             'icdDescription',
-            'user'
+            'user',
+            'kembaliUrl',
+            'kembaliLabel'
         ));
     }
 }

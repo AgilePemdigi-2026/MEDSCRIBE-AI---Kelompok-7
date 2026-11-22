@@ -11,7 +11,8 @@
       reasonLabel      label alasan (opsional); reason = isinya
       reload           true untuk menampilkan tombol "Muat ulang status"
 
-    Slot: $slot  isi pesan utama di dalam alert
+    Slot: $slot     isi pesan utama di dalam alert
+          $actions  tombol tambahan di atas tombol "Keluar" (opsional)
 --}}
 @props([
     'user',
@@ -89,6 +90,7 @@
                 Muat ulang status
             </a>
         @endif
+        {{ $actions ?? '' }}
         <form method="POST" action="{{ route('logout') }}" class="m-0">
             @csrf
             <button type="submit" class="btn btn-danger-quiet w-full">

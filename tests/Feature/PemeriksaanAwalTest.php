@@ -438,9 +438,20 @@ class PemeriksaanAwalTest extends TestCase
             'nadi'         => 80,
         ]);
 
-        $response = $this->actingAs($this->perawat)->delete('/perawat/pasien/' . $pasien->id_pasien);
+        // Dihapus dari halaman detail pasien: pesan penolakan harus tampil setelah kembali ke sana.
+        $halamanDetail = route('perawat.pasien.show', $pasien->id_pasien);
+        $response = $this->actingAs($this->perawat)
+            ->from($halamanDetail)
+            ->delete('/perawat/pasien/' . $pasien->id_pasien);
 
+        $response->assertRedirect($halamanDetail);
         $response->assertSessionHasErrors(['error']);
+
+        $this->actingAs($this->perawat)
+            ->from($halamanDetail)
+            ->followingRedirects()
+            ->delete('/perawat/pasien/' . $pasien->id_pasien)
+            ->assertSee('Registrasi pasien tidak dapat dibatalkan karena riwayat pemeriksaan dokter telah selesai.');
 
         // Data pasien tetap terjaga dan tidak di-soft-delete
         $this->assertDatabaseHas('pasien', [

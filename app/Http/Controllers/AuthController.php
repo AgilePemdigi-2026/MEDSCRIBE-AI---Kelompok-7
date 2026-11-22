@@ -506,6 +506,31 @@ class AuthController extends Controller
     }
 
     /**
+     * Pendaftar yang ditolak menghapus akunnya sendiri agar email dan akun Google-nya
+     * bisa dipakai mendaftar ulang. Akun ditolak belum pernah aktif, jadi tidak punya
+     * data klinis. Riwayat penolakan tetap ada di admin_audit_logs (nama dan peran).
+     */
+    public function reapplyAfterRejection(Request $request): RedirectResponse
+    {
+        $user = Auth::user();
+
+        if (! $user->isRejected()) {
+            return $this->redirectBasedOnRole($user);
+        }
+
+        $email = $user->email;
+
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        $user->delete();
+
+        return redirect()->route('register')
+            ->with('status', "Akun lama untuk {$email} sudah dihapus. Silakan daftar ulang dengan data yang sudah diperbaiki.");
+    }
+
+    /**
      * Menampilkan halaman pemberitahuan akun dinonaktifkan oleh admin rumah sakit.
      */
     public function showInactiveNotice(): View|RedirectResponse

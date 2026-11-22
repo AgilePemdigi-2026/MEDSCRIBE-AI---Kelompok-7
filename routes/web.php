@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\MutasiController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DokterController;
+use App\Http\Controllers\DokterPasienController;
 use App\Http\Controllers\ProfilController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\Icd10Controller;
@@ -68,6 +69,7 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
     // Halaman pemberitahuan status akun tenaga medis
     Route::get('/auth/pending', [AuthController::class, 'showPendingNotice'])->name('auth.pending');
     Route::get('/auth/rejected', [AuthController::class, 'showRejectedNotice'])->name('auth.rejected');
+    Route::post('/auth/rejected/daftar-ulang', [AuthController::class, 'reapplyAfterRejection'])->name('auth.rejected.reapply');
     Route::get('/auth/inactive', [AuthController::class, 'showInactiveNotice'])->name('auth.inactive');
 
     // Entry point router peran
@@ -120,6 +122,8 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
         Route::post('/dokter/kunjungan/{kunjungan}/finalisasi', [DokterController::class, 'finalizeRekamMedis'])->name('dokter.rekam-medis.finalisasi');
         Route::get('/dokter/kunjungan/{kunjungan}/soap/preview', [DokterController::class, 'previewSoap'])->name('dokter.soap.preview');
         Route::get('/dokter/icd10', [Icd10Controller::class, 'index'])->name('dokter.icd10.index');
+        Route::get('/dokter/pasien', [DokterPasienController::class, 'index'])->name('dokter.pasien.index');
+        Route::get('/dokter/pasien/{id}', [DokterPasienController::class, 'show'])->name('dokter.pasien.show');
         Route::get('/dokter/rekam-medis/{id_antrean}', [DokterController::class, 'showRekamMedis'])->name('dokter.rekam-medis');
         Route::get('/dokter/rekam-medis/{id_antrean}/audio-file', [DokterController::class, 'streamAudio'])->name('dokter.rekam-medis.stream-audio');
     });
@@ -130,6 +134,7 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
         Route::post('/perawat/pemeriksaan-awal', [PemeriksaanAwalController::class, 'store'])->name('perawat.pemeriksaan.store');
         Route::post('/perawat/pasien-baru', [PemeriksaanAwalController::class, 'storePasienBaru'])->name('perawat.pasien.store');
         Route::get('/perawat/pasien/{id}', [PemeriksaanAwalController::class, 'showPasien'])->name('perawat.pasien.show');
+        Route::put('/perawat/pasien/{id}', [PemeriksaanAwalController::class, 'updatePasien'])->name('perawat.pasien.update');
         Route::delete('/perawat/pasien/{id}', [PemeriksaanAwalController::class, 'destroyPasien'])->name('perawat.pasien.destroy');
     });
 });

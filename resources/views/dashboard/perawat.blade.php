@@ -333,6 +333,10 @@
                                         <x-icon name="eye" class="w-3.5 h-3.5" aria-hidden="true" />
                                         Detail<span class="sr-only"> {{ $pasien->nama_pasien }}</span>
                                     </a>
+                                    <a href="{{ route('perawat.pasien.show', ['id' => $pasien->id_pasien, 'edit' => 1]) }}" class="btn btn-secondary btn-sm" title="Edit identitas pasien">
+                                        <x-icon name="square-pen" class="w-3.5 h-3.5" aria-hidden="true" />
+                                        <span class="hidden xl:inline">Edit</span><span class="sr-only xl:hidden">Edit identitas</span><span class="sr-only"> {{ $pasien->nama_pasien }}</span>
+                                    </a>
                                     <button type="button" onclick="openModalHapusPasien({{ $pasien->id_pasien }}, '{{ addslashes($pasien->nama_pasien) }}', '{{ $pasien->no_rekam_medis }}')"
                                             class="btn btn-danger-quiet btn-sm" title="Hapus / Batalkan Registrasi Pasien">
                                         <x-icon name="trash-2" class="w-3.5 h-3.5" aria-hidden="true" />

@@ -15,7 +15,7 @@
 
     <div class="print-hidden card p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div class="doc-bar-kiri">
-            @include('partials.back-link', ['href' => route('dokter.rekam-medis', $antrean->id_antrean) . '#finalisasi', 'label' => 'Kembali ke rekam medis'])
+            @include('partials.back-link', ['href' => $kembaliUrl, 'label' => $kembaliLabel])
             <div>
                 <h1 class="section-title leading-tight">Pratinjau dokumen SOAP</h1>
                 <p class="text-xs text-text-secondary">Ukuran A4 tegak. Pilih "Simpan sebagai PDF" di dialog cetak untuk menyimpan berkas.</p>
