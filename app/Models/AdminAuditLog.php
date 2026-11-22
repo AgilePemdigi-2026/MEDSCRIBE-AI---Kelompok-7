@@ -79,6 +79,10 @@ class AdminAuditLog extends Model
             'reject_staff'     => 'Menolak Pendaftaran',
             'deactivate_staff' => 'Menonaktifkan Tenaga Medis',
             'reactivate_staff' => 'Mengaktifkan Kembali Tenaga Medis',
+            'mutasi_diajukan'  => 'Mengajukan Mutasi',
+            'mutasi_disetujui' => 'Menyetujui Mutasi',
+            'mutasi_ditolak'   => 'Menolak Mutasi',
+            'mutasi_dibatalkan' => 'Membatalkan Mutasi',
             default            => ucfirst(str_replace('_', ' ', $this->action)),
         };
     }
@@ -93,6 +97,10 @@ class AdminAuditLog extends Model
             'reject_staff'     => 'status-danger',
             'deactivate_staff' => 'status-warn',
             'reactivate_staff' => 'status-active',
+            'mutasi_diajukan'  => 'status-active',
+            'mutasi_disetujui' => 'status-ok',
+            'mutasi_ditolak'   => 'status-danger',
+            'mutasi_dibatalkan' => 'status-muted',
             default            => 'status-muted',
         };
     }

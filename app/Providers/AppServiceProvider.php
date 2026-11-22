@@ -45,6 +45,8 @@ class AppServiceProvider extends ServiceProvider
                 ? Pengguna::where('hospital_id', $hospitalId)->where('approval_status', 'pending')->count()
                 : 0;
             $view->with('pendingBadgeCount', $pendingBadgeCount);
+            // Permintaan mutasi tenaga medis yang menunggu keputusan RS ini.
+            $view->with('mutasiBadgeCount', $hospitalId ? \App\Models\MutasiTenagaMedis::masukUntuk((int) $hospitalId)->count() : 0);
         });
     }
 }

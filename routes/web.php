@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\MutasiController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DokterController;
@@ -86,6 +87,12 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
         Route::get('/admin/aktivitas', [AdminDashboardController::class, 'activities'])->name('admin.activities');
         Route::get('/admin/profil-rs', [AdminDashboardController::class, 'hospitalInfo'])->name('admin.hospital.info');
         Route::put('/admin/profil-rs', [AdminDashboardController::class, 'updateHospitalInfo'])->name('admin.hospital.update');
+        Route::get('/admin/mutasi', [MutasiController::class, 'index'])->name('admin.mutasi');
+        Route::post('/admin/mutasi/tarik', [MutasiController::class, 'tarik'])->name('admin.mutasi.tarik');
+        Route::post('/admin/tenaga-medis/{user}/mutasi', [MutasiController::class, 'lepas'])->name('admin.mutasi.lepas');
+        Route::post('/admin/mutasi/{mutasi}/setujui', [MutasiController::class, 'setujui'])->name('admin.mutasi.setujui');
+        Route::post('/admin/mutasi/{mutasi}/tolak', [MutasiController::class, 'tolak'])->name('admin.mutasi.tolak');
+        Route::post('/admin/mutasi/{mutasi}/batal', [MutasiController::class, 'batal'])->name('admin.mutasi.batal');
     });
 
     // Profil tenaga medis (nama bergelar dan No. SIP/SIPP), dipakai dokter dan perawat

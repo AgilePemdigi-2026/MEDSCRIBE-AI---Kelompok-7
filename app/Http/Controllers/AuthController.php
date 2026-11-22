@@ -427,6 +427,22 @@ class AuthController extends Controller
             return redirect()->route('auth.inactive');
         }
 
+        // Mutasi yang baru disetujui: beri tahu sekali saat masuk pertama di RS baru.
+        $mutasiBaru = \App\Models\MutasiTenagaMedis::with('rsTujuan')
+            ->where('id_pengguna', $user->id_pengguna)
+            ->where('status', \App\Models\MutasiTenagaMedis::DISETUJUI)
+            ->whereNull('dilihat_staf_at')
+            ->latest('diputuskan_at')
+            ->first();
+        if ($mutasiBaru) {
+            session()->flash('info', 'Anda sekarang bertugas di ' . $mutasiBaru->rsTujuan->hospital_name . '. '
+                . 'Isi ' . $user->label_nomor_izin . ' untuk tempat praktik baru begitu nomornya terbit.');
+            \App\Models\MutasiTenagaMedis::where('id_pengguna', $user->id_pengguna)
+                ->where('status', \App\Models\MutasiTenagaMedis::DISETUJUI)
+                ->whereNull('dilihat_staf_at')
+                ->update(['dilihat_staf_at' => now()]);
+        }
+
         // 3. Akun aktif yang belum mengisi No. SIP/SIPP: buka profil dulu.
         //    Bisa dilewati, tapi hanya untuk sesi login ini.
         if ($user->perluLengkapiProfil() && ! session(ProfilController::SESSION_LEWATI)) {

@@ -5,6 +5,10 @@
 --}}
 @php
     $roleLower = strtolower($roleLabel);
+    // Staf yang sedang dalam proses mutasi tidak bisa dimutasi atau dinonaktifkan dulu.
+    $sedangMutasi = \App\Models\MutasiTenagaMedis::where('status', 'menunggu')
+        ->whereIn('id_pengguna', $staff->pluck('id_pengguna'))->pluck('id_pengguna')->all();
+    $rsLain = \App\Models\Hospital::active()->where('id', '!=', $hospital->id)->orderBy('hospital_name')->get();
 @endphp
 
 <div class="space-y-6">
@@ -64,13 +68,30 @@
                                 <td class="hidden lg:table-cell text-text-secondary whitespace-nowrap">
                                     {{ $person->created_at ? $person->created_at->timezone('Asia/Jakarta')->locale('id')->isoFormat('D MMMM Y') : '-' }}
                                 </td>
-                                <td><span class="status status-ok">Aktif</span></td>
+                                <td>
+                                    @if (in_array($person->id_pengguna, $sedangMutasi, true))
+                                        <span class="status status-warn">Proses mutasi</span>
+                                    @else
+                                        <span class="status status-ok">Aktif</span>
+                                    @endif
+                                </td>
                                 <td class="text-right">
-                                    <button type="button" class="btn btn-danger-quiet btn-sm"
-                                            data-dialog-open="dlgDeactivateStaff" data-staff-url="{{ route('admin.staff.deactivate', $person) }}"
-                                            data-staff-name="{{ $person->nama_lengkap }}" data-staff-role="{{ $person->peran_label }}">
-                                        Nonaktifkan
-                                    </button>
+                                    @if (in_array($person->id_pengguna, $sedangMutasi, true))
+                                        <a href="{{ route('admin.mutasi', ['tab' => 'diajukan']) }}" class="btn btn-secondary btn-sm">Lihat mutasi</a>
+                                    @else
+                                        <div class="inline-flex gap-2">
+                                            <button type="button" class="btn btn-secondary btn-sm"
+                                                    data-dialog-open="dlgMutasiStaff" data-staff-url="{{ route('admin.mutasi.lepas', $person) }}"
+                                                    data-staff-name="{{ $person->nama_lengkap }}" data-staff-role="{{ $person->peran_label }}">
+                                                <x-icon name="arrow-right" /> Mutasi
+                                            </button>
+                                            <button type="button" class="btn btn-danger-quiet btn-sm"
+                                                    data-dialog-open="dlgDeactivateStaff" data-staff-url="{{ route('admin.staff.deactivate', $person) }}"
+                                                    data-staff-name="{{ $person->nama_lengkap }}" data-staff-role="{{ $person->peran_label }}">
+                                                Nonaktifkan
+                                            </button>
+                                        </div>
+                                    @endif
                                 </td>
                             </tr>
                         @endforeach
@@ -88,3 +109,33 @@
 </div>
 
 @include('admin.partials.staff-dialogs')
+
+<x-dialog id="dlgMutasiStaff" size="md" title="Mutasi ke rumah sakit lain?"
+          description="Permintaan dikirim ke admin rumah sakit tujuan. Selama menunggu, tenaga medis tetap bertugas di sini.">
+    <form method="POST" id="formMutasiStaff" data-staff-form data-submit-loading class="space-y-4">
+        @csrf
+        <div class="panel text-sm">
+            <p class="text-text-secondary">Tenaga medis</p>
+            <p class="font-semibold text-medical-navy"><span data-staff-fill="name"></span> · <span data-staff-fill="role"></span></p>
+        </div>
+        <div>
+            <label for="mutasiTujuan" class="field-label">Rumah sakit tujuan <span class="req" aria-hidden="true">*</span></label>
+            <select id="mutasiTujuan" name="hospital_tujuan_id" required class="field" data-dialog-focus>
+                <option value="" disabled selected>Pilih rumah sakit</option>
+                @foreach ($rsLain as $rs)
+                    <option value="{{ $rs->id }}">{{ $rs->hospital_name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div>
+            <label for="mutasiAlasan" class="field-label">Alasan mutasi <span class="req" aria-hidden="true">*</span></label>
+            <textarea id="mutasiAlasan" name="alasan" rows="3" required minlength="5" maxlength="500" class="field"
+                      placeholder="Contoh: Penugasan baru sesuai surat keputusan direktur."></textarea>
+            <p class="field-hint">No. SIP/SIPP akan dikosongkan setelah mutasi disetujui, karena izin praktik berlaku per tempat praktik.</p>
+        </div>
+    </form>
+    <x-slot:actions>
+        <button type="button" data-dialog-close class="btn btn-secondary">Batal</button>
+        <button type="submit" form="formMutasiStaff" class="btn btn-primary">Kirim permintaan</button>
+    </x-slot:actions>
+</x-dialog>

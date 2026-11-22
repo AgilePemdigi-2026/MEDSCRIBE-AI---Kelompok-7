@@ -294,7 +294,7 @@ class PemeriksaanAwalTest extends TestCase
     {
         $response = $this->actingAs($this->perawat)->post('/perawat/pasien-baru', [
             'nama_pasien'   => 'Pasien Salah Format',
-            'tanggal_lahir' => now()->addDay()->toDateString(),
+            'tanggal_lahir' => now('Asia/Jakarta')->addDay()->toDateString(),
             'nik'           => '12345',
             'no_bpjs'       => 'abc',
             'no_hp'         => '08-abc',

@@ -7,12 +7,14 @@
 @section('subnav')
     @php
         $pendingBadgeCount = $pendingBadgeCount ?? 0;
+        $mutasiBadgeCount = $mutasiBadgeCount ?? 0;
         $menuAdmin = [
             ['route' => 'admin.dashboard', 'label' => 'Dashboard'],
             ['route' => 'admin.doctors', 'label' => 'Dokter'],
             ['route' => 'admin.nurses', 'label' => 'Perawat'],
             ['route' => 'admin.pending', 'label' => 'Verifikasi Pendaftaran', 'count' => $pendingBadgeCount],
             ['route' => 'admin.inactive', 'label' => 'Tenaga Medis Nonaktif'],
+            ['route' => 'admin.mutasi', 'label' => 'Mutasi', 'count' => $mutasiBadgeCount],
             ['route' => 'admin.activities', 'label' => 'Riwayat Aktivitas'],
             ['route' => 'admin.hospital.info', 'label' => 'Profil RS'],
         ];
