@@ -42,11 +42,11 @@ class EmailDeliverabilityTest extends TestCase
         $this->assertStringContainsString('Masukkan kode tersebut pada halaman verifikasi email MedScribe AI untuk melanjutkan proses pendaftaran.', $htmlContent);
         $this->assertStringContainsString('Apabila Anda tidak merasa melakukan pendaftaran ini, silakan abaikan email ini. Tidak diperlukan tindakan lebih lanjut.', $htmlContent);
         $this->assertStringContainsString('Tim MedScribe AI', $htmlContent);
-        $this->assertStringContainsString('Sistem Informasi Rekam Medis Digital', $htmlContent);
+        $this->assertStringContainsString('Sistem Rekam Medis Elektronik Terintegrasi', $htmlContent);
 
         // Brand Palette & Styling
         $this->assertStringContainsString('#122056', $htmlContent); // Deep Navy
-        $this->assertStringContainsString('#5865DC', $htmlContent); // Royal Indigo
+        $this->assertStringContainsString('#2E3BB0', $htmlContent); // Indigo gelap, versi kontras AA dari Royal Indigo
         $this->assertStringContainsString('#EEEEFD', $htmlContent); // Pale Lavender
 
         // Bebas dari kata spam dan emoji mencurigakan
@@ -99,11 +99,11 @@ class EmailDeliverabilityTest extends TestCase
         $this->assertStringContainsString('Apabila Anda tidak merasa melakukan permintaan pengaturan ulang kata sandi, silakan abaikan email ini.', $htmlContent);
         $this->assertStringContainsString('Demi keamanan akun, jangan berikan kode verifikasi ini kepada siapa pun.', $htmlContent);
         $this->assertStringContainsString('Tim MedScribe AI', $htmlContent);
-        $this->assertStringContainsString('Sistem Informasi Rekam Medis Digital', $htmlContent);
+        $this->assertStringContainsString('Sistem Rekam Medis Elektronik Terintegrasi', $htmlContent);
 
         // Brand Palette
         $this->assertStringContainsString('#122056', $htmlContent);
-        $this->assertStringContainsString('#5865DC', $htmlContent);
+        $this->assertStringContainsString('#2E3BB0', $htmlContent);
         $this->assertStringContainsString('#EEEEFD', $htmlContent);
 
         // Bebas dari kata spam dan emoji

@@ -24,8 +24,10 @@
 ])
 
 @if ($soap)
-@php($draf = $soap['draf'])
-@php($isProcessing = ($draf->generation_status ?? '') === 'processing')
+@php
+    $draf = $soap['draf'];
+    $isProcessing = ($draf->generation_status ?? '') === 'processing';
+@endphp
 <div class="border-t border-border-subtle p-5 sm:p-6 space-y-5">
 
     @if ($isFinalized)
@@ -55,38 +57,40 @@
         </div>
     @endif
 
-    @if ($draf->needs_review && ! $soap['generationError'] && ! $isFinalized && ! $isProcessing)
-        <div class="alert alert-warn">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            <span class="flex-1">Transkrip atau TTV berubah setelah draf ini dibuat. Isi draf tidak otomatis berubah, tinjau ulang sebelum memverifikasi.</span>
-        </div>
-    @endif
+    @php
+        // Item dari AI bisa berupa teks atau objek; objek dijadikan kalimat, bukan JSON.
+        $keKalimat = fn ($item) => is_array($item)
+            ? collect($item)->flatten()->filter(fn ($v) => is_scalar($v) && filled($v))->implode(' — ')
+            : $item;
+        $tampilCatatan = ! $isFinalized && ! $isProcessing;
+        $drafBerubah = $tampilCatatan && $draf->needs_review && ! $soap['generationError'];
+        $kelompokCatatan = $tampilCatatan ? array_filter([
+            'Belum ditanyakan di wawancara' => collect($draf->missing_information ?? [])->map($keKalimat)->filter()->values()->all(),
+            'Catatan dari AI' => collect($draf->review_warnings ?? [])->map($keKalimat)->filter()->values()->all(),
+        ]) : [];
+    @endphp
 
-    @if ($draf->missing_information && ! $isFinalized && ! $isProcessing)
-        <div class="alert alert-warn">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            <div class="flex-1">
-                <p class="font-semibold">Informasi yang belum lengkap pada wawancara</p>
-                <ul class="mt-1 list-disc list-inside">
-                    @foreach ($draf->missing_information as $item)
-                        {{-- Item dari AI bisa berupa teks atau objek; objek ditampilkan sebagai kalimat, bukan JSON. --}}
-                        <li>{{ is_array($item) ? collect($item)->flatten()->filter(fn ($v) => is_scalar($v) && filled($v))->implode(' — ') : $item }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        </div>
-    @endif
+    {{-- Satu kotak untuk semua hal yang perlu dicek dokter, supaya tidak menumpuk tiga alert kuning. --}}
+    @if ($drafBerubah || $kelompokCatatan)
+        <div class="alert alert-warn" role="status">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <div class="flex-1 min-w-0 text-text-body">
+                <p class="font-semibold text-warning-text">Periksa dulu sebelum memverifikasi</p>
 
-    @if ($draf->review_warnings && ! $isFinalized && ! $isProcessing)
-        <div class="alert alert-warn">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
-            <div class="flex-1">
-                <p class="font-semibold">Catatan penting hasil analisis AI</p>
-                <ul class="mt-1 list-disc list-inside">
-                    @foreach ($draf->review_warnings as $item)
-                        <li>{{ is_array($item) ? collect($item)->flatten()->filter(fn ($v) => is_scalar($v) && filled($v))->implode(' — ') : $item }}</li>
-                    @endforeach
-                </ul>
+                @if ($drafBerubah)
+                    <p class="mt-1">Transkrip atau TTV berubah setelah draf ini dibuat. Isi draf tidak ikut berubah, jadi tinjau ulang bagian yang terdampak.</p>
+                @endif
+
+                @foreach ($kelompokCatatan as $judulKelompok => $daftar)
+                    <div class="mt-3">
+                        <p class="text-xs font-semibold text-text-secondary">{{ $judulKelompok }}</p>
+                        <ul class="mt-1 list-disc pl-5 space-y-1">
+                            @foreach ($daftar as $kalimat)
+                                <li>{{ $kalimat }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endforeach
             </div>
         </div>
     @endif
