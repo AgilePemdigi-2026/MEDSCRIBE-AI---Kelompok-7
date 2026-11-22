@@ -27,15 +27,23 @@
                 <h1 class="mt-5 text-[1.9rem] leading-tight font-semibold tracking-[-0.03em] text-medical-navy">{{ $pasien->nama_pasien }}</h1>
                 <span class="mt-2 tag-id bg-white">{{ $pasien->no_rekam_medis }}</span>
 
+                @php
+                    $identitas = [
+                        ['Tanggal lahir', $pasien->tanggal_lahir?->locale('id')->isoFormat('D MMMM Y'), false],
+                        ['Umur', $usia !== null ? $usia . ' tahun' : null, false],
+                        ['Jenis kelamin', $pasien->jenis_kelamin, false],
+                        ['No. HP', $pasien->no_hp, true],
+                        ['NIK', $pasien->nik, true],
+                        ['No. BPJS', $pasien->no_bpjs, true],
+                    ];
+                @endphp
                 <dl class="mt-6 grid grid-cols-2 gap-2">
-                    <div class="rounded-(--radius-field) bg-white/80 border border-border-hover p-3">
-                        <dt class="text-[11px] text-text-secondary">Umur</dt>
-                        <dd class="mt-0.5 text-sm font-semibold text-medical-navy">{{ $usia ? $usia . ' tahun' : '-' }}</dd>
-                    </div>
-                    <div class="rounded-(--radius-field) bg-white/80 border border-border-hover p-3">
-                        <dt class="text-[11px] text-text-secondary">Jenis Kelamin</dt>
-                        <dd class="mt-0.5 text-sm font-semibold text-medical-navy">{{ $pasien->jenis_kelamin ?? '-' }}</dd>
-                    </div>
+                    @foreach ($identitas as [$labelIdentitas, $nilaiIdentitas, $angka])
+                        <div class="rounded-(--radius-field) bg-white/80 border border-border-hover p-3 min-w-0">
+                            <dt class="text-[11px] text-text-secondary">{{ $labelIdentitas }}</dt>
+                            <dd class="mt-0.5 text-sm font-semibold text-medical-navy break-all {{ $angka ? 'num' : '' }}">{{ $nilaiIdentitas ?: '-' }}</dd>
+                        </div>
+                    @endforeach
                     @if ($pasien->created_at)
                         <div class="col-span-2 rounded-(--radius-field) bg-white/80 border border-border-hover p-3">
                             <dt class="text-[11px] text-text-secondary">Terdaftar</dt>

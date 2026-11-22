@@ -171,15 +171,9 @@ class IsolasiMultiTenancyBDDTest extends BDDTestCase
         $this->given('Perawat RS A yang sedang login');
         $this->when('Perawat mendaftarkan pasien baru');
         $response = $this->actingAs($this->perawatA)->post('/perawat/pasien-baru', [
-            'nama_pasien'             => 'Bambang Sudarsono',
-            'umur'                    => 42,
-            'jenis_kelamin'           => 'Laki-laki',
-            'tekanan_darah_sistolik'  => 120,
-            'tekanan_darah_diastolik' => 80,
-            'nadi'                    => 78,
-            'suhu_tubuh'              => 36.5,
-            'laju_pernapasan'         => 18,
-            'saturasi_oksigen'        => 98,
+            'nama_pasien'   => 'Bambang Sudarsono',
+            'umur'          => 42,
+            'jenis_kelamin' => 'Laki-laki',
         ]);
 
         $this->then('Pasien baru otomatis tersimpan dengan hospital_id RS A');

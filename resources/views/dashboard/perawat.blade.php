@@ -166,23 +166,23 @@
 
                     <fieldset>
                         <legend class="section-title">Tanda-tanda vital</legend>
-                        <p class="section-subtitle mb-5">Isian bertanda * wajib diisi. Masukkan angka sesuai satuan di kanan kolom.</p>
+                        <p class="section-subtitle mb-5">Isian bertanda * wajib diisi. Berat dan tinggi badan boleh dikosongkan kalau pasien belum bisa ditimbang.</p>
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                             @include('partials.vital-input', ['id' => 'tekanan_darah', 'name' => 'tekanan_darah', 'label' => 'Tekanan Darah', 'unit' => 'mmHg', 'type' => 'text', 'placeholder' => '120/80', 'value' => old('tekanan_darah', $pemeriksaanAwal->tekanan_darah ?? '')])
                             @include('partials.vital-input', ['id' => 'nadi', 'name' => 'nadi', 'label' => 'Denyut Nadi', 'unit' => 'x/menit', 'placeholder' => '78', 'min' => 30, 'max' => 250, 'value' => old('nadi', $pemeriksaanAwal->nadi ?? '')])
                             @include('partials.vital-input', ['id' => 'suhu_tubuh', 'name' => 'suhu_tubuh', 'label' => 'Suhu Tubuh', 'unit' => '°C', 'placeholder' => '36.5', 'step' => '0.1', 'min' => 30, 'max' => 45, 'value' => old('suhu_tubuh', $pemeriksaanAwal->suhu_tubuh ?? '')])
                             @include('partials.vital-input', ['id' => 'laju_pernapasan', 'name' => 'laju_pernapasan', 'label' => 'Laju Pernapasan', 'unit' => 'x/menit', 'placeholder' => '18', 'min' => 5, 'max' => 60, 'value' => old('laju_pernapasan', $pemeriksaanAwal->laju_pernapasan ?? '')])
-                            @include('partials.vital-input', ['id' => 'saturasi_oksigen', 'name' => 'saturasi_oksigen', 'label' => 'SpO2', 'unit' => '%', 'placeholder' => '98', 'min' => 50, 'max' => 100, 'required' => false, 'value' => old('saturasi_oksigen', $pemeriksaanAwal->saturasi_oksigen ?? '')])
-                            @include('partials.vital-input', ['id' => 'berat_badan', 'name' => 'berat_badan', 'label' => 'Berat Badan', 'unit' => 'kg', 'placeholder' => '68', 'step' => '0.1', 'min' => 1, 'max' => 300, 'value' => old('berat_badan', $pemeriksaanAwal->berat_badan ?? '')])
-                            @include('partials.vital-input', ['id' => 'tinggi_badan', 'name' => 'tinggi_badan', 'label' => 'Tinggi Badan', 'unit' => 'cm', 'placeholder' => '170', 'step' => '0.1', 'min' => 30, 'max' => 250, 'value' => old('tinggi_badan', $pemeriksaanAwal->tinggi_badan ?? '')])
+                            @include('partials.vital-input', ['id' => 'saturasi_oksigen', 'name' => 'saturasi_oksigen', 'label' => 'SpO2', 'unit' => '%', 'placeholder' => '98', 'min' => 50, 'max' => 100, 'value' => old('saturasi_oksigen', $pemeriksaanAwal->saturasi_oksigen ?? '')])
+                            @include('partials.vital-input', ['id' => 'berat_badan', 'name' => 'berat_badan', 'label' => 'Berat Badan', 'unit' => 'kg', 'placeholder' => '68', 'step' => '0.1', 'min' => 1, 'max' => 300, 'required' => false, 'value' => old('berat_badan', $pemeriksaanAwal->berat_badan ?? '')])
+                            @include('partials.vital-input', ['id' => 'tinggi_badan', 'name' => 'tinggi_badan', 'label' => 'Tinggi Badan', 'unit' => 'cm', 'placeholder' => '170', 'step' => '0.1', 'min' => 30, 'max' => 250, 'required' => false, 'value' => old('tinggi_badan', $pemeriksaanAwal->tinggi_badan ?? '')])
                         </div>
                     </fieldset>
 
                     <div>
-                        <label for="catatan" class="field-label">Catatan Awal Perawat <span class="req" aria-hidden="true">*</span></label>
-                        <textarea id="catatan" name="catatan" rows="3" required
-                                  placeholder="Tuliskan keluhan utama awal, riwayat singkat, atau observasi visual pasien..."
+                        <label for="catatan" class="field-label">Catatan perawat</label>
+                        <textarea id="catatan" name="catatan" rows="3"
+                                  placeholder="Keluhan utama, riwayat singkat, atau observasi visual. Kosongkan kalau pasien belum bisa ditanya."
                                   class="field leading-relaxed @error('catatan') is-invalid @enderror">{{ old('catatan', $pemeriksaanAwal->catatan ?? '') }}</textarea>
                         @error('catatan')
                             <p class="field-error">{{ $message }}</p>
@@ -363,7 +363,7 @@
     @endif
 </div>
 
-{{-- ========== DIALOG: Input Pasien Baru + TTV ========== --}}
+{{-- ========== DIALOG: Input Pasien Baru (data diri saja; TTV diisi di form antrean) ========== --}}
 <div id="modalInputPasien" data-dialog class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="modalInputTitle">
     <div class="dialog-backdrop"></div>
 
@@ -377,7 +377,7 @@
                         </span>
                         <div>
                             <h2 id="modalInputTitle" class="section-title">Input Pasien Baru</h2>
-                            <p class="section-subtitle">Daftarkan pasien dan catat tanda-tanda vital awalnya.</p>
+                            <p class="section-subtitle">Isi data diri pasien. Tanda-tanda vital diisi setelah ini.</p>
                         </div>
                     </div>
                     <button type="button" data-dialog-close class="btn btn-ghost btn-icon btn-sm -mr-2" aria-label="Tutup dialog">
@@ -386,89 +386,93 @@
                 </div>
 
                 <div class="mx-6 sm:mx-8 alert alert-info">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    <span class="text-text-body">No. RM dibuat otomatis setelah data disimpan, dengan format <span class="tag-id">YYYYMMDD-NNN</span>.</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <span class="text-text-body">Hanya nama yang wajib, jadi pasien darurat tetap bisa didaftarkan. Lengkapi data lain kalau identitasnya sudah ada. No. RM dibuat otomatis dengan format <span class="tag-id">YYYYMMDD-NNN</span>.</span>
                 </div>
 
                 <form method="POST" action="{{ route('perawat.pasien.store') }}" id="formPasienBaru" class="p-6 sm:px-8 space-y-6" data-submit-loading>
                     @csrf
 
-                    <fieldset>
-                        <legend class="flex items-center gap-2.5 text-sm font-semibold text-medical-navy">
-                            <span class="avatar w-7 h-7 bg-medical-navy text-white text-xs" aria-hidden="true">1</span>
-                            Data Identitas Pasien
-                        </legend>
-                        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div class="sm:col-span-2">
-                                <label for="modal_nama_pasien" class="field-label">Nama Lengkap <span class="req" aria-hidden="true">*</span></label>
-                                <input type="text" id="modal_nama_pasien" name="nama_pasien" required autocomplete="off" data-dialog-focus
-                                       value="{{ old('nama_pasien') }}" placeholder="Masukkan nama lengkap pasien"
-                                       class="field @error('nama_pasien') is-invalid @enderror">
-                                @error('nama_pasien')<p class="field-error">{{ $message }}</p>@enderror
-                            </div>
-
-                            @include('partials.vital-input', ['id' => 'modal_umur', 'name' => 'umur', 'label' => 'Umur', 'unit' => 'tahun', 'placeholder' => '0', 'min' => 0, 'max' => 120, 'value' => old('umur')])
-
-                            <div>
-                                <label for="modal_jenis_kelamin" class="field-label">Jenis Kelamin <span class="req" aria-hidden="true">*</span></label>
-                                <select id="modal_jenis_kelamin" name="jenis_kelamin" required class="field @error('jenis_kelamin') is-invalid @enderror">
-                                    <option value="" disabled {{ old('jenis_kelamin') ? '' : 'selected' }}>Pilih jenis kelamin</option>
-                                    <option value="Laki-laki" {{ old('jenis_kelamin') === 'Laki-laki' ? 'selected' : '' }}>Laki-laki</option>
-                                    <option value="Perempuan" {{ old('jenis_kelamin') === 'Perempuan' ? 'selected' : '' }}>Perempuan</option>
-                                </select>
-                                @error('jenis_kelamin')<p class="field-error">{{ $message }}</p>@enderror
-                            </div>
-
-                            <div class="sm:col-span-2">
-                                @if ($user->hospital_id)
-                                    <label for="modal_hospital_nama" class="field-label">Rumah Sakit <span class="req" aria-hidden="true">*</span></label>
-                                    <input type="hidden" name="hospital_id" value="{{ $user->hospital_id }}">
-                                    <div class="field-unit">
-                                        <input type="text" id="modal_hospital_nama" readonly value="{{ $user->hospital->hospital_name ?? 'Rumah Sakit Terdaftar' }}" class="field">
-                                        <span class="unit !text-royal-indigo-hover">Faskes Anda</span>
-                                    </div>
-                                    <p class="field-hint">Sesuai penugasan perawat, pasien didaftarkan pada unit rumah sakit Anda.</p>
-                                @else
-                                    <label for="modal_hospital_id" class="field-label">Rumah Sakit <span class="req" aria-hidden="true">*</span></label>
-                                    <select id="modal_hospital_id" name="hospital_id" required class="field @error('hospital_id') is-invalid @enderror">
-                                        <option value="" disabled selected>Pilih Rumah Sakit (Kota Surabaya)...</option>
-                                        @foreach ($activeHospitals ?? [] as $h)
-                                            <option value="{{ $h->id }}" {{ (string) old('hospital_id') === (string) $h->id ? 'selected' : '' }}>{{ $h->hospital_name }} ({{ $h->hospital_type ?? 'RSU' }})</option>
-                                        @endforeach
-                                    </select>
-                                @endif
-                                @error('hospital_id')<p class="field-error">{{ $message }}</p>@enderror
-                            </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="sm:col-span-2">
+                            <label for="modal_nama_pasien" class="field-label">Nama lengkap <span class="req" aria-hidden="true">*</span></label>
+                            <input type="text" id="modal_nama_pasien" name="nama_pasien" required autocomplete="off" data-dialog-focus
+                                   value="{{ old('nama_pasien') }}" placeholder="Sesuai kartu identitas"
+                                   class="field @error('nama_pasien') is-invalid @enderror">
+                            @error('nama_pasien')<p class="field-error">{{ $message }}</p>@enderror
                         </div>
-                    </fieldset>
 
-                    <div class="pt-6 border-t border-border-subtle">
-                        <fieldset>
-                            <legend class="flex items-center gap-2.5 text-sm font-semibold text-medical-navy">
-                                <span class="avatar w-7 h-7 bg-medical-navy text-white text-xs" aria-hidden="true">2</span>
-                                Tanda-tanda vital
-                            </legend>
-                            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                @include('partials.vital-input', ['id' => 'modal_td_sistolik', 'name' => 'tekanan_darah_sistolik', 'label' => 'TD Sistolik', 'unit' => 'mmHg', 'placeholder' => '120', 'min' => 50, 'max' => 300, 'value' => old('tekanan_darah_sistolik')])
-                                @include('partials.vital-input', ['id' => 'modal_td_diastolik', 'name' => 'tekanan_darah_diastolik', 'label' => 'TD Diastolik', 'unit' => 'mmHg', 'placeholder' => '80', 'min' => 20, 'max' => 200, 'value' => old('tekanan_darah_diastolik')])
-                                @include('partials.vital-input', ['id' => 'modal_nadi', 'name' => 'nadi', 'label' => 'Denyut Nadi', 'unit' => 'x/menit', 'placeholder' => '78', 'min' => 30, 'max' => 250, 'value' => old('nadi')])
-                                @include('partials.vital-input', ['id' => 'modal_suhu', 'name' => 'suhu_tubuh', 'label' => 'Suhu Tubuh', 'unit' => '°C', 'placeholder' => '36.5', 'step' => '0.1', 'min' => 30, 'max' => 45, 'value' => old('suhu_tubuh')])
-                                @include('partials.vital-input', ['id' => 'modal_rr', 'name' => 'laju_pernapasan', 'label' => 'Laju Pernapasan', 'unit' => 'x/menit', 'placeholder' => '18', 'min' => 5, 'max' => 60, 'value' => old('laju_pernapasan')])
-                                @include('partials.vital-input', ['id' => 'modal_spo2', 'name' => 'saturasi_oksigen', 'label' => 'SpO2', 'unit' => '%', 'placeholder' => '98', 'min' => 50, 'max' => 100, 'value' => old('saturasi_oksigen')])
-                                @include('partials.vital-input', ['id' => 'modal_bb', 'name' => 'berat_badan', 'label' => 'Berat Badan', 'unit' => 'kg', 'placeholder' => '68', 'step' => '0.1', 'min' => 1, 'max' => 300, 'required' => false, 'value' => old('berat_badan')])
-                                @include('partials.vital-input', ['id' => 'modal_tb', 'name' => 'tinggi_badan', 'label' => 'Tinggi Badan', 'unit' => 'cm', 'placeholder' => '170', 'step' => '0.1', 'min' => 30, 'max' => 250, 'required' => false, 'value' => old('tinggi_badan')])
-                            </div>
-                        </fieldset>
-                    </div>
+                        <div>
+                            <label for="modal_tanggal_lahir" class="field-label">Tanggal lahir</label>
+                            <input type="date" id="modal_tanggal_lahir" name="tanggal_lahir" max="{{ now('Asia/Jakarta')->toDateString() }}"
+                                   value="{{ old('tanggal_lahir') }}"
+                                   class="field @error('tanggal_lahir') is-invalid @enderror">
+                            @error('tanggal_lahir')<p class="field-error">{{ $message }}</p>@enderror
+                        </div>
 
-                    <div>
-                        <label for="modal_catatan" class="field-label">Catatan Awal</label>
-                        <textarea id="modal_catatan" name="catatan" rows="2" placeholder="Keluhan utama, riwayat singkat, atau observasi visual pasien (opsional)..." class="field leading-relaxed">{{ old('catatan') }}</textarea>
+                        <div>
+                            @include('partials.vital-input', ['id' => 'modal_umur', 'name' => 'umur', 'label' => 'Umur', 'unit' => 'tahun', 'placeholder' => '0', 'min' => 0, 'max' => 130, 'required' => false, 'value' => old('umur')])
+                            <p class="field-hint">Terisi dari tanggal lahir. Isi perkiraan kalau tanggal lahir tidak diketahui.</p>
+                        </div>
+
+                        <div>
+                            <label for="modal_jenis_kelamin" class="field-label">Jenis kelamin</label>
+                            <select id="modal_jenis_kelamin" name="jenis_kelamin" class="field @error('jenis_kelamin') is-invalid @enderror">
+                                <option value="">Belum diketahui</option>
+                                <option value="Laki-laki" @selected(old('jenis_kelamin') === 'Laki-laki')>Laki-laki</option>
+                                <option value="Perempuan" @selected(old('jenis_kelamin') === 'Perempuan')>Perempuan</option>
+                            </select>
+                            @error('jenis_kelamin')<p class="field-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div>
+                            <label for="modal_no_hp" class="field-label">No. HP</label>
+                            <input type="tel" id="modal_no_hp" name="no_hp" inputmode="tel" autocomplete="off" maxlength="20"
+                                   value="{{ old('no_hp') }}" placeholder="08xxxxxxxxxx"
+                                   class="field num @error('no_hp') is-invalid @enderror">
+                            @error('no_hp')<p class="field-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div>
+                            <label for="modal_nik" class="field-label">NIK</label>
+                            <input type="text" id="modal_nik" name="nik" inputmode="numeric" autocomplete="off" maxlength="16"
+                                   value="{{ old('nik') }}" placeholder="16 digit"
+                                   class="field num @error('nik') is-invalid @enderror">
+                            @error('nik')<p class="field-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div>
+                            <label for="modal_no_bpjs" class="field-label">No. BPJS</label>
+                            <input type="text" id="modal_no_bpjs" name="no_bpjs" inputmode="numeric" autocomplete="off" maxlength="13"
+                                   value="{{ old('no_bpjs') }}" placeholder="13 digit"
+                                   class="field num @error('no_bpjs') is-invalid @enderror">
+                            @error('no_bpjs')<p class="field-error">{{ $message }}</p>@enderror
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            @if ($user->hospital_id)
+                                <label for="modal_hospital_nama" class="field-label">Rumah sakit</label>
+                                <input type="hidden" name="hospital_id" value="{{ $user->hospital_id }}">
+                                <div class="field-unit">
+                                    <input type="text" id="modal_hospital_nama" readonly value="{{ $user->hospital->hospital_name ?? 'Rumah Sakit Terdaftar' }}" class="field">
+                                    <span class="unit !text-royal-indigo-hover">Faskes Anda</span>
+                                </div>
+                            @else
+                                <label for="modal_hospital_id" class="field-label">Rumah sakit <span class="req" aria-hidden="true">*</span></label>
+                                <select id="modal_hospital_id" name="hospital_id" required class="field @error('hospital_id') is-invalid @enderror">
+                                    <option value="" disabled selected>Pilih rumah sakit</option>
+                                    @foreach ($activeHospitals ?? [] as $h)
+                                        <option value="{{ $h->id }}" {{ (string) old('hospital_id') === (string) $h->id ? 'selected' : '' }}>{{ $h->hospital_name }} ({{ $h->hospital_type ?? 'RSU' }})</option>
+                                    @endforeach
+                                </select>
+                            @endif
+                            @error('hospital_id')<p class="field-error">{{ $message }}</p>@enderror
+                        </div>
                     </div>
 
                     <div class="flex items-center justify-between gap-2 pt-5 border-t border-border-subtle">
                         <button type="button" data-dialog-close class="btn btn-secondary">Batal</button>
-                        @include('partials.submit-button', ['id' => 'btnSimpanPasienBaru', 'label' => 'Simpan pasien', 'loading' => 'Menyimpan...', 'class' => 'px-6'])
+                        @include('partials.submit-button', ['id' => 'btnSimpanPasienBaru', 'label' => 'Simpan dan isi TTV', 'loading' => 'Menyimpan...', 'class' => 'px-6'])
                     </div>
                 </form>
             </div>
@@ -515,9 +519,29 @@
             filterTahun.addEventListener('change', updateDayOptions);
         }
 
-        @if ($errors->hasAny(['nama_pasien', 'umur', 'jenis_kelamin', 'tekanan_darah_sistolik', 'tekanan_darah_diastolik', 'saturasi_oksigen']))
+        @if ($errors->hasAny(['nama_pasien', 'tanggal_lahir', 'umur', 'jenis_kelamin', 'nik', 'no_bpjs', 'no_hp', 'hospital_id']))
             window.openDialog?.('modalInputPasien');
         @endif
+
+        const tglLahir = document.getElementById('modal_tanggal_lahir');
+        const umur = document.getElementById('modal_umur');
+        tglLahir?.addEventListener('change', function () {
+            if (!this.value) return;
+            const lahir = new Date(this.value + 'T00:00:00');
+            const kini = new Date();
+            let usia = kini.getFullYear() - lahir.getFullYear();
+            const belumUlangTahun = kini.getMonth() < lahir.getMonth()
+                || (kini.getMonth() === lahir.getMonth() && kini.getDate() < lahir.getDate());
+            if (belumUlangTahun) usia--;
+            if (usia >= 0) umur.value = usia;
+        });
+
+        // Spasi atau tanda hubung yang ikut tersalin dibuang dari NIK dan BPJS.
+        ['modal_nik', 'modal_no_bpjs'].forEach(function (id) {
+            document.getElementById(id)?.addEventListener('input', function () {
+                this.value = this.value.replace(/\D/g, '');
+            });
+        });
     });
 </script>
 @endsection

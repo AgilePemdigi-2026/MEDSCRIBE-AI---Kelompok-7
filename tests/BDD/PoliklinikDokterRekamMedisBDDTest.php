@@ -50,6 +50,7 @@ class PoliklinikDokterRekamMedisBDDTest extends BDDTestCase
             'nadi'            => 84,
             'suhu_tubuh'      => 37.2,
             'laju_pernapasan' => 20,
+            'saturasi_oksigen' => 98,
             'berat_badan'     => 68,
             'tinggi_badan'    => 170,
             'catatan'         => 'Keluhan batuk berdahak 4 hari',

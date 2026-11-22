@@ -165,11 +165,12 @@ class PemeriksaanAwalController extends Controller
             'nadi'            => ['required', 'integer', 'min:30', 'max:250'],
             'suhu_tubuh'      => ['required', 'numeric', 'min:30', 'max:45'],
             'laju_pernapasan' => ['required', 'integer', 'min:5', 'max:60'],
-            // Opsional agar klien lama yang belum mengirim SpO2 tetap bisa menyimpan.
-            'saturasi_oksigen' => ['nullable', 'integer', 'min:50', 'max:100'],
-            'berat_badan'     => ['required', 'numeric', 'min:1', 'max:300'],
-            'tinggi_badan'    => ['required', 'numeric', 'min:30', 'max:250'],
-            'catatan'         => ['required', 'string', 'max:1000'],
+            // SpO2 cukup dijepit di jari, jadi tetap bisa diukur pada pasien yang tidak sadar.
+            'saturasi_oksigen' => ['required', 'integer', 'min:50', 'max:100'],
+            // BB/TB dan catatan boleh kosong: pasien darurat belum tentu bisa ditimbang atau ditanya.
+            'berat_badan'     => ['nullable', 'numeric', 'min:1', 'max:300'],
+            'tinggi_badan'    => ['nullable', 'numeric', 'min:30', 'max:250'],
+            'catatan'         => ['nullable', 'string', 'max:1000'],
         ], [
             'id_antrean.required'      => 'Pasien antrean wajib dipilih.',
             'id_antrean.exists'        => 'Data antrean tidak ditemukan di sistem.',
@@ -187,14 +188,17 @@ class PemeriksaanAwalController extends Controller
             'laju_pernapasan.integer'  => 'Laju pernapasan harus berupa bilangan bulat.',
             'laju_pernapasan.min'      => 'Laju pernapasan minimal 5 x/menit.',
             'laju_pernapasan.max'      => 'Laju pernapasan maksimal 60 x/menit.',
+            'saturasi_oksigen.required' => 'Saturasi oksigen (SpO2) wajib diisi.',
             'saturasi_oksigen.integer' => 'Saturasi oksigen harus berupa bilangan bulat.',
             'saturasi_oksigen.min'     => 'Saturasi oksigen minimal 50%.',
             'saturasi_oksigen.max'     => 'Saturasi oksigen maksimal 100%.',
-            'berat_badan.required'     => 'Berat badan wajib diisi.',
             'berat_badan.numeric'      => 'Berat badan harus berupa angka numerik.',
-            'tinggi_badan.required'    => 'Tinggi badan wajib diisi.',
             'tinggi_badan.numeric'     => 'Tinggi badan harus berupa angka numerik.',
-            'catatan.required'         => 'Catatan awal perawat wajib diisi.',
+            'berat_badan.min'          => 'Berat badan minimal 1 kg.',
+            'berat_badan.max'          => 'Berat badan maksimal 300 kg.',
+            'tinggi_badan.min'         => 'Tinggi badan minimal 30 cm.',
+            'tinggi_badan.max'         => 'Tinggi badan maksimal 250 cm.',
+            'catatan.max'              => 'Catatan perawat maksimal 1000 karakter.',
         ]);
 
         $antrean = Antrean::with('pasien')->findOrFail($validated['id_antrean']);
@@ -247,12 +251,12 @@ class PemeriksaanAwalController extends Controller
                     'tekanan_darah_sistolik'  => $sistolik,
                     'tekanan_darah_diastolik' => $diastolik,
                     'suhu_tubuh'              => (float) $validated['suhu_tubuh'],
-                    'saturasi_oksigen'        => isset($validated['saturasi_oksigen']) ? (int) $validated['saturasi_oksigen'] : null,
+                    'saturasi_oksigen'        => (int) $validated['saturasi_oksigen'],
                     'nadi'                    => (int) $validated['nadi'],
                     'laju_pernapasan'         => (int) $validated['laju_pernapasan'],
-                    'berat_badan'             => (float) $validated['berat_badan'],
-                    'tinggi_badan'            => (float) $validated['tinggi_badan'],
-                    'catatan'                 => trim($validated['catatan']),
+                    'berat_badan'             => filled($validated['berat_badan'] ?? null) ? (float) $validated['berat_badan'] : null,
+                    'tinggi_badan'            => filled($validated['tinggi_badan'] ?? null) ? (float) $validated['tinggi_badan'] : null,
+                    'catatan'                 => filled($validated['catatan'] ?? null) ? trim($validated['catatan']) : null,
                 ]
             );
 
@@ -263,18 +267,20 @@ class PemeriksaanAwalController extends Controller
 
             // 5. Integrasi otomatis ke komponen Objective pada Draf SOAP dokter (REQ-10)
             $suhuFormatted = str_replace('.', ',', (string) round($validated['suhu_tubuh'], 1));
-            // Urutan sama dengan storePasienBaru(): TD, Nadi, Suhu, RR, SpO2, BB, TB.
+            // Urutan: TD, Nadi, Suhu, RR, SpO2, lalu BB/TB kalau diisi.
             $objectiveParts = [
                 sprintf('TD %s mmHg', $validated['tekanan_darah']),
                 sprintf('Nadi %d x/menit', $validated['nadi']),
                 sprintf('Suhu %s°C', $suhuFormatted),
                 sprintf('RR %d x/menit', $validated['laju_pernapasan']),
+                sprintf('SpO2 %d%%', $validated['saturasi_oksigen']),
             ];
-            if (isset($validated['saturasi_oksigen'])) {
-                $objectiveParts[] = sprintf('SpO2 %d%%', $validated['saturasi_oksigen']);
+            if (filled($validated['berat_badan'] ?? null)) {
+                $objectiveParts[] = sprintf('BB %g kg', $validated['berat_badan']);
             }
-            $objectiveParts[] = sprintf('BB %g kg', $validated['berat_badan']);
-            $objectiveParts[] = sprintf('TB %g cm', $validated['tinggi_badan']);
+            if (filled($validated['tinggi_badan'] ?? null)) {
+                $objectiveParts[] = sprintf('TB %g cm', $validated['tinggi_badan']);
+            }
             $formattedObjective = implode(', ', $objectiveParts);
 
             DrafSoap::updateOrCreate(
@@ -317,45 +323,50 @@ class PemeriksaanAwalController extends Controller
     }
 
     /**
-     * Memproses registrasi pasien baru + input TTV dalam satu transaksi terisolasi rumah sakit.
-     * Menghasilkan ID pasien format YYYYMMDD-NNN secara atomik.
+     * Registrasi pasien baru (data diri saja) dalam rumah sakit perawat.
+     * Antrean dibuat dengan status "Menunggu TTV"; TTV diisi lewat store().
+     * No. RM berformat YYYYMMDD-NNN.
      */
     public function storePasienBaru(StorePasienPemeriksaanRequest $request): RedirectResponse
     {
         $validated = $request->validated();
         $user = Auth::user();
 
-        // Tentukan rumah sakit pendaftaran: perawat terikat pada rumah sakit tempatnya bertugas
+        // Perawat terikat pada rumah sakit tempatnya bertugas
         $hospitalId = $user->hospital_id ?? ($validated['hospital_id'] ?? null);
+
+        // Umur dari form diutamakan (bisa perkiraan); kalau kosong, hitung dari tanggal lahir.
+        $umur = $validated['umur'] ?? null;
+        if ($umur === null && filled($validated['tanggal_lahir'] ?? null)) {
+            $umur = Carbon::parse($validated['tanggal_lahir'])->age;
+        }
 
         try {
             DB::beginTransaction();
 
-            // 1. Generate ID pasien (no_rekam_medis) format YYYYMMDD-NNN secara atomik
             $today = Carbon::now('Asia/Jakarta');
-            $datePrefix = $today->format('Ymd');
+            $noRekamMedis = $this->generatePatientId($today->format('Ymd'), $hospitalId);
 
-            $noRekamMedis = $this->generatePatientId($datePrefix, $hospitalId);
-
-            // 2. Simpan data pasien dengan hospital_id
             $pasien = Pasien::create([
                 'hospital_id'    => $hospitalId,
                 'no_rekam_medis' => $noRekamMedis,
-                'nama_pasien'    => $validated['nama_pasien'],
-                'umur'           => (int) $validated['umur'],
-                'jenis_kelamin'  => $validated['jenis_kelamin'],
+                'nama_pasien'    => trim($validated['nama_pasien']),
+                'tanggal_lahir'  => $validated['tanggal_lahir'] ?? null,
+                'umur'           => $umur,
+                'jenis_kelamin'  => $validated['jenis_kelamin'] ?? null,
+                'nik'            => $validated['nik'] ?? null,
+                'no_bpjs'        => $validated['no_bpjs'] ?? null,
+                'no_hp'          => $validated['no_hp'] ?? null,
             ]);
 
-            // 3. Buat antrean untuk pasien baru dengan hospital_id
             $antrean = Antrean::create([
                 'hospital_id'       => $hospitalId,
                 'id_pasien'         => $pasien->id_pasien,
                 'tanggal_kunjungan' => $today->toDateString(),
-                'status'            => 'Siap Periksa',
+                'status'            => 'Menunggu TTV',
             ]);
 
-            // 4. Buat kunjungan dengan hospital_id
-            $kunjungan = Kunjungan::create([
+            Kunjungan::create([
                 'hospital_id' => $hospitalId,
                 'id_antrean'  => $antrean->id_antrean,
                 'id_pasien'   => $pasien->id_pasien,
@@ -363,52 +374,12 @@ class PemeriksaanAwalController extends Controller
                 'status'      => 'Menunggu Dokter',
             ]);
 
-            // 5. Simpan data TTV / Pemeriksaan Awal
-            $tekananDarah = $validated['tekanan_darah_sistolik'] . '/' . $validated['tekanan_darah_diastolik'];
-
-            PemeriksaanAwal::create([
-                'id_kunjungan'            => $kunjungan->id_kunjungan,
-                'id_perawat'              => Auth::id(),
-                'tekanan_darah'           => $tekananDarah,
-                'tekanan_darah_sistolik'  => (int) $validated['tekanan_darah_sistolik'],
-                'tekanan_darah_diastolik' => (int) $validated['tekanan_darah_diastolik'],
-                'suhu_tubuh'              => (float) $validated['suhu_tubuh'],
-                'saturasi_oksigen'        => (int) $validated['saturasi_oksigen'],
-                'nadi'                    => (int) $validated['nadi'],
-                'laju_pernapasan'         => (int) $validated['laju_pernapasan'],
-                'berat_badan'             => isset($validated['berat_badan']) ? (float) $validated['berat_badan'] : null,
-                'tinggi_badan'            => isset($validated['tinggi_badan']) ? (float) $validated['tinggi_badan'] : null,
-                'catatan'                 => $validated['catatan'] ?? null,
-            ]);
-
-            // 6. Buat Draf SOAP Objective otomatis
-            $suhuFormatted = str_replace('.', ',', (string) round($validated['suhu_tubuh'], 1));
-            $objectiveParts = [
-                sprintf('TD %s mmHg', $tekananDarah),
-                sprintf('Nadi %d x/menit', $validated['nadi']),
-                sprintf('Suhu %s°C', $suhuFormatted),
-                sprintf('RR %d x/menit', $validated['laju_pernapasan']),
-                sprintf('SpO2 %d%%', $validated['saturasi_oksigen']),
-            ];
-
-            if (!empty($validated['berat_badan'])) {
-                $objectiveParts[] = sprintf('BB %g kg', $validated['berat_badan']);
-            }
-            if (!empty($validated['tinggi_badan'])) {
-                $objectiveParts[] = sprintf('TB %g cm', $validated['tinggi_badan']);
-            }
-
-            DrafSoap::create([
-                'id_kunjungan'   => $kunjungan->id_kunjungan,
-                'id_pengguna'    => null,
-                'objective_text' => implode(', ', $objectiveParts),
-            ]);
-
             DB::commit();
 
+            // Langsung buka form TTV pasien ini di tab antrean.
             return redirect()
-                ->route('perawat.dashboard', ['tab' => 'pasien'])
-                ->with('status', 'Pasien berhasil didaftarkan dengan ID: ' . $noRekamMedis)
+                ->route('perawat.dashboard', ['antrean_id' => $antrean->id_antrean])
+                ->with('status', 'Pasien berhasil didaftarkan dengan No. RM ' . $noRekamMedis . '. Lanjutkan dengan mengisi TTV.')
                 ->with('new_patient_id', $noRekamMedis);
 
         } catch (\Throwable $e) {

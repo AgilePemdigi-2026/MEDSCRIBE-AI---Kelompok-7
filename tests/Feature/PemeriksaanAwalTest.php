@@ -155,6 +155,7 @@ class PemeriksaanAwalTest extends TestCase
             'nadi'            => 78,
             'suhu_tubuh'      => 38.6,
             'laju_pernapasan' => 18,
+            'saturasi_oksigen' => 97,
             'berat_badan'     => 68,
             'tinggi_badan'    => 170,
             'catatan'         => 'Demam 3 hari, nyeri menelan, dan batuk kering. Suhu tubuh 38,6°C.',
@@ -173,6 +174,7 @@ class PemeriksaanAwalTest extends TestCase
             'nadi'            => 78,
             'suhu_tubuh'      => 38.6,
             'laju_pernapasan' => 18,
+            'saturasi_oksigen' => 97,
             'berat_badan'     => 68.0,
             'tinggi_badan'    => 170.0,
             'catatan'         => 'Demam 3 hari, nyeri menelan, dan batuk kering. Suhu tubuh 38,6°C.',
@@ -191,6 +193,7 @@ class PemeriksaanAwalTest extends TestCase
         $this->assertStringContainsString('Nadi 78 x/menit', $drafSoap->objective_text);
         $this->assertStringContainsString('Suhu 38,6°C', $drafSoap->objective_text);
         $this->assertStringContainsString('RR 18 x/menit', $drafSoap->objective_text);
+        $this->assertStringContainsString('SpO2 97%', $drafSoap->objective_text);
         $this->assertStringContainsString('BB 68 kg', $drafSoap->objective_text);
         $this->assertStringContainsString('TB 170 cm', $drafSoap->objective_text);
     }
@@ -206,6 +209,7 @@ class PemeriksaanAwalTest extends TestCase
             'nadi'            => 'bukan_angka',
             'suhu_tubuh'      => 99.9, // Melebihi batas fisiologis normal
             'laju_pernapasan' => '',
+            'saturasi_oksigen' => '',
             'berat_badan'     => '',
             'tinggi_badan'    => '',
             'catatan'         => '',
@@ -218,10 +222,86 @@ class PemeriksaanAwalTest extends TestCase
             'nadi',
             'suhu_tubuh',
             'laju_pernapasan',
-            'berat_badan',
-            'tinggi_badan',
-            'catatan',
+            'saturasi_oksigen',
         ]);
+        // BB, TB, dan catatan boleh kosong (pasien darurat belum tentu bisa ditimbang atau ditanya).
+        $response->assertSessionDoesntHaveErrors(['berat_badan', 'tinggi_badan', 'catatan']);
+    }
+
+    /**
+     * Pasien darurat: TTV tetap bisa disimpan tanpa BB, TB, dan catatan perawat.
+     */
+    public function test_ttv_pasien_darurat_tersimpan_tanpa_bb_tb_dan_catatan(): void
+    {
+        $this->antrean->update(['status' => 'Menunggu TTV']);
+
+        $response = $this->actingAs($this->perawat)->post('/perawat/pemeriksaan-awal', [
+            'id_antrean'       => $this->antrean->id_antrean,
+            'tekanan_darah'    => '90/60',
+            'nadi'             => 110,
+            'suhu_tubuh'       => 36.2,
+            'laju_pernapasan'  => 24,
+            'saturasi_oksigen' => 92,
+        ]);
+
+        $response->assertSessionDoesntHaveErrors();
+        $this->assertEquals('Siap Periksa', $this->antrean->fresh()->status);
+
+        $kunjungan = Kunjungan::where('id_antrean', $this->antrean->id_antrean)->first();
+        $this->assertDatabaseHas('pemeriksaan_awal', [
+            'id_kunjungan' => $kunjungan->id_kunjungan,
+            'berat_badan'  => null,
+            'tinggi_badan' => null,
+            'catatan'      => null,
+        ]);
+
+        $objektif = DrafSoap::where('id_kunjungan', $kunjungan->id_kunjungan)->value('objective_text');
+        $this->assertStringContainsString('SpO2 92%', $objektif);
+        $this->assertStringNotContainsString('BB', $objektif);
+    }
+
+    /**
+     * Registrasi pasien darurat cukup dengan nama; antrean menunggu TTV
+     * dan belum ada data pemeriksaan maupun draf SOAP.
+     */
+    public function test_registrasi_pasien_cukup_dengan_nama(): void
+    {
+        $response = $this->actingAs($this->perawat)->post('/perawat/pasien-baru', [
+            'nama_pasien' => 'Tn. X (tanpa identitas)',
+        ]);
+
+        $response->assertSessionDoesntHaveErrors();
+
+        $pasien = \App\Models\Pasien::where('nama_pasien', 'Tn. X (tanpa identitas)')->first();
+        $this->assertNotNull($pasien);
+        $this->assertNull($pasien->umur);
+        $this->assertNull($pasien->jenis_kelamin);
+
+        $antrean = Antrean::where('id_pasien', $pasien->id_pasien)->first();
+        $this->assertEquals('Menunggu TTV', $antrean->status);
+        $response->assertRedirect(route('perawat.dashboard', ['antrean_id' => $antrean->id_antrean]));
+
+        $kunjungan = Kunjungan::where('id_antrean', $antrean->id_antrean)->first();
+        $this->assertNotNull($kunjungan);
+        $this->assertDatabaseMissing('pemeriksaan_awal', ['id_kunjungan' => $kunjungan->id_kunjungan]);
+        $this->assertDatabaseMissing('draf_soap', ['id_kunjungan' => $kunjungan->id_kunjungan]);
+    }
+
+    /**
+     * Format identitas pasien divalidasi: NIK 16 digit, BPJS 13 digit, tanggal lahir tidak di masa depan.
+     */
+    public function test_registrasi_pasien_menolak_identitas_tidak_valid(): void
+    {
+        $response = $this->actingAs($this->perawat)->post('/perawat/pasien-baru', [
+            'nama_pasien'   => 'Pasien Salah Format',
+            'tanggal_lahir' => now()->addDay()->toDateString(),
+            'nik'           => '12345',
+            'no_bpjs'       => 'abc',
+            'no_hp'         => '08-abc',
+        ]);
+
+        $response->assertSessionHasErrors(['tanggal_lahir', 'nik', 'no_bpjs', 'no_hp']);
+        $this->assertDatabaseMissing('pasien', ['nama_pasien' => 'Pasien Salah Format']);
     }
 
     /**

@@ -90,14 +90,29 @@
                     <div class="min-w-0">
                         <h1 class="text-xl font-semibold tracking-tight text-medical-navy">{{ $pasien->nama_pasien }}</h1>
                         <p class="text-sm text-text-body/80">
-                            {{ $umur ? $umur . ' tahun' : 'Umur belum diisi' }} · {{ $pasien->jenis_kelamin ?? '-' }}
+                            {{ $umur ? $umur . ' tahun' : 'Umur belum diisi' }} · {{ $pasien->jenis_kelamin ?? 'Jenis kelamin belum diisi' }}
                         </p>
+                        @if ($pasien->tanggal_lahir)
+                            <p class="text-xs text-text-body/80">Lahir {{ $pasien->tanggal_lahir->locale('id')->isoFormat('D MMMM Y') }}</p>
+                        @endif
                         <div class="mt-3 flex flex-wrap gap-2">
                             <span class="tag-id bg-white"><span class="sr-only">No. RM </span>{{ $pasien->no_rekam_medis }}</span>
                             <span class="tag-id tag-id-muted bg-white/80">A-{{ str_pad($antrean->id_antrean, 3, '0', STR_PAD_LEFT) }}</span>
                         </div>
                     </div>
                 </div>
+                @if ($pasien->nik || $pasien->no_bpjs)
+                    <dl class="relative mt-4 grid grid-cols-2 gap-2 text-xs">
+                        <div class="min-w-0">
+                            <dt class="text-text-body/80">NIK</dt>
+                            <dd class="num font-semibold text-medical-navy break-all">{{ $pasien->nik ?: '-' }}</dd>
+                        </div>
+                        <div class="min-w-0">
+                            <dt class="text-text-body/80">No. BPJS</dt>
+                            <dd class="num font-semibold text-medical-navy break-all">{{ $pasien->no_bpjs ?: '-' }}</dd>
+                        </div>
+                    </dl>
+                @endif
                 <p class="relative mt-4 text-xs text-text-body/80">
                     {{ \Carbon\Carbon::parse($antrean->tanggal_kunjungan)->locale('id')->isoFormat('D MMMM Y') }} · {{ $user->nama_lengkap }}
                 </p>

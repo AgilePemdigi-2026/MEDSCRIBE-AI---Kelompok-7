@@ -23,6 +23,9 @@ class Pasien extends Model
         'umur',
         'tanggal_lahir',
         'jenis_kelamin',
+        'nik',
+        'no_bpjs',
+        'no_hp',
         'cancelled_by',
         'cancellation_reason',
     ];

@@ -255,12 +255,6 @@ class HospitalMultiTenancyTest extends TestCase
             'umur'                    => 30,
             'jenis_kelamin'           => 'Laki-laki',
             'hospital_id'             => $this->hospitalB->id,
-            'tekanan_darah_sistolik'  => 120,
-            'tekanan_darah_diastolik' => 80,
-            'nadi'                    => 75,
-            'suhu_tubuh'              => 36.6,
-            'laju_pernapasan'         => 18,
-            'saturasi_oksigen'        => 98,
         ];
 
         $spoofResponse = $this->actingAs($this->perawatA)->post('/perawat/pasien-baru', $payloadSpoofed);
@@ -272,20 +266,11 @@ class HospitalMultiTenancyTest extends TestCase
             'umur'                    => 28,
             'jenis_kelamin'           => 'Laki-laki',
             'hospital_id'             => $this->hospitalA->id,
-            'tekanan_darah_sistolik'  => 118,
-            'tekanan_darah_diastolik' => 78,
-            'nadi'                    => 72,
-            'suhu_tubuh'              => 36.5,
-            'laju_pernapasan'         => 16,
-            'saturasi_oksigen'        => 99,
-            'berat_badan'             => 65,
-            'tinggi_badan'            => 172,
-            'catatan'                 => 'Pemeriksaan rutin mandiri',
         ];
 
         $response = $this->actingAs($this->perawatA)->post('/perawat/pasien-baru', $payloadValid);
 
-        $response->assertRedirect(route('perawat.dashboard', ['tab' => 'pasien']));
+        $response->assertSessionHasNoErrors();
         $response->assertSessionHas('status');
         $response->assertSessionHas('new_patient_id');
 
@@ -315,6 +300,7 @@ class HospitalMultiTenancyTest extends TestCase
             'nadi'            => 80,
             'suhu_tubuh'      => 36.5,
             'laju_pernapasan' => 18,
+            'saturasi_oksigen' => 98,
             'berat_badan'     => 60,
             'tinggi_badan'    => 165,
             'catatan'         => 'Percobaan lintas faskes',

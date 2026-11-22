@@ -32,31 +32,33 @@ class NurseStationPemeriksaanAwalBDDTest extends BDDTestCase
         $this->given('Perawat aktif sedang login di Nurse Station');
         $namaPasien = 'Andi Prasetyo ' . uniqid();
 
-        $this->when('Perawat mengisi form registrasi pasien baru beserta TTV awal');
+        $this->when('Perawat mengisi form registrasi pasien baru berisi data diri');
         $response = $this->actingAs($this->perawat)->post('/perawat/pasien-baru', [
-            'nama_pasien'             => $namaPasien,
-            'umur'                    => 35,
-            'jenis_kelamin'           => 'Laki-laki',
-            'tekanan_darah_sistolik'  => 120,
-            'tekanan_darah_diastolik' => 80,
-            'nadi'                    => 80,
-            'suhu_tubuh'              => 36.6,
-            'laju_pernapasan'         => 18,
-            'saturasi_oksigen'        => 99,
+            'nama_pasien'   => $namaPasien,
+            'tanggal_lahir' => '1990-05-15',
+            'jenis_kelamin' => 'Laki-laki',
+            'nik'           => '3578012345670001',
+            'no_bpjs'       => '0001234567890',
+            'no_hp'         => '081234567890',
         ]);
 
         $this->then('Data pasien baru tersimpan di database dengan nomor rekam medis');
         $response->assertSessionDoesntHaveErrors();
-        $response->assertRedirect(route('perawat.dashboard', ['tab' => 'pasien']));
         $pasien = Pasien::where('nama_pasien', $namaPasien)->first();
         $this->assertNotNull($pasien);
         $this->assertNotEmpty($pasien->no_rekam_medis);
-        $response->assertSessionHas('status', 'Pasien berhasil didaftarkan dengan ID: ' . $pasien->no_rekam_medis);
+        $this->assertSame('3578012345670001', $pasien->nik);
+        $this->assertSame('0001234567890', $pasien->no_bpjs);
+        $this->assertSame('081234567890', $pasien->no_hp);
+        $this->assertSame('1990-05-15', $pasien->tanggal_lahir->toDateString());
+        $this->assertSame(\Carbon\Carbon::parse('1990-05-15')->age, $pasien->umur);
+        $response->assertSessionHas('status', 'Pasien berhasil didaftarkan dengan No. RM ' . $pasien->no_rekam_medis . '. Lanjutkan dengan mengisi TTV.');
 
-        $this->and('Antrean baru terbuat dengan status "Siap Periksa"');
+        $this->and('Antrean baru terbuat dengan status "Menunggu TTV" dan perawat diarahkan ke form TTV');
         $antrean = Antrean::where('id_pasien', $pasien->id_pasien)->first();
         $this->assertNotNull($antrean);
-        $this->assertEquals('Siap Periksa', $antrean->status);
+        $this->assertEquals('Menunggu TTV', $antrean->status);
+        $response->assertRedirect(route('perawat.dashboard', ['antrean_id' => $antrean->id_antrean]));
     }
 
     /**
@@ -130,6 +132,7 @@ class NurseStationPemeriksaanAwalBDDTest extends BDDTestCase
             'nadi'            => 80,
             'suhu_tubuh'      => 36.8,
             'laju_pernapasan' => 18,
+            'saturasi_oksigen' => 98,
             'berat_badan'     => 65,
             'tinggi_badan'    => 170,
             'catatan'         => 'Pusing sejak kemarin malam',
