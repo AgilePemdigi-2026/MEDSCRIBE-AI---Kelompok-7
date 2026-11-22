@@ -26,10 +26,10 @@ class OpenRouterSoapGenerationService implements SoapGenerationService
             : $transcript;
         $vitals = $kunjungan->pemeriksaanAwal;
         $pasien = $kunjungan->pasien;
-        $umur = $pasien?->umur ?: ($pasien?->tanggal_lahir ? \Carbon\Carbon::parse($pasien->tanggal_lahir)->age : null);
+        $umur = $pasien?->usia_label;
 
         $patientContext = [
-            'usia' => $umur ? "{$umur} tahun" : 'Tidak disebutkan',
+            'usia' => $umur ?? 'Tidak disebutkan',
             'jenis_kelamin' => $pasien?->jenis_kelamin ?: 'Tidak disebutkan',
         ];
 

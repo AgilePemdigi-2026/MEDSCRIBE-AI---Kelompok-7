@@ -10,6 +10,7 @@ use App\Services\MockSoapDraftService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Throwable;
 
 class SoapReviewController extends Controller
@@ -42,7 +43,7 @@ class SoapReviewController extends Controller
         if (! $this->transcriptIsReviewed($kunjungan)) {
             return back()->withFragment('soap')->with('warning', 'Tinjau dan simpan transkrip sebelum menyimpan SOAP.');
         }
-        $validated = $this->validateDraft($request);
+        $validated = $this->validateDraft($request, $kunjungan);
 
         DB::transaction(function () use ($validated, $kunjungan) {
             $kunjungan->pasien()->update([
@@ -87,6 +88,16 @@ class SoapReviewController extends Controller
             return back()->withFragment('soap')->with('warning', $result['generationError']);
         }
 
+        // Isi draf diganti teks AI baru, jadi verifikasi sebelumnya tidak berlaku lagi
+        // (sama seperti saat dokter menyimpan koreksi SOAP).
+        if ($kunjungan->isSoapVerified()) {
+            Finalisasi::where('id_kunjungan', $kunjungan->id_kunjungan)->update([
+                'status' => 'Perlu Ditinjau',
+                'FINAL' => false,
+            ]);
+            $kunjungan->update(['status' => Kunjungan::STATUS_SOAP_BELUM_DIVERIFIKASI]);
+        }
+
         return back()->withFragment('soap')->with('status', 'Draf SOAP berhasil dibuat ulang menggunakan OpenRouter AI.');
     }
 
@@ -117,7 +128,7 @@ class SoapReviewController extends Controller
         if (! $this->transcriptIsReviewed($kunjungan)) {
             return back()->withFragment('soap')->with('warning', 'Tinjau dan simpan transkrip sebelum memverifikasi SOAP.');
         }
-        $validated = $this->validateDraft($request);
+        $validated = $this->validateDraft($request, $kunjungan);
 
         DB::transaction(function () use ($validated, $kunjungan, $request) {
             $kunjungan->pasien()->update([
@@ -145,12 +156,16 @@ class SoapReviewController extends Controller
         return back()->withFragment('soap')->with('status', 'Draf SOAP berhasil diverifikasi oleh dokter.');
     }
 
-    private function validateDraft(Request $request): array
+    private function validateDraft(Request $request, Kunjungan $kunjungan): array
     {
         return $request->validate([
-            'no_rekam_medis' => ['required', 'string', 'max:30'],
+            // No. RM unik (ada indeks unik di tabel pasien); tanpa cek ini nomor ganda berakhir error 500.
+            'no_rekam_medis' => [
+                'required', 'string', 'max:30',
+                Rule::unique('pasien', 'no_rekam_medis')->ignore($kunjungan->id_pasien, 'id_pasien'),
+            ],
             'nama_pasien' => ['required', 'string', 'max:100'],
-            'tanggal_lahir' => ['nullable', 'date'],
+            'tanggal_lahir' => ['nullable', 'date', 'before_or_equal:' . now('Asia/Jakarta')->toDateString()],
             'jenis_kelamin' => ['nullable', 'in:Laki-laki,Perempuan'],
             'subjective_text' => ['required', 'string'],
             'objective_text' => ['required', 'string'],
@@ -159,6 +174,8 @@ class SoapReviewController extends Controller
             'kode_icd10' => ['nullable', 'string', 'max:255'],
         ], [
             '*.required' => 'Field ini wajib diisi.',
+            'no_rekam_medis.unique' => 'No. RM ini sudah dipakai pasien lain.',
+            'tanggal_lahir.before_or_equal' => 'Tanggal lahir tidak boleh setelah hari ini.',
         ]);
     }
 

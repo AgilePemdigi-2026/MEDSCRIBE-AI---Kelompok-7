@@ -67,7 +67,7 @@
                     <dd class="mt-0.5 font-semibold text-medical-navy">{{ $pasien->nama_pasien }}</dd>
                     <dd class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-text-secondary">
                         <span class="tag-id"><span class="sr-only">No. RM </span>{{ $pasien->no_rekam_medis }}</span>
-                        <span>{{ $umur ? $umur . ' tahun' : 'Umur belum diisi' }} · {{ $pasien->jenis_kelamin ?? '-' }}</span>
+                        <span>{{ $umur ?? 'Umur belum diisi' }} · {{ $pasien->jenis_kelamin ?? '-' }}</span>
                     </dd>
                 </div>
                 <div>

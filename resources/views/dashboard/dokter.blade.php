@@ -166,6 +166,11 @@
                                             <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                                             Menunggu TTV
                                         </button>
+                                    @elseif (! $antrean->kunjungan)
+                                        {{-- Antrean selesai tanpa kunjungan (mis. data lama): tidak ada berkas untuk dibuka. --}}
+                                        <button type="button" disabled class="btn btn-secondary btn-sm" title="Antrean ini tidak memiliki berkas rekam medis">
+                                            Tanpa berkas
+                                        </button>
                                     @else
                                         <a href="{{ route('dokter.rekam-medis', $antrean->id_antrean) }}" class="btn btn-secondary btn-sm" title="Lihat berkas rekam medis yang telah selesai">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-royal-indigo" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>

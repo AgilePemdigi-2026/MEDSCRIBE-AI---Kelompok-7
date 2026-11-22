@@ -4,7 +4,7 @@
 
 @section('content')
 @php
-    $usia = $pasien->umur ?: ($pasien->tanggal_lahir ? \Carbon\Carbon::parse($pasien->tanggal_lahir)->age : null);
+    $usia = $pasien->usia_label;
     // Sama dengan kode kunjungan di Nurse Station dan rekam medis dokter.
     $prefixKunjungan = $pasien->hospital?->hospital_code ? 'RS' . $pasien->hospital->hospital_code : 'RSUA';
 @endphp
@@ -30,7 +30,7 @@
                 @php
                     $identitas = [
                         ['Tanggal lahir', $pasien->tanggal_lahir?->locale('id')->isoFormat('D MMMM Y'), false],
-                        ['Umur', $usia !== null ? $usia . ' tahun' : null, false],
+                        ['Umur', $usia, false],
                         ['Jenis kelamin', $pasien->jenis_kelamin, false],
                         ['No. HP', $pasien->no_hp, true],
                         ['NIK', $pasien->nik, true],

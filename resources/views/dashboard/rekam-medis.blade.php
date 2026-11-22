@@ -90,7 +90,7 @@
                     <div class="min-w-0">
                         <h1 class="text-xl font-semibold tracking-tight text-medical-navy">{{ $pasien->nama_pasien }}</h1>
                         <p class="text-sm text-text-body/80">
-                            {{ $umur ? $umur . ' tahun' : 'Umur belum diisi' }} · {{ $pasien->jenis_kelamin ?? 'Jenis kelamin belum diisi' }}
+                            {{ $umur ?? 'Umur belum diisi' }} · {{ $pasien->jenis_kelamin ?? 'Jenis kelamin belum diisi' }}
                         </p>
                         @if ($pasien->tanggal_lahir)
                             <p class="text-xs text-text-body/80">Lahir {{ $pasien->tanggal_lahir->locale('id')->isoFormat('D MMMM Y') }}</p>

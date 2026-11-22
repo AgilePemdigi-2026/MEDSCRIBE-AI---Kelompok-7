@@ -274,6 +274,8 @@ class AdminDashboardController extends Controller
             403,
             'Akses ditolak: Anda tidak memiliki wewenang mengelola staf rumah sakit lain.'
         );
+        // Aksi verifikasi/status hanya untuk tenaga medis, bukan sesama admin.
+        abort_unless($user->isDokter() || $user->isPerawat(), 403, 'Aksi ini hanya untuk akun dokter atau perawat.');
 
         // Jangan izinkan menyetujui akun yang sudah aktif
         if ($user->isActive()) {
@@ -318,6 +320,13 @@ class AdminDashboardController extends Controller
             403,
             'Akses ditolak: Anda tidak memiliki wewenang mengelola staf rumah sakit lain.'
         );
+        // Aksi verifikasi/status hanya untuk tenaga medis, bukan sesama admin.
+        abort_unless($user->isDokter() || $user->isPerawat(), 403, 'Aksi ini hanya untuk akun dokter atau perawat.');
+
+        // Penolakan hanya untuk pendaftaran yang masih menunggu verifikasi.
+        if (! $user->isPending()) {
+            return back()->with('info', "Akun {$user->nama_lengkap} tidak sedang menunggu verifikasi.");
+        }
 
         $validated = $request->validate([
             'reason' => ['required', 'string', 'min:5', 'max:500'],
@@ -363,6 +372,8 @@ class AdminDashboardController extends Controller
             403,
             'Akses ditolak: Anda tidak memiliki wewenang mengelola staf rumah sakit lain.'
         );
+        // Aksi verifikasi/status hanya untuk tenaga medis, bukan sesama admin.
+        abort_unless($user->isDokter() || $user->isPerawat(), 403, 'Aksi ini hanya untuk akun dokter atau perawat.');
 
         // Pencegahan bunuh diri akun admin
         abort_if(
@@ -370,6 +381,10 @@ class AdminDashboardController extends Controller
             403,
             'Anda tidak dapat menonaktifkan akun Admin Anda sendiri.'
         );
+
+        if (! $user->isActive()) {
+            return back()->with('info', "Akun {$user->nama_lengkap} tidak sedang aktif.");
+        }
 
         $validated = $request->validate([
             'reason' => ['required', 'string', 'min:5', 'max:500'],
@@ -415,6 +430,8 @@ class AdminDashboardController extends Controller
             403,
             'Akses ditolak: Anda tidak memiliki wewenang mengelola staf rumah sakit lain.'
         );
+        // Aksi verifikasi/status hanya untuk tenaga medis, bukan sesama admin.
+        abort_unless($user->isDokter() || $user->isPerawat(), 403, 'Aksi ini hanya untuk akun dokter atau perawat.');
 
         DB::transaction(function () use ($admin, $user) {
             $statusBefore = $user->approval_status ?? 'inactive';

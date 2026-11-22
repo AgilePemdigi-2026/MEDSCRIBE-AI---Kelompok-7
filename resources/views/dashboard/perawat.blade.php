@@ -82,7 +82,7 @@
                     @php
                         $isSelected = $pasienTerpilih && ($pasienTerpilih->id_antrean === $antrean->id_antrean);
                         $p = $antrean->pasien;
-                        $usia = $p?->umur ?: ($p?->tanggal_lahir ? \Carbon\Carbon::parse($p->tanggal_lahir)->age : null);
+                        $usia = $p?->usia;
                         $jk = $p?->jenis_kelamin === 'Perempuan' ? 'P' : ($p?->jenis_kelamin ? 'L' : null);
                         $siap = $antrean->status === 'Siap Periksa';
                         $ttvLengkap = !in_array($antrean->status, $ttvBelum);
@@ -98,7 +98,7 @@
                                 <span class="block text-sm font-semibold truncate">{{ $p->nama_pasien ?? 'Pasien #' . $antrean->id_pasien }}</span>
                                 <span class="block text-[11px] mt-0.5 {{ $isSelected ? 'text-text-secondary' : 'text-on-navy-muted' }}">
                                     A-{{ str_pad($antrean->id_antrean, 3, '0', STR_PAD_LEFT) }}
-                                    · {{ $usia ? $usia . ' th' : '-' }}{{ $jk ? ' · ' . $jk : '' }}
+                                    · {{ $usia !== null ? $usia . ' th' : '-' }}{{ $jk ? ' · ' . $jk : '' }}
                                     · {{ $siap ? 'Siap dipanggil dokter' : $antrean->status }}
                                 </span>
                             </span>
@@ -125,7 +125,7 @@
             @if ($pasienTerpilih)
                 @php
                     $pt = $pasienTerpilih->pasien;
-                    $usiaLengkap = $pt?->umur ?: ($pt?->tanggal_lahir ? \Carbon\Carbon::parse($pt->tanggal_lahir)->age : null);
+                    $usiaLengkap = $pt?->usia_label;
                     $rsPasien = $pasienTerpilih->hospital->hospital_name ?? ($user->hospital->hospital_name ?? '-');
                 @endphp
 
@@ -139,7 +139,7 @@
                         <div class="flex-1 min-w-0">
                             <p class="text-xs font-medium text-royal-indigo-hover">Formulir Pemeriksaan Awal &amp; TTV</p>
                             <h2 id="judulFormTTV" class="mt-0.5 text-2xl font-semibold tracking-tight text-medical-navy">{{ $pt->nama_pasien ?? 'Pasien' }}</h2>
-                            <p class="text-sm text-text-body/80">{{ $usiaLengkap ? $usiaLengkap . ' tahun' : '-' }} · {{ $pt?->jenis_kelamin ?? '-' }}</p>
+                            <p class="text-sm text-text-body/80">{{ $usiaLengkap ?? '-' }} · {{ $pt?->jenis_kelamin ?? '-' }}</p>
                             <div class="mt-3 flex flex-wrap gap-2">
                                 <span class="tag-id bg-white">No. RM {{ $pt->no_rekam_medis ?? '-' }}</span>
                                 <span class="tag-id tag-id-muted bg-white/80">{{ $idKunjunganCode }}</span>
@@ -303,7 +303,7 @@
                         @php
                             $latestKunjungan = $pasien->kunjungan()->with('pemeriksaanAwal')->orderBy('id_kunjungan', 'desc')->first();
                             $ttvDate = $latestKunjungan?->pemeriksaanAwal?->created_at;
-                            $umurPasien = $pasien->umur ?: ($pasien->tanggal_lahir ? \Carbon\Carbon::parse($pasien->tanggal_lahir)->age : null);
+                            $umurPasien = $pasien->usia_label;
                         @endphp
                         <tr class="group">
                             <td class="whitespace-nowrap"><span class="tag-id">{{ $pasien->no_rekam_medis }}</span></td>
@@ -313,7 +313,7 @@
                                     <span class="font-semibold text-medical-navy group-hover:text-royal-indigo-hover transition-colors">{{ $pasien->nama_pasien }}</span>
                                 </a>
                             </td>
-                            <td class="text-text-secondary whitespace-nowrap num">{{ $umurPasien ? $umurPasien . ' tahun' : '-' }}</td>
+                            <td class="text-text-secondary whitespace-nowrap num">{{ $umurPasien ?? '-' }}</td>
                             <td class="text-text-secondary whitespace-nowrap hidden lg:table-cell">
                                 {{ $pasien->jenis_kelamin ?: '-' }}
                             </td>

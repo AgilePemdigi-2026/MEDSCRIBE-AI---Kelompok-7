@@ -4,7 +4,7 @@ Feature: Autentikasi Tenaga Medis (Login & Logout)
   I want to log in and log out of the MedScribe AI system
 
   Scenario: Doctor Login Success
-    Given an approved and verified doctor account exists
+    Given an approved and verified doctor account with a filled SIP number exists
     And I am on the "/login" page
     When I fill in "Email" and "Kata Sandi" with the doctor's credentials
     And I press "Masuk ke Sistem"
@@ -13,7 +13,7 @@ Feature: Autentikasi Tenaga Medis (Login & Logout)
     And I should see the message "Selamat datang kembali, <nama dokter>!"
 
   Scenario: Nurse Login Success
-    Given an approved and verified nurse account exists
+    Given an approved and verified nurse account with a filled SIPP number exists
     And I am on the "/login" page
     When I fill in "Email" and "Kata Sandi" with the nurse's credentials
     And I press "Masuk ke Sistem"
@@ -75,3 +75,11 @@ Feature: Autentikasi Tenaga Medis (Login & Logout)
     Then I should no longer be authenticated
     And I should be redirected to "/login"
     And I should see the message "Anda telah berhasil keluar dari sistem MedScribe AI."
+
+  Scenario: Medical Staff without License Number Is Asked to Complete the Profile
+    Given an approved doctor or nurse account without a SIP/SIPP number exists
+    When I log in with that account
+    Then I should be redirected to "/profil" and see "Lengkapi profil Anda"
+    When I press "Lewati dulu"
+    Then I should be redirected to my dashboard
+    And I should not be redirected to "/profil" again until I log out and log in again

@@ -31,6 +31,7 @@ class PemeriksaanAwalController extends Controller
 
         // === BAGIAN 1: Daftar Antrean Aktif (Panel Kiri) Terisolasi Berdasarkan Rumah Sakit ===
         $antreanQuery = Antrean::forHospital($hospitalId)
+            ->hariIni()
             ->with(['pasien', 'hospital'])
             ->whereHas('pasien')
             ->where('status', '!=', 'Dibatalkan')
@@ -97,15 +98,16 @@ class PemeriksaanAwalController extends Controller
             });
         }
 
-        // Filter tanggal berdasarkan created_at (tanggal registrasi)
-        if ($filterTahun) {
-            $pasienQuery->whereYear('created_at', $filterTahun);
-        }
-        if ($filterBulan) {
-            $pasienQuery->whereMonth('created_at', $filterBulan);
-        }
-        if ($filterTanggal) {
-            $pasienQuery->whereDay('created_at', $filterTanggal);
+        // Filter tanggal registrasi dalam WIB. created_at tersimpan UTC, sedangkan No. RM
+        // dibuat dari tanggal WIB; tanpa konversi, pasien jam 00.00-07.00 WIB masuk tanggal kemarin.
+        $sqlite = DB::connection()->getDriverName() === 'sqlite';
+        $bagianTanggalWib = fn (string $bagian) => $sqlite
+            ? "CAST(strftime('" . ['YEAR' => '%Y', 'MONTH' => '%m', 'DAY' => '%d'][$bagian] . "', datetime(created_at, '+7 hours')) AS INTEGER)"
+            : "{$bagian}(DATE_ADD(created_at, INTERVAL 7 HOUR))";
+        foreach (['YEAR' => $filterTahun, 'MONTH' => $filterBulan, 'DAY' => $filterTanggal] as $bagian => $nilai) {
+            if ($nilai) {
+                $pasienQuery->whereRaw($bagianTanggalWib($bagian) . ' = ?', [(int) $nilai]);
+            }
         }
 
         // Eager load relasi terakhir
@@ -116,14 +118,14 @@ class PemeriksaanAwalController extends Controller
         $tahunTersedia = Pasien::forHospital($hospitalId)
             ->whereNotNull('created_at')
             ->pluck('created_at')
-            ->map(fn ($tanggal) => \Illuminate\Support\Carbon::parse($tanggal)->year)
+            ->map(fn ($tanggal) => \Illuminate\Support\Carbon::parse($tanggal)->timezone('Asia/Jakarta')->year)
             ->unique()
             ->sortDesc()
             ->values();
 
         // Jika tidak ada tahun tersedia, tambahkan tahun saat ini
         if ($tahunTersedia->isEmpty()) {
-            $tahunTersedia = collect([now()->year]);
+            $tahunTersedia = collect([now('Asia/Jakarta')->year]);
         }
 
         // Tentukan tab aktif
@@ -260,10 +262,11 @@ class PemeriksaanAwalController extends Controller
                 ]
             );
 
-            // 4. Perbarui status antrean pasien menjadi 'Siap Periksa' (REQ-8)
-            $antrean->update([
-                'status' => 'Siap Periksa',
-            ]);
+            // 4. Antrean yang menunggu TTV menjadi 'Siap Periksa' (REQ-8). Koreksi TTV saat pasien
+            //    sudah diperiksa dokter tidak mengembalikan antrean ke 'Siap Periksa'.
+            if (blank($antrean->status) || $antrean->status === 'Menunggu TTV') {
+                $antrean->update(['status' => 'Siap Periksa']);
+            }
 
             // 5. Integrasi otomatis ke komponen Objective pada Draf SOAP dokter (REQ-10)
             $suhuFormatted = str_replace('.', ',', (string) round($validated['suhu_tubuh'], 1));
@@ -283,13 +286,27 @@ class PemeriksaanAwalController extends Controller
             }
             $formattedObjective = implode(', ', $objectiveParts);
 
-            DrafSoap::updateOrCreate(
-                ['id_kunjungan' => $kunjungan->id_kunjungan],
-                [
+            // Ringkasan TTV hanya ditulis ke draf yang belum disusun dokter/AI (stub Objektif).
+            // Draf yang sudah berisi tidak ditimpa agar temuan pemeriksaan fisik dokter tidak hilang;
+            // SoapDraftPreparer akan menandainya perlu ditinjau karena snapshot TTV berubah.
+            $draf = DrafSoap::where('id_kunjungan', $kunjungan->id_kunjungan)->first();
+            $drafMasihStub = $draf
+                && is_null($draf->source_transcript_hash)
+                && blank($draf->subjective_text)
+                && blank($draf->assessment_text)
+                && blank($draf->plan_text);
+
+            if (! $draf) {
+                DrafSoap::create([
+                    'id_kunjungan'   => $kunjungan->id_kunjungan,
                     'id_pengguna'    => $kunjungan->id_dokter,
                     'objective_text' => $formattedObjective,
-                ]
-            );
+                ]);
+            } elseif ($drafMasihStub) {
+                $draf->update(['objective_text' => $formattedObjective]);
+            } else {
+                $draf->update(['needs_review' => true]);
+            }
 
             // Perubahan TTV membuat verifikasi sebelumnya perlu ditinjau ulang.
             \App\Models\Finalisasi::where('id_kunjungan', $kunjungan->id_kunjungan)->update([
@@ -338,7 +355,7 @@ class PemeriksaanAwalController extends Controller
         // Umur dari form diutamakan (bisa perkiraan); kalau kosong, hitung dari tanggal lahir.
         $umur = $validated['umur'] ?? null;
         if ($umur === null && filled($validated['tanggal_lahir'] ?? null)) {
-            $umur = Carbon::parse($validated['tanggal_lahir'])->age;
+            $umur = (int) Carbon::parse($validated['tanggal_lahir'], 'Asia/Jakarta')->diffInYears(Carbon::now('Asia/Jakarta'));
         }
 
         try {
@@ -451,11 +468,16 @@ class PemeriksaanAwalController extends Controller
             $q->where('id_pasien', $pasien->id_pasien);
         })->exists();
 
+        // Kunjungan yang sudah difinalisasi berstatus "Final" (bukan "Selesai"), atau terkunci lewat tabel finalisasi.
+        $statusSelesai = ['Selesai', Kunjungan::STATUS_FINALISASI, 'Terkunci'];
         $hasCompletedVisit = Kunjungan::where('id_pasien', $pasien->id_pasien)
-            ->where('status', 'Selesai')
+            ->where(function ($q) use ($statusSelesai) {
+                $q->whereIn('status', $statusSelesai)
+                  ->orWhereHas('finalisasi', fn ($f) => $f->where('FINAL', true));
+            })
             ->exists();
 
-        if ($hasTtv && $hasCompletedVisit) {
+        if ($hasCompletedVisit) {
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
@@ -486,7 +508,7 @@ class PemeriksaanAwalController extends Controller
 
             // 3. Batalkan kunjungan pasien yang belum selesai
             Kunjungan::where('id_pasien', $pasien->id_pasien)
-                ->where('status', '!=', 'Selesai')
+                ->whereNotIn('status', $statusSelesai)
                 ->update(['status' => 'Dibatalkan']);
 
             if (!$hasTtv) {

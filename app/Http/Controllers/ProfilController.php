@@ -22,11 +22,18 @@ class ProfilController extends Controller
     {
         $user = $request->user()->loadMissing('hospital');
 
+        // Mode lengkapi: dibuka otomatis setelah login karena nomor izin masih kosong.
+        $modeLengkapi = blank($user->nomor_sip) && ! $request->session()->get(self::SESSION_LEWATI);
+
+        // Salam "Selamat datang kembali" dari login tidak perlu bertumpuk dengan ajakan melengkapi profil.
+        if ($modeLengkapi) {
+            $request->session()->forget('status');
+        }
+
         return view('dashboard.profil', [
             'user' => $user,
             'labelIzin' => $user->label_nomor_izin,
-            // Mode lengkapi: dibuka otomatis setelah login karena nomor izin masih kosong.
-            'modeLengkapi' => blank($user->nomor_sip) && ! $request->session()->get(self::SESSION_LEWATI),
+            'modeLengkapi' => $modeLengkapi,
         ]);
     }
 

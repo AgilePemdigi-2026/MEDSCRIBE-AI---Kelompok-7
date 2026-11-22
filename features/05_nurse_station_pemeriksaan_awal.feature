@@ -3,22 +3,27 @@ Feature: Nurse Station - Manajemen Antrean dan Input Pemeriksaan Awal TTV
   As a clinic nurse
   I want to manage the queue, register new patients, and record vital signs (TTV)
 
-  Scenario: Register New Patient and Initial Vital Signs Success
+  Scenario: Register New Patient with Identity Data Only
     Given I am logged in as a nurse
     And I am on the "/perawat/dashboard" page
     When I press "Input Pasien"
     Then I should see the modal "Input Pasien Baru"
-    When I fill in the patient's name with "Andi Prasetyo", age "35", and gender "Laki-laki"
-    And I fill in "TD Sistolik" with "120" and "TD Diastolik" with "80"
-    And I fill in "Denyut Nadi" with "80"
-    And I fill in "Suhu Tubuh" with "36.6"
-    And I fill in "Laju Pernapasan" with "18"
-    And I fill in "SpO2" with "99"
-    And I press "Simpan Pasien"
+    When I fill in "Nama lengkap" with "Andi Prasetyo"
+    And I fill in "Tanggal lahir" with "1990-05-15"
+    Then the "Umur" field should be filled automatically with the age from the birth date
+    When I fill in "NIK" with "3578012345670001", "No. BPJS" with "0001234567890", and "No. HP" with "081234567890"
+    And I press "Simpan dan isi TTV"
     Then the patient should be saved with a generated medical record number
-    And a queue entry with status "Siap Periksa" should be created for the patient
-    And I should be redirected to "/perawat/dashboard?tab=pasien"
-    And I should see the message "Pasien berhasil didaftarkan dengan ID: <nomor rekam medis>"
+    And a queue entry with status "Menunggu TTV" should be created for the patient
+    And I should be redirected to the vital signs form of that patient on "/perawat/dashboard"
+    And I should see the message "Pasien berhasil didaftarkan dengan No. RM <nomor rekam medis>. Lanjutkan dengan mengisi TTV."
+
+  Scenario: Register Emergency Patient with Name Only
+    Given I am logged in as a nurse
+    When I register a new patient filling in only "Nama lengkap" with "Tn. X (tanpa identitas)"
+    Then the patient should be saved without age and gender
+    And a queue entry with status "Menunggu TTV" should be created for the patient
+    And no initial examination or SOAP draft should exist yet
 
   Scenario: Search Patient in Queue
     Given I am logged in as a nurse
@@ -36,15 +41,24 @@ Feature: Nurse Station - Manajemen Antrean dan Input Pemeriksaan Awal TTV
     And I fill in "Denyut Nadi" with "80"
     And I fill in "Suhu Tubuh" with "36.8"
     And I fill in "Laju Pernapasan" with "18"
+    And I fill in "SpO2" with "98"
     And I fill in "Berat Badan" with "65"
     And I fill in "Tinggi Badan" with "170"
-    And I fill in "Catatan Awal Perawat" with "Pusing sejak kemarin malam"
+    And I fill in "Catatan perawat" with "Pusing sejak kemarin malam"
     And I press "Simpan data pemeriksaan"
     Then the initial examination should be saved with the values I entered
     And I should be returned to the selected patient on "/perawat/dashboard"
     And I should see the message "Data berhasil disimpan!"
     And the queue status should be updated to "Siap Periksa"
     And the Objective section of the doctor's SOAP draft should contain "TD 120/80", "Nadi 80", and "Suhu 36,8°C"
+
+  Scenario: Record Vital Signs for an Emergency Patient
+    Given I am logged in as a nurse
+    And a patient is in the queue with status "Menunggu TTV"
+    When I fill in only "Tekanan Darah", "Denyut Nadi", "Suhu Tubuh", "Laju Pernapasan", and "SpO2"
+    And I press "Simpan data pemeriksaan"
+    Then the initial examination should be saved without weight, height, and nurse notes
+    And the queue status should be updated to "Siap Periksa"
 
   Scenario: Cancel Patient Registration
     Given I am logged in as a nurse

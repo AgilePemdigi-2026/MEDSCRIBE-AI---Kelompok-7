@@ -15,16 +15,16 @@
             <a href="{{ route('dashboard') }}" class="rounded-full pr-2 flex items-center gap-2.5" aria-label="MedScribe AI, kembali ke dashboard">
                 @include('partials.brand')
                 @if (Auth::user()?->isAdmin())
-                    <span class="chip chip-accent hidden sm:inline-flex">Admin RS</span>
+                    <span class="chip chip-accent hidden xl:inline-flex">Admin RS</span>
                 @endif
             </a>
 
-            <div class="hidden lg:flex items-center gap-2 px-4 min-h-10 rounded-full bg-soft-offwhite border border-border-subtle text-xs text-text-secondary">
+            <div class="hidden lg:flex min-w-0 items-center gap-2 px-4 min-h-10 rounded-full bg-soft-offwhite border border-border-subtle text-xs text-text-secondary">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-royal-indigo" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 {{-- Nama RS hanya tampil kalau akun memang terikat ke RS; tanpa nama karangan. --}}
-                <span>{{ \Carbon\Carbon::now('Asia/Jakarta')->locale('id')->isoFormat('D MMMM Y') }}@if (Auth::user()?->hospital) · {{ Auth::user()->hospital->hospital_name }}@endif</span>
+                <span class="truncate whitespace-nowrap" title="{{ Auth::user()?->hospital?->hospital_name }}">{{ \Carbon\Carbon::now('Asia/Jakarta')->locale('id')->isoFormat('D MMMM Y') }}@if (Auth::user()?->hospital) · {{ Auth::user()->hospital->hospital_name }}@endif</span>
             </div>
 
             @auth

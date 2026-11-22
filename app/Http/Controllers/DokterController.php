@@ -47,7 +47,16 @@ class DokterController extends Controller
                 ->with('warning', 'Data pasien tidak ditemukan atau telah dibatalkan.');
         }
 
-        // 2. Hubungkan atau buat kunjungan aktif untuk antrean ini
+        // 2. Antrean yang sudah selesai/dibatalkan tanpa kunjungan tidak punya berkas.
+        //    Jangan membuat kunjungan baru dari sini (dulu "Lihat Berkas" membuat kunjungan kosong).
+        if (in_array($antrean->status, ['Selesai', 'Dibatalkan'], true)
+            && ! Kunjungan::where('id_antrean', $antrean->id_antrean)->exists()) {
+            return redirect()
+                ->route('dokter.dashboard')
+                ->with('warning', 'Antrean ini sudah ' . strtolower($antrean->status) . ' dan tidak memiliki berkas rekam medis.');
+        }
+
+        // 3. Hubungkan atau buat kunjungan aktif untuk antrean ini
         $kunjungan = Kunjungan::firstOrCreate(
             ['id_antrean' => $antrean->id_antrean],
             [
@@ -127,7 +136,7 @@ class DokterController extends Controller
         $idKunjunganCode = $prefix.'-'.$tglStr.'-'.str_pad($antrean->id_antrean, 3, '0', STR_PAD_LEFT);
 
         $pasien = $antrean->pasien;
-        $umur = $pasien->umur ?: ($pasien->tanggal_lahir ? Carbon::parse($pasien->tanggal_lahir)->age : null);
+        $umur = $pasien->usia_label;
 
         // 7. Katalog ICD-10: saran AI, label kode terpilih, dan sumber isian
         $icd10Catalog = app(Icd10Catalog::class);
@@ -303,14 +312,16 @@ class DokterController extends Controller
             abort(403, 'Akses ditolak: Hanya dokter poliklinik yang berwenang memfinalisasi rekam medis.');
         }
 
-        $this->authorizeKunjungan($kunjungan, $user->id_pengguna);
-
+        // Cek RS dulu: authorizeKunjungan() bisa menetapkan dokter ke kunjungan yang belum punya dokter,
+        // jadi tidak boleh terjadi untuk kunjungan RS lain.
         if ($user->hospital_id) {
             $targetHospitalId = $kunjungan->hospital_id ?? $kunjungan->pasien?->hospital_id;
             if ($targetHospitalId && (int) $targetHospitalId !== (int) $user->hospital_id) {
                 abort(403, 'Akses ditolak: Anda tidak memiliki wewenang untuk memfinalisasi rekam medis dari rumah sakit lain.');
             }
         }
+
+        $this->authorizeKunjungan($kunjungan, $user->id_pengguna);
 
         if ($kunjungan->isFinalized()) {
             if ($request->wantsJson()) {
@@ -410,14 +421,16 @@ class DokterController extends Controller
             abort(403, 'Akses ditolak: Hanya dokter poliklinik yang berwenang melihat preview rekam medis.');
         }
 
-        $this->authorizeKunjungan($kunjungan, $user->id_pengguna);
-
+        // Cek RS dulu: authorizeKunjungan() bisa menetapkan dokter ke kunjungan yang belum punya dokter,
+        // jadi tidak boleh terjadi untuk kunjungan RS lain.
         if ($user->hospital_id) {
             $targetHospitalId = $kunjungan->hospital_id ?? $kunjungan->pasien?->hospital_id;
             if ($targetHospitalId && (int) $targetHospitalId !== (int) $user->hospital_id) {
                 abort(403, 'Akses ditolak: Anda tidak memiliki wewenang untuk mengakses rekam medis dari rumah sakit lain.');
             }
         }
+
+        $this->authorizeKunjungan($kunjungan, $user->id_pengguna);
 
         // Ketentuan Keamanan & Konsistensi: Dokumen SOAP hanya dapat dipratinjau jika sudah final
         if (! $kunjungan->isFinalized()) {
@@ -459,7 +472,7 @@ class DokterController extends Controller
         $prefix = $kunjungan->hospital?->hospital_code ? 'RS'.$kunjungan->hospital->hospital_code : 'RSUA';
         $idKunjunganCode = $prefix.'-'.$tglStr.'-'.str_pad($antrean?->id_antrean ?? $kunjungan->id_kunjungan, 3, '0', STR_PAD_LEFT);
 
-        $umur = $pasien->umur ?: ($pasien->tanggal_lahir ? Carbon::parse($pasien->tanggal_lahir)->age : null);
+        $umur = $pasien->usia_label;
 
         $icdDescription = null;
         if ($draf?->kode_icd10) {

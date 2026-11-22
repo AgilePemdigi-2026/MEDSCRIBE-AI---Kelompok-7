@@ -53,6 +53,20 @@ class Antrean extends Model
         });
     }
 
+    /**
+     * Antrean yang relevan untuk hari ini (WIB): semua antrean tanggal hari ini,
+     * ditambah antrean hari sebelumnya yang belum selesai agar pasien tertunda tidak hilang.
+     */
+    public function scopeHariIni(Builder $query): Builder
+    {
+        $hariIni = now('Asia/Jakarta')->toDateString();
+
+        return $query->where(function ($q) use ($hariIni) {
+            $q->whereDate('tanggal_kunjungan', $hariIni)
+              ->orWhereNotIn('status', ['Selesai', 'Dibatalkan']);
+        });
+    }
+
     public function pasien(): BelongsTo
     {
         return $this->belongsTo(Pasien::class, 'id_pasien', 'id_pasien');

@@ -51,7 +51,7 @@
             <dl>
                 <div><dt>Nama pasien</dt><dd class="doc-strong">{{ $pasien->nama_pasien }}</dd></div>
                 <div><dt>No. rekam medis</dt><dd class="doc-code">{{ $pasien->no_rekam_medis }}</dd></div>
-                <div><dt>Tanggal lahir / umur</dt><dd>{{ $pasien->tanggal_lahir ? \Carbon\Carbon::parse($pasien->tanggal_lahir)->locale('id')->isoFormat('D MMMM Y') : '-' }}{{ $umur ? ' / ' . $umur . ' tahun' : '' }}</dd></div>
+                <div><dt>Tanggal lahir / umur</dt><dd>{{ $pasien->tanggal_lahir ? \Carbon\Carbon::parse($pasien->tanggal_lahir)->locale('id')->isoFormat('D MMMM Y') : '-' }}{{ $umur ? ' / ' . $umur : '' }}</dd></div>
                 <div><dt>Jenis kelamin</dt><dd>{{ $pasien->jenis_kelamin ?? '-' }}</dd></div>
                 <div><dt>NIK</dt><dd class="doc-code">{{ $pasien->nik ?: '-' }}</dd></div>
                 <div><dt>No. BPJS</dt><dd class="doc-code">{{ $pasien->no_bpjs ?: '-' }}</dd></div>

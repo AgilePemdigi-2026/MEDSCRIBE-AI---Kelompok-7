@@ -40,6 +40,38 @@ class Pasien extends Model
     ];
 
     /**
+     * Usia dalam tahun: kolom umur (bisa perkiraan) diutamakan, lalu tanggal lahir.
+     * Null kalau keduanya kosong. Umur 0 (bayi) tetap dianggap terisi.
+     */
+    public function getUsiaAttribute(): ?int
+    {
+        if ($this->umur !== null) {
+            return (int) $this->umur;
+        }
+
+        return $this->tanggal_lahir?->age;
+    }
+
+    /**
+     * Usia siap tampil: "36 tahun", atau "5 bulan" untuk bayi yang tanggal lahirnya diketahui.
+     */
+    public function getUsiaLabelAttribute(): ?string
+    {
+        $usia = $this->usia;
+        if ($usia === null) {
+            return null;
+        }
+
+        if ($usia === 0 && $this->tanggal_lahir) {
+            return $this->tanggal_lahir->diffInMonths(now()) < 1
+                ? (int) $this->tanggal_lahir->diffInDays(now()) . ' hari'
+                : (int) $this->tanggal_lahir->diffInMonths(now()) . ' bulan';
+        }
+
+        return $usia === 0 ? 'Di bawah 1 tahun' : $usia . ' tahun';
+    }
+
+    /**
      * Relasi ke rumah sakit tempat pasien terdaftar.
      */
     public function hospital(): BelongsTo

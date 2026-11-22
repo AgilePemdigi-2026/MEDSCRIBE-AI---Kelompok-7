@@ -36,7 +36,9 @@ class StorePasienPemeriksaanRequest extends FormRequest
                 },
             ],
             'nama_pasien'   => ['required', 'string', 'max:100', 'regex:/\S/'],
-            'tanggal_lahir' => ['nullable', 'date', 'before_or_equal:today', 'after:1900-01-01'],
+            // "Hari ini" menurut WIB; aturan bawaan 'today' memakai UTC sehingga bayi yang lahir
+            // pukul 00.00-07.00 WIB dianggap lahir besok.
+            'tanggal_lahir' => ['nullable', 'date', 'before_or_equal:' . now('Asia/Jakarta')->toDateString(), 'after:1900-01-01'],
             'umur'          => ['nullable', 'integer', 'min:0', 'max:130'],
             'jenis_kelamin' => ['nullable', 'string', 'in:Laki-laki,Perempuan'],
             'nik'           => ['nullable', 'digits:16'],

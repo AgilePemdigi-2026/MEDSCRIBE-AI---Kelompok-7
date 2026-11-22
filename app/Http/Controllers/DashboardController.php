@@ -46,12 +46,13 @@ class DashboardController extends Controller
         // Antrean aktif saja: sama seperti Nurse Station, antrean yang dibatalkan dan
         // pasien yang sudah dihapus (soft delete) tidak ikut ditampilkan maupun dihitung.
         $antreanAktif = fn () => Antrean::forHospital($hospitalId)
+            ->hariIni()
             ->whereHas('pasien')
             ->where('status', '!=', 'Dibatalkan');
 
         // Mengambil antrean hari ini dan pasien terkait dengan pembatasan rumah sakit dokter
         $antreanQuery = $antreanAktif()
-            ->with(['pasien', 'hospital'])
+            ->with(['pasien', 'hospital', 'kunjungan'])
             ->orderBy('id_antrean', 'desc');
 
         if ($statusFilter = $request->query('status')) {
