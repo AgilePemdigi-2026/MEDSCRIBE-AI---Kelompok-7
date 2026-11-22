@@ -330,6 +330,7 @@ class AdminHospitalTest extends TestCase
             'nama_lengkap'      => 'dr. Dokter Resmi RS A',
             'email'             => 'official.doc.' . uniqid() . '@medscribe.id',
             'role'              => 'dokter',
+            'nomor_sip'         => '503/1001/SIP-D/2026',
             'hospital_id'       => $this->hospitalA->id,
             'approval_status'   => 'active',
             'email_verified_at' => now(),

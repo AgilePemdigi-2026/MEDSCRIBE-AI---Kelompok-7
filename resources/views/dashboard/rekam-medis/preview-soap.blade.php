@@ -7,6 +7,7 @@
     $kotaRs = $rs?->city;
     $tidakDicatat = '<span class="doc-muted">tidak dicatat</span>';
     $nilai = fn ($v, $satuan = '') => filled($v) ? e($v) . ($satuan ? ' ' . $satuan : '') : $tidakDicatat;
+    $perawatTtv = $pemeriksaanAwal?->perawat;
 @endphp
 
 @section('content')
@@ -34,6 +35,9 @@
                 <p class="doc-rs-sub">
                     {{ collect([$rs?->address, $kotaRs, $rs?->province])->filter()->implode(', ') ?: '[Alamat fasilitas belum diatur]' }}
                 </p>
+                @if ($rs?->telepon || $rs?->email)
+                    <p class="doc-rs-sub">{{ collect([$rs->telepon ? 'Telp. ' . $rs->telepon : null, $rs->email])->filter()->implode(' · ') }}</p>
+                @endif
             </div>
             <dl class="doc-meta">
                 <div><dt>No. dokumen</dt><dd class="doc-code">{{ $idKunjunganCode }}</dd></div>
@@ -56,7 +60,7 @@
                 <div><dt>No. antrean</dt><dd class="doc-code">A-{{ str_pad($antrean->id_antrean, 3, '0', STR_PAD_LEFT) }}</dd></div>
                 <div><dt>Unit</dt><dd>Poliklinik rawat jalan</dd></div>
                 <div><dt>DPJP</dt><dd class="doc-strong">{{ $dokterPemeriksa->nama_lengkap }}</dd></div>
-                <div><dt>Perawat</dt><dd>{{ $pemeriksaanAwal?->perawat?->nama_lengkap ?? '-' }}</dd></div>
+                <div><dt>Perawat</dt><dd>{{ $perawatTtv?->nama_lengkap ?? '-' }}@if ($perawatTtv?->nomor_sip) <span class="doc-muted">· SIPP {{ $perawatTtv->nomor_sip }}</span>@endif</dd></div>
             </dl>
         </section>
 

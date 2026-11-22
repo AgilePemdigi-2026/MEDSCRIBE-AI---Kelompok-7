@@ -427,7 +427,13 @@ class AuthController extends Controller
             return redirect()->route('auth.inactive');
         }
 
-        // 3. Akun Aktif: Arahkan ke dashboard operasional sesuai peran klinis
+        // 3. Akun aktif yang belum mengisi No. SIP/SIPP: buka profil dulu.
+        //    Bisa dilewati, tapi hanya untuk sesi login ini.
+        if ($user->perluLengkapiProfil() && ! session(ProfilController::SESSION_LEWATI)) {
+            return redirect()->route('profil');
+        }
+
+        // 4. Akun Aktif: Arahkan ke dashboard operasional sesuai peran klinis
         if ($user->isDokter()) {
             return redirect()->intended(route('dokter.dashboard'));
         }

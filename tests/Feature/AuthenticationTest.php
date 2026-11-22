@@ -26,7 +26,7 @@ class AuthenticationTest extends TestCase
                 'approval_status' => 'approved',
                 'password' => Hash::make('password123'),
             ]
-        );
+        )->update(['nomor_sip' => '503/1002/SIP-D/2026']);
 
         Pengguna::firstOrCreate(
             ['email' => 'dewi@medscribe.id'],
@@ -38,7 +38,7 @@ class AuthenticationTest extends TestCase
                 'approval_status' => 'approved',
                 'password' => Hash::make('password123'),
             ]
-        );
+        )->update(['nomor_sip' => '503/1003/SIPP/2026']);
     }
     /**
      * Halaman login dapat diakses oleh tamu.

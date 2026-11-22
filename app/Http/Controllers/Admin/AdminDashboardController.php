@@ -489,5 +489,38 @@ class AdminDashboardController extends Controller
 
         return view('admin.hospital-info', compact('admin', 'hospital', 'dokterAktifCount', 'perawatAktifCount'));
     }
+
+    /**
+     * Admin memperbarui alamat dan kontak RS-nya sendiri (untuk kop dokumen SOAP).
+     * Nama, kode SIRS, dan jenis tidak bisa diubah dari sini.
+     */
+    public function updateHospitalInfo(Request $request): RedirectResponse
+    {
+        $hospital = $this->getAuthenticatedAdmin()->hospital;
+
+        $validated = $request->validate([
+            'address'  => ['nullable', 'string', 'max:255'],
+            'city'     => ['required', 'string', 'max:100', 'regex:/\S/'],
+            'province' => ['required', 'string', 'max:100', 'regex:/\S/'],
+            'telepon'  => ['nullable', 'string', 'max:30', 'regex:/^[0-9+()\-\s]+$/'],
+            'email'    => ['nullable', 'email', 'max:100'],
+        ], [
+            'city.required'     => 'Kota/kabupaten wajib diisi.',
+            'city.regex'        => 'Kota/kabupaten tidak boleh hanya berisi spasi.',
+            'province.required' => 'Provinsi wajib diisi.',
+            'province.regex'    => 'Provinsi tidak boleh hanya berisi spasi.',
+            'address.max'       => 'Alamat maksimal 255 karakter.',
+            'telepon.regex'     => 'Telepon hanya boleh berisi angka, spasi, tanda kurung, +, dan tanda hubung.',
+            'email.email'       => 'Format email tidak valid.',
+        ]);
+
+        $hospital->update(collect($validated)
+            ->map(fn ($nilai) => is_string($nilai) && trim($nilai) !== '' ? trim($nilai) : null)
+            ->all());
+
+        return redirect()
+            ->route('admin.hospital.info')
+            ->with('status', 'Data fasilitas berhasil diperbarui.');
+    }
 }
 

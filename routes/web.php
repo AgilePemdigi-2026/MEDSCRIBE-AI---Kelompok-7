@@ -4,7 +4,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DokterController;
-use App\Http\Controllers\DokterProfilController;
+use App\Http\Controllers\ProfilController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\Icd10Controller;
 use App\Http\Controllers\InterviewAudioController;
@@ -85,13 +85,19 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
         Route::match(['post', 'patch'], '/admin/tenaga-medis/{user}/aktifkan', [AdminDashboardController::class, 'reactivateStaff'])->name('admin.staff.reactivate');
         Route::get('/admin/aktivitas', [AdminDashboardController::class, 'activities'])->name('admin.activities');
         Route::get('/admin/profil-rs', [AdminDashboardController::class, 'hospitalInfo'])->name('admin.hospital.info');
+        Route::put('/admin/profil-rs', [AdminDashboardController::class, 'updateHospitalInfo'])->name('admin.hospital.update');
+    });
+
+    // Profil tenaga medis (nama bergelar dan No. SIP/SIPP), dipakai dokter dan perawat
+    Route::middleware(['role:dokter,perawat', 'account.active'])->group(function () {
+        Route::get('/profil', [ProfilController::class, 'edit'])->name('profil');
+        Route::put('/profil', [ProfilController::class, 'update'])->name('profil.update');
+        Route::post('/profil/lewati', [ProfilController::class, 'lewati'])->name('profil.lewati');
     });
 
     // Area Khusus Dokter Poliklinik (Otorisasi: role dokter & akun aktif)
     Route::middleware(['role:dokter', 'account.active'])->group(function () {
         Route::get('/dokter/dashboard', [DashboardController::class, 'dokterDashboard'])->name('dokter.dashboard');
-        Route::get('/dokter/profil', [DokterProfilController::class, 'edit'])->name('dokter.profil');
-        Route::put('/dokter/profil', [DokterProfilController::class, 'update'])->name('dokter.profil.update');
         Route::get('/dokter/kunjungan/{kunjungan}/wawancara', [InterviewController::class, 'show'])->name('dokter.interview.show');
         Route::post('/dokter/kunjungan/{kunjungan}/wawancara/mulai', [InterviewController::class, 'start'])->name('dokter.interview.start');
         Route::post('/dokter/kunjungan/{kunjungan}/wawancara/selesai', [InterviewController::class, 'finish'])->name('dokter.interview.finish');

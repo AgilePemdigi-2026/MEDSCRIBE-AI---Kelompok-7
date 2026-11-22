@@ -248,6 +248,23 @@ class Pengguna extends Authenticatable
     }
 
     /**
+     * Nama nomor izin praktik sesuai peran: SIP untuk dokter, SIPP untuk perawat.
+     * Keduanya disimpan di kolom nomor_sip.
+     */
+    public function getLabelNomorIzinAttribute(): string
+    {
+        return $this->isPerawat() ? 'No. SIPP' : 'No. SIP';
+    }
+
+    /**
+     * Tenaga medis aktif yang belum mengisi nomor izin praktik.
+     */
+    public function perluLengkapiProfil(): bool
+    {
+        return ($this->isDokter() || $this->isPerawat()) && blank($this->nomor_sip);
+    }
+
+    /**
      * Scope query berdasarkan rumah sakit pengguna.
      */
     public function scopeForHospital(Builder $query, int $hospitalId): Builder

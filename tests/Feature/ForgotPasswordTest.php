@@ -31,6 +31,7 @@ class ForgotPasswordTest extends TestCase
                 'password'          => Hash::make('oldPassword123'),
             ]
         );
+        $this->user->update(['nomor_sip' => '503/1004/SIP-D/2026']);
     }
 
     /**

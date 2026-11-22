@@ -119,6 +119,7 @@ class GoogleAuthRestrictionTest extends TestCase
             'nama_lengkap' => 'dr. Google Specialist',
             'email' => $doctorEmail,
             'role' => 'dokter',
+            'nomor_sip' => '503/1005/SIP-D/2026',
             'hospital_id' => 1,
             'email_verified_at' => now(),
             'password' => Hash::make('password123'),

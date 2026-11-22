@@ -26,6 +26,8 @@ class Hospital extends Model
         'address',
         'city',
         'province',
+        'telepon',
+        'email',
         'is_active',
     ];
 
