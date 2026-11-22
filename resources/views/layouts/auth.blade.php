@@ -2,8 +2,6 @@
 <html lang="id">
 <head>
     @include('partials.head')
-    {{-- Caveat: tulisan tangan untuk keterangan foto polaroid --}}
-    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&display=swap" rel="stylesheet">
     <title>@yield('title', 'MedScribe AI - Autentikasi')</title>
 </head>
 <body class="min-h-dvh app-backdrop text-text-body antialiased">
@@ -13,31 +11,32 @@
     <div class="min-h-dvh flex flex-col p-3 sm:p-5">
         <div class="flex-grow grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] gap-4">
 
-            {{-- Panel navy: identitas sistem dan cuplikan fitur untuk dokter & perawat. --}}
-            <aside class="hidden lg:flex card-navy flex-col justify-between gap-6 p-8 xl:p-10 rise">
-                <div class="relative">
-                    <span class="inline-flex items-center gap-2.5">
-                        {{-- Ubin terang di belakang logo agar huruf M navy tetap terbaca di atas panel navy --}}
-                        <span class="w-12 h-12 rounded-[14px] bg-white flex items-center justify-center shadow-[0_8px_20px_-8px_rgba(18,32,86,0.35)]">
-                            @php($logoUrl = asset('images/logo-medscribe.png'))
-                            <img src="{{ $logoUrl }}" srcset="{{ $logoUrl }} 1x, {{ str_replace('.png', '@2x.png', $logoUrl) }} 2x"
-                                 width="40" height="40" alt="" class="w-10 h-10">
-                        </span>
-                        <span class="text-lg font-semibold tracking-tight">MedScribe <span class="text-on-navy-muted">AI</span></span>
+            @php
+                $logoUrl = asset("images/logo-medscribe.png");
+            @endphp
+
+            {{-- Panel navy: identitas sistem dan inti isometrik yang menjelaskan alur rekam medis saat di-hover. --}}
+            <aside class="hidden lg:flex card-navy flex-col gap-8 p-8 xl:p-10 rise">
+                <span class="relative inline-flex items-center gap-2.5">
+                    {{-- Ubin terang di belakang logo agar huruf M navy tetap terbaca di atas panel navy --}}
+                    <span class="w-12 h-12 rounded-[14px] bg-white flex items-center justify-center shadow-[0_8px_20px_-8px_rgba(18,32,86,0.35)]">
+                        <img src="{{ $logoUrl }}" srcset="{{ $logoUrl }} 1x, {{ str_replace(".png", "@2x.png", $logoUrl) }} 2x"
+                             width="40" height="40" alt="" class="w-10 h-10">
                     </span>
-                </div>
+                    <span class="text-lg font-semibold tracking-tight">MedScribe <span class="text-on-navy-muted">AI</span></span>
+                </span>
 
-                <div class="relative">
-                    <p class="text-[clamp(1.9rem,2.6vw,2.6rem)] leading-[1.08] font-semibold tracking-[-0.035em]">
-                        Sistem Rekam Medis<br>Elektronik <span class="text-on-navy-muted">Terintegrasi</span>
-                    </p>
-
-                    <div class="mt-6">
-                        @include('partials.polaroid-carousel')
+                <div class="relative flex-grow flex flex-col justify-center gap-8">
+                    @include("partials.hero.inti", ["ukuran" => "360px"])
+                    <div class="text-center">
+                        <p class="text-[clamp(1.8rem,2.4vw,2.4rem)] leading-[1.1] font-semibold tracking-[-0.035em]">
+                            Sistem Rekam Medis<br>Elektronik <span class="text-on-navy-muted">Terintegrasi</span>
+                        </p>
+                        <p class="mt-3 mx-auto max-w-sm text-sm text-on-navy-soft leading-relaxed">
+                            Satu tempat bagi perawat dan dokter untuk mencatat pemeriksaan pasien, dari tanda vital sampai dokumen SOAP.
+                        </p>
                     </div>
                 </div>
-
-                <span aria-hidden="true"></span>
             </aside>
 
             <div class="card flex flex-col">
