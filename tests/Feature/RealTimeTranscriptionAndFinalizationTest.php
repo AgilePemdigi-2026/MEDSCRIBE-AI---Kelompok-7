@@ -499,6 +499,29 @@ class RealTimeTranscriptionAndFinalizationTest extends TestCase
     }
 
     /**
+     * No. SIP yang diisi dokter di profil tercetak di bawah nama pada pratinjau SOAP.
+     */
+    public function test_preview_soap_menampilkan_nomor_sip_dari_profil_dokter(): void
+    {
+        $this->dokter->update(['nomor_sip' => '503/7788/SIP-D/436.7.2/2026']);
+
+        Finalisasi::create([
+            'id_kunjungan' => $this->kunjungan->id_kunjungan,
+            'id_dokter' => $this->dokter->id_pengguna,
+            'status' => 'Final',
+            'FINAL' => 1,
+            'finalized_at' => now(),
+            'finalized_by' => $this->dokter->id_pengguna,
+        ]);
+        $this->kunjungan->update(['status' => Kunjungan::STATUS_FINALISASI]);
+
+        $response = $this->actingAs($this->dokter)->get(route('dokter.soap.preview', $this->kunjungan));
+
+        $response->assertStatus(200);
+        $response->assertSee('SIP: 503/7788/SIP-D/436.7.2/2026');
+    }
+
+    /**
      * Waktu finalisasi disimpan dalam UTC dan harus tampil dalam WIB (UTC+7),
      * termasuk saat konversi melewati tengah malam dan mengubah tanggal.
      */

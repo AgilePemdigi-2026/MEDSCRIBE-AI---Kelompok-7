@@ -35,6 +35,7 @@ class Pengguna extends Authenticatable
         'email',
         'email_verified_at',
         'role',
+        'nomor_sip',
         'hospital_id',
         'approval_status',
         'password',

@@ -30,15 +30,24 @@
             @php
                 $initials = Auth::user()->inisial;
                 $roleLabel = Auth::user()->peran_label;
+                $bisaProfil = Auth::user()->isDokter();
             @endphp
             <div class="flex items-center gap-1.5">
-                <div class="flex items-center gap-2.5 rounded-full bg-soft-offwhite border border-border-subtle pl-1 pr-1 md:pr-4 py-1">
+                {{-- Dokter membuka profil (nama bergelar dan No. SIP) dari sini. --}}
+                <{{ $bisaProfil ? 'a' : 'div' }}
+                    @if ($bisaProfil) href="{{ route('dokter.profil') }}" title="Buka profil" @endif
+                    @class([
+                        'flex items-center gap-2.5 rounded-full bg-soft-offwhite border border-border-subtle pl-1 pr-1 md:pr-4 py-1',
+                        'transition-colors hover:border-border-hover hover:bg-white' => $bisaProfil,
+                        '!border-border-hover !bg-white' => request()->routeIs('dokter.profil'),
+                    ])>
                     <span class="avatar w-9 h-9 bg-medical-navy text-white text-xs" aria-hidden="true">{{ $initials ?: 'U' }}</span>
                     <span class="hidden md:block leading-tight whitespace-nowrap">
                         <span class="block text-[13px] font-semibold text-medical-navy">{{ Auth::user()->nama_lengkap }}</span>
                         <span class="block text-[11px] text-text-secondary">{{ $roleLabel }}</span>
                     </span>
-                </div>
+                    @if ($bisaProfil)<span class="sr-only">, buka profil</span>@endif
+                </{{ $bisaProfil ? 'a' : 'div' }}>
 
                 <button type="button" data-dialog-open="modalLogout" title="Keluar dari Sistem"
                         class="btn btn-icon btn-secondary hover:!border-danger-border hover:!text-danger-text hover:!bg-danger-bg">

@@ -156,7 +156,7 @@
                 <p>Dokter penanggung jawab pelayanan</p>
                 <div class="doc-ttd-ruang" aria-hidden="true"></div>
                 <p class="doc-strong doc-ttd-nama">{{ $finalizedDoctor->nama_lengkap }}</p>
-                <p class="doc-muted">SIP: ............................................</p>
+                <p class="doc-muted">SIP: {{ $finalizedDoctor->nomor_sip ?: '............................................' }}</p>
             </div>
         </footer>
     </article>

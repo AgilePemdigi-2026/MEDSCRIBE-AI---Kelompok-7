@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DokterController;
+use App\Http\Controllers\DokterProfilController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\Icd10Controller;
 use App\Http\Controllers\InterviewAudioController;
@@ -89,6 +90,8 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
     // Area Khusus Dokter Poliklinik (Otorisasi: role dokter & akun aktif)
     Route::middleware(['role:dokter', 'account.active'])->group(function () {
         Route::get('/dokter/dashboard', [DashboardController::class, 'dokterDashboard'])->name('dokter.dashboard');
+        Route::get('/dokter/profil', [DokterProfilController::class, 'edit'])->name('dokter.profil');
+        Route::put('/dokter/profil', [DokterProfilController::class, 'update'])->name('dokter.profil.update');
         Route::get('/dokter/kunjungan/{kunjungan}/wawancara', [InterviewController::class, 'show'])->name('dokter.interview.show');
         Route::post('/dokter/kunjungan/{kunjungan}/wawancara/mulai', [InterviewController::class, 'start'])->name('dokter.interview.start');
         Route::post('/dokter/kunjungan/{kunjungan}/wawancara/selesai', [InterviewController::class, 'finish'])->name('dokter.interview.finish');
