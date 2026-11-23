@@ -30,7 +30,8 @@
         <!-- Use local MySQL medscribe_ai as configured in .env -->
         <!-- <env name="DB_CONNECTION" value="sqlite"/> -->
         <!-- <env name="DB_DATABASE" value=":memory:"/> -->
-        <env name="MAIL_MAILER" value="array"/>
+        <!-- force: test tidak boleh mengirim email sungguhan walau .env/.env.testing memakai SMTP -->
+        <env name="MAIL_MAILER" value="array" force="true"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
