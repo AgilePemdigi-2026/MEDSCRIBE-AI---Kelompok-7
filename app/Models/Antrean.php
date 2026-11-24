@@ -13,6 +13,9 @@ class Antrean extends Model
     protected $primaryKey = 'id_antrean';
     public $timestamps = false;
 
+    /** Status antrean yang sudah tidak berjalan; pasien dengan antrean lain dianggap masih di antrean. */
+    public const STATUS_TIDAK_AKTIF = ['Selesai', 'Dibatalkan'];
+
     protected $fillable = [
         'hospital_id',
         'id_pasien',

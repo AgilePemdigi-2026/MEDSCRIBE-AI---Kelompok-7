@@ -134,6 +134,7 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
         Route::post('/perawat/pemeriksaan-awal', [PemeriksaanAwalController::class, 'store'])->name('perawat.pemeriksaan.store');
         Route::post('/perawat/pasien-baru', [PemeriksaanAwalController::class, 'storePasienBaru'])->name('perawat.pasien.store');
         Route::get('/perawat/pasien/{id}', [PemeriksaanAwalController::class, 'showPasien'])->name('perawat.pasien.show');
+        Route::post('/perawat/pasien/{id}/kunjungan', [PemeriksaanAwalController::class, 'daftarkanKunjungan'])->name('perawat.pasien.kunjungan');
         Route::put('/perawat/pasien/{id}', [PemeriksaanAwalController::class, 'updatePasien'])->name('perawat.pasien.update');
         Route::delete('/perawat/pasien/{id}', [PemeriksaanAwalController::class, 'destroyPasien'])->name('perawat.pasien.destroy');
     });

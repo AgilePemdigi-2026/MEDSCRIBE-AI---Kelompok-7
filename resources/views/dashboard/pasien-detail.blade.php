@@ -56,6 +56,7 @@
                 </dl>
 
                 <div class="mt-6 grid gap-2">
+                    @include('partials.tombol-kunjungan-ulang', ['pasien' => $pasien, 'class' => 'btn-sm w-full'])
                     <button type="button" data-dialog-open="modalEditPasien" class="btn btn-secondary btn-sm w-full">
                         <x-icon name="square-pen" class="w-3.5 h-3.5" aria-hidden="true" />
                         Edit identitas

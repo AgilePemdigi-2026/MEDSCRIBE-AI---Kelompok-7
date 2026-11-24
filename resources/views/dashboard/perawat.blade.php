@@ -328,19 +328,22 @@
                                 @endif
                             </td>
                             <td class="whitespace-nowrap text-right">
+                                {{-- Tombol ikon bulat; keterangannya lewat tooltip (title) dan teks sr-only.
+                                     Label lengkap ada di halaman detail pasien. --}}
                                 <div class="inline-flex items-center gap-1.5">
-                                    <a href="{{ route('perawat.pasien.show', $pasien->id_pasien) }}" class="btn btn-secondary btn-sm" title="Lihat Detail & Riwayat Pasien">
-                                        <x-icon name="eye" class="w-3.5 h-3.5" aria-hidden="true" />
-                                        Detail<span class="sr-only"> {{ $pasien->nama_pasien }}</span>
+                                    @include('partials.tombol-kunjungan-ulang', ['pasien' => $pasien, 'ringkas' => true])
+                                    <a href="{{ route('perawat.pasien.show', $pasien->id_pasien) }}" class="btn btn-secondary btn-icon w-11 h-11" title="Lihat detail & riwayat pasien">
+                                        <x-icon name="eye" class="w-4 h-4" aria-hidden="true" />
+                                        <span class="sr-only">Lihat detail {{ $pasien->nama_pasien }}</span>
                                     </a>
-                                    <a href="{{ route('perawat.pasien.show', ['id' => $pasien->id_pasien, 'edit' => 1]) }}" class="btn btn-secondary btn-sm" title="Edit identitas pasien">
-                                        <x-icon name="square-pen" class="w-3.5 h-3.5" aria-hidden="true" />
-                                        <span class="hidden xl:inline">Edit</span><span class="sr-only xl:hidden">Edit identitas</span><span class="sr-only"> {{ $pasien->nama_pasien }}</span>
+                                    <a href="{{ route('perawat.pasien.show', ['id' => $pasien->id_pasien, 'edit' => 1]) }}" class="btn btn-secondary btn-icon w-11 h-11" title="Edit identitas pasien">
+                                        <x-icon name="square-pen" class="w-4 h-4" aria-hidden="true" />
+                                        <span class="sr-only">Edit identitas {{ $pasien->nama_pasien }}</span>
                                     </a>
                                     <button type="button" onclick="openModalHapusPasien({{ $pasien->id_pasien }}, '{{ addslashes($pasien->nama_pasien) }}', '{{ $pasien->no_rekam_medis }}')"
-                                            class="btn btn-danger-quiet btn-sm" title="Hapus / Batalkan Registrasi Pasien">
-                                        <x-icon name="trash-2" class="w-3.5 h-3.5" aria-hidden="true" />
-                                        <span class="hidden xl:inline">Hapus registrasi</span><span class="sr-only xl:hidden">Hapus registrasi</span><span class="sr-only"> {{ $pasien->nama_pasien }}</span>
+                                            class="btn btn-danger-quiet btn-icon w-11 h-11" title="Hapus / batalkan registrasi pasien">
+                                        <x-icon name="trash-2" class="w-4 h-4" aria-hidden="true" />
+                                        <span class="sr-only">Hapus registrasi {{ $pasien->nama_pasien }}</span>
                                     </button>
                                 </div>
                             </td>
@@ -389,13 +392,43 @@
                     </button>
                 </div>
 
-                <div class="mx-6 sm:mx-8 alert alert-info">
-                    <x-icon name="info" aria-hidden="true" />
-                    <span class="text-text-body">Hanya nama yang wajib, jadi pasien darurat tetap bisa didaftarkan. Lengkapi data lain kalau identitasnya sudah ada. No. RM dibuat otomatis dengan format <span class="tag-id">YYYYMMDD-NNN</span>.</span>
-                </div>
+                @if ($pasienSerupa->isNotEmpty())
+                    {{-- NIK/BPJS sudah dipakai pasien lain di RS ini: tawarkan kunjungan ulang, tapi tetap boleh lanjut. --}}
+                    <div class="mx-6 sm:mx-8 alert alert-warn" role="alert">
+                        <x-icon name="triangle-alert" aria-hidden="true" />
+                        <div class="min-w-0 flex-1 text-text-body">
+                            <p class="font-semibold text-medical-navy">NIK atau No. BPJS ini sudah terdaftar</p>
+                            <p class="mt-1">Kalau orangnya sama, daftarkan kunjungan untuk pasien lama supaya riwayatnya tetap tersambung dan tidak muncul No. RM ganda.</p>
+                            <ul class="mt-3 space-y-2">
+                                @foreach ($pasienSerupa as $serupa)
+                                    <li class="flex flex-wrap items-center justify-between gap-2 rounded-(--radius-field) bg-white/80 border border-border-hover p-3">
+                                        <div class="min-w-0">
+                                            <p class="font-semibold text-medical-navy">{{ $serupa->nama_pasien }}</p>
+                                            <p class="text-xs text-text-secondary">
+                                                <span class="tag-id">{{ $serupa->no_rekam_medis }}</span>
+                                                @if ($serupa->nik)<span class="num ml-1">NIK {{ $serupa->nik }}</span>@endif
+                                                @if ($serupa->no_bpjs)<span class="num ml-1">· BPJS {{ $serupa->no_bpjs }}</span>@endif
+                                            </p>
+                                        </div>
+                                        @include('partials.tombol-kunjungan-ulang', ['pasien' => $serupa, 'class' => 'btn-sm'])
+                                    </li>
+                                @endforeach
+                            </ul>
+                            <p class="mt-3 text-xs text-text-secondary">Bukan orang yang sama? Periksa lagi datanya, lalu tekan <span class="font-semibold">Tetap daftarkan pasien baru</span>.</p>
+                        </div>
+                    </div>
+                @else
+                    <div class="mx-6 sm:mx-8 alert alert-info">
+                        <x-icon name="info" aria-hidden="true" />
+                        <span class="text-text-body">Pasien pernah berobat di sini? Cari namanya di tab <a href="{{ route('perawat.dashboard', ['tab' => 'pasien']) }}" class="font-semibold text-royal-indigo-hover underline">Daftar Pasien</a> lalu pilih <span class="font-semibold">Daftarkan kunjungan</span>, supaya riwayatnya tersambung. Untuk pasien baru, hanya nama yang wajib. No. RM dibuat otomatis dengan format <span class="tag-id">YYYYMMDD-NNN</span>.</span>
+                    </div>
+                @endif
 
                 <form method="POST" action="{{ route('perawat.pasien.store') }}" id="formPasienBaru" class="p-6 sm:px-8 space-y-6" data-submit-loading>
                     @csrf
+                    @if ($pasienSerupa->isNotEmpty())
+                        <input type="hidden" name="konfirmasi_duplikat" value="1">
+                    @endif
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="sm:col-span-2">
@@ -476,7 +509,7 @@
 
                     <div class="flex items-center justify-between gap-2 pt-5 border-t border-border-subtle">
                         <button type="button" data-dialog-close class="btn btn-secondary">Batal</button>
-                        @include('partials.submit-button', ['id' => 'btnSimpanPasienBaru', 'label' => 'Simpan dan isi TTV', 'loading' => 'Menyimpan...', 'class' => 'px-6'])
+                        @include('partials.submit-button', ['id' => 'btnSimpanPasienBaru', 'label' => $pasienSerupa->isNotEmpty() ? 'Tetap daftarkan pasien baru' : 'Simpan dan isi TTV', 'loading' => 'Menyimpan...', 'class' => 'px-6'])
                     </div>
                 </form>
             </div>
@@ -523,7 +556,7 @@
             filterTahun.addEventListener('change', updateDayOptions);
         }
 
-        @if ($errors->hasAny(['nama_pasien', 'tanggal_lahir', 'umur', 'jenis_kelamin', 'nik', 'no_bpjs', 'no_hp', 'hospital_id']))
+        @if ($errors->hasAny(['nama_pasien', 'tanggal_lahir', 'umur', 'jenis_kelamin', 'nik', 'no_bpjs', 'no_hp', 'hospital_id']) || $pasienSerupa->isNotEmpty())
             window.openDialog?.('modalInputPasien');
         @endif
 

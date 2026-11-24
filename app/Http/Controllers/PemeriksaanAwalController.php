@@ -87,7 +87,7 @@ class PemeriksaanAwalController extends Controller
         $filterTanggal = $request->query('tanggal');
 
         $pasienQuery = Pasien::forHospital($hospitalId)
-            ->with('hospital')
+            ->with(['hospital', 'antreanAktif'])
             ->orderBy('created_at', 'desc')
             ->orderBy('id_pasien', 'desc');
 
@@ -135,7 +135,18 @@ class PemeriksaanAwalController extends Controller
         // Daftar rumah sakit aktif untuk konteks pemilihan jika dibutuhkan
         $activeHospitals = Hospital::active()->orderBy('hospital_name')->get();
 
+        // Peringatan NIK/BPJS ganda dari storePasienBaru(): pasien lama yang mungkin sama orangnya.
+        $pasienSerupa = collect();
+        if ($idSerupa = session('pasien_serupa')) {
+            $pasienSerupa = Pasien::forHospital($hospitalId)
+                ->with('antreanAktif')
+                ->whereIn('id_pasien', (array) $idSerupa)
+                ->orderByDesc('id_pasien')
+                ->get();
+        }
+
         return view('dashboard.perawat', compact(
+            'pasienSerupa',
             'user',
             'daftarAntrean',
             'pasienTerpilih',
@@ -359,6 +370,18 @@ class PemeriksaanAwalController extends Controller
             $umur = (int) Carbon::parse($validated['tanggal_lahir'], 'Asia/Jakarta')->diffInYears(Carbon::now('Asia/Jakarta'));
         }
 
+        // NIK/BPJS yang sudah dipakai pasien lain di RS ini kemungkinan besar pasien lama yang datang lagi.
+        // Hanya peringatan: perawat bisa memilih mendaftarkan kunjungan pasien lama, atau tetap lanjut
+        // (mis. NIK salah ketik di data lama, atau keadaan darurat).
+        if (! $request->boolean('konfirmasi_duplikat')) {
+            $pasienSerupa = $this->cariPasienSerupa($validated['nik'] ?? null, $validated['no_bpjs'] ?? null, $hospitalId);
+            if ($pasienSerupa->isNotEmpty()) {
+                return back()
+                    ->withInput()
+                    ->with('pasien_serupa', $pasienSerupa->pluck('id_pasien')->all());
+            }
+        }
+
         try {
             DB::beginTransaction();
 
@@ -412,13 +435,105 @@ class PemeriksaanAwalController extends Controller
     }
 
     /**
+     * Kunjungan ulang pasien lama: membuat antrean ("Menunggu TTV") dan kunjungan baru untuk
+     * pasien yang sudah terdaftar, tanpa membuat data pasien atau No. RM baru. Riwayat
+     * kunjungan sebelumnya tetap tersambung karena memakai id_pasien yang sama.
+     */
+    public function daftarkanKunjungan(int $id): RedirectResponse
+    {
+        $user = Auth::user();
+        $pasien = Pasien::findOrFail($id);
+
+        if ($user->hospital_id && $pasien->hospital_id && (int) $pasien->hospital_id !== (int) $user->hospital_id) {
+            abort(403, 'Akses ditolak: Anda tidak memiliki wewenang mendaftarkan kunjungan pasien dari rumah sakit lain.');
+        }
+
+        $hospitalId = $user->hospital_id ?? $pasien->hospital_id;
+
+        try {
+            DB::beginTransaction();
+
+            // Kunci baris pasien agar dua klik bersamaan tidak membuat dua antrean.
+            Pasien::whereKey($pasien->id_pasien)->lockForUpdate()->first();
+
+            $antreanBerjalan = Antrean::where('id_pasien', $pasien->id_pasien)
+                ->whereNotIn('status', Antrean::STATUS_TIDAK_AKTIF)
+                ->orderByDesc('id_antrean')
+                ->first();
+
+            if ($antreanBerjalan) {
+                DB::rollBack();
+
+                return redirect()
+                    ->route('perawat.dashboard', ['antrean_id' => $antreanBerjalan->id_antrean])
+                    ->with('warning', $pasien->nama_pasien . ' masih ada di antrean (status: ' . $antreanBerjalan->status . '). Kunjungan baru bisa didaftarkan setelah antrean itu selesai.');
+            }
+
+            $today = Carbon::now('Asia/Jakarta');
+
+            $antrean = Antrean::create([
+                'hospital_id'       => $hospitalId,
+                'id_pasien'         => $pasien->id_pasien,
+                'tanggal_kunjungan' => $today->toDateString(),
+                'status'            => 'Menunggu TTV',
+            ]);
+
+            Kunjungan::create([
+                'hospital_id' => $hospitalId,
+                'id_antrean'  => $antrean->id_antrean,
+                'id_pasien'   => $pasien->id_pasien,
+                'tanggal'     => $today->toDateString(),
+                'status'      => 'Menunggu Dokter',
+            ]);
+
+            DB::commit();
+
+            return redirect()
+                ->route('perawat.dashboard', ['antrean_id' => $antrean->id_antrean])
+                ->with('status', 'Kunjungan ' . $pasien->nama_pasien . ' (No. RM ' . $pasien->no_rekam_medis . ') berhasil didaftarkan. Lanjutkan dengan mengisi TTV.');
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return back()->withErrors([
+                'error' => 'Gagal mendaftarkan kunjungan: ' . $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Pasien di rumah sakit yang sama dengan NIK atau No. BPJS yang sama.
+     *
+     * @return \Illuminate\Support\Collection<int, Pasien>
+     */
+    private function cariPasienSerupa(?string $nik, ?string $noBpjs, ?int $hospitalId)
+    {
+        if (blank($nik) && blank($noBpjs)) {
+            return collect();
+        }
+
+        return Pasien::forHospital($hospitalId)
+            ->where(function ($q) use ($nik, $noBpjs) {
+                if (filled($nik)) {
+                    $q->orWhere('nik', $nik);
+                }
+                if (filled($noBpjs)) {
+                    $q->orWhere('no_bpjs', $noBpjs);
+                }
+            })
+            ->orderByDesc('id_pasien')
+            ->limit(5)
+            ->get();
+    }
+
+    /**
      * Menampilkan detail pasien dan riwayat pemeriksaan.
      * Menerapkan validasi Multi-Tenancy rumah sakit.
      */
     public function showPasien(int $id): View
     {
         $user = Auth::user();
-        $pasien = Pasien::with('hospital')->findOrFail($id);
+        $pasien = Pasien::with(['hospital', 'antreanAktif'])->findOrFail($id);
 
         if ($user->hospital_id && $pasien->hospital_id && (int) $pasien->hospital_id !== (int) $user->hospital_id) {
             abort(403, 'Akses ditolak: Anda tidak memiliki wewenang untuk melihat data pasien dari rumah sakit lain.');

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Pasien extends Model
@@ -93,6 +94,16 @@ class Pasien extends Model
     public function antrean(): HasMany
     {
         return $this->hasMany(Antrean::class, 'id_pasien', 'id_pasien');
+    }
+
+    /**
+     * Antrean pasien yang masih berjalan (belum selesai atau dibatalkan), tanggal berapa pun.
+     * Dipakai agar pasien lama tidak didaftarkan dua kali ke antrean.
+     */
+    public function antreanAktif(): HasOne
+    {
+        return $this->hasOne(Antrean::class, 'id_pasien', 'id_pasien')
+            ->ofMany(['id_antrean' => 'max'], fn ($q) => $q->whereNotIn('status', Antrean::STATUS_TIDAK_AKTIF));
     }
 
     public function kunjungan(): HasMany
