@@ -33,13 +33,16 @@
 
 <div class="space-y-6">
 
-    {{-- Sapaan: satu baris penuh, ukuran huruf mengikuti lebar layar agar nama panjang tidak terpotong --}}
-    <section class="rise">
-        <p class="eyebrow">Dashboard Antrean Dokter · {{ \Carbon\Carbon::now('Asia/Jakarta')->locale('id')->isoFormat('dddd, D MMMM Y') }}</p>
-        <h1 class="mt-2 text-[clamp(1.75rem,2.6vw,2.75rem)] leading-[1.1] font-semibold tracking-[-0.04em] text-medical-navy">
-            Selamat datang, <span class="text-royal-indigo">{{ Auth::user()->nama_lengkap }}</span>
-        </h1>
-        <div class="mt-4">
+    {{-- Sapaan di kiri, navigasi dokter di kanan sejajar sapaan (posisinya sama dengan halaman Daftar Pasien).
+         Ukuran huruf mengikuti lebar layar; nama panjang turun baris, tidak terpotong. --}}
+    <section class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 rise">
+        <div class="min-w-0">
+            <p class="eyebrow">Dashboard Antrean Dokter · {{ \Carbon\Carbon::now('Asia/Jakarta')->locale('id')->isoFormat('dddd, D MMMM Y') }}</p>
+            <h1 class="mt-2 text-[clamp(1.75rem,2.6vw,2.75rem)] leading-[1.1] font-semibold tracking-[-0.04em] text-medical-navy">
+                Selamat datang, <span class="text-royal-indigo">{{ Auth::user()->nama_lengkap }}</span>
+            </h1>
+        </div>
+        <div class="shrink-0">
             @include('partials.dokter-nav')
         </div>
     </section>
