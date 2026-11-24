@@ -188,7 +188,10 @@ class MutasiController extends Controller
             $dilepas = Kunjungan::whereIn('id_kunjungan', self::kunjunganBelumFinal($staf, (int) $mutasi->hospital_asal_id)->pluck('id_kunjungan'))
                 ->update(['id_dokter' => null]);
 
-            // SIP/SIPP berlaku per tempat praktik, jadi dikosongkan; login berikutnya diarahkan ke profil.
+            // SIP/SIPP berlaku per tempat praktik: nomor di RS asal disimpan sebagai riwayat, lalu
+            // dikosongkan; login berikutnya diarahkan ke profil. Kalau ia kembali ke RS asal,
+            // nomor lama ditawarkan lagi di profil untuk dikonfirmasi.
+            $staf->catatIzinPraktik();
             $staf->update(['hospital_id' => $mutasi->hospital_tujuan_id, 'nomor_sip' => null]);
 
             $mutasi->update([

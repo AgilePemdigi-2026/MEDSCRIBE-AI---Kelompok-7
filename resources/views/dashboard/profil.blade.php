@@ -49,13 +49,21 @@
             <div>
                 <label for="nomor_sip" class="field-label">{{ $labelIzin }} ({{ $kepanjanganIzin }})</label>
                 <input type="text" id="nomor_sip" name="nomor_sip" maxlength="50" autocomplete="off" @if ($modeLengkapi) data-dialog-focus autofocus @endif
-                       value="{{ old('nomor_sip', $user->nomor_sip) }}"
+                       value="{{ old('nomor_sip', $user->nomor_sip ?? $izinTerakhir?->nomor_sip) }}"
                        placeholder="{{ $user->isPerawat() ? 'Contoh: 503/5678/SIPP/436.7.2/2026' : 'Contoh: 503/1234/SIP-D/436.7.2/2026' }}"
                        class="field num @error('nomor_sip') is-invalid @enderror">
                 @error('nomor_sip')
                     <p class="field-error">{{ $message }}</p>
                 @else
-                    <p class="field-hint">Tulis persis seperti di surat izin. Kalau dikosongkan, dokumen SOAP menampilkan garis titik-titik untuk diisi manual.</p>
+                    @if ($izinTerakhir)
+                        <p class="field-hint text-warning-text">
+                            Terisi dari {{ $labelIzin }} terakhir Anda di {{ $user->hospital?->hospital_name ?? 'rumah sakit ini' }}
+                            (disimpan {{ $izinTerakhir->updated_at?->timezone('Asia/Jakarta')->locale('id')->isoFormat('D MMMM Y') }}).
+                            Pastikan masih berlaku; kalau sudah terbit nomor baru, ganti dengan nomor baru.
+                        </p>
+                    @else
+                        <p class="field-hint">Tulis persis seperti di surat izin. Kalau dikosongkan, dokumen SOAP menampilkan garis titik-titik untuk diisi manual.</p>
+                    @endif
                 @enderror
             </div>
 

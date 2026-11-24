@@ -30,10 +30,17 @@ class ProfilController extends Controller
             $request->session()->forget('status');
         }
 
+        // Kembali ke RS yang pernah ditempati: tawarkan nomor izin terakhir di RS itu.
+        // Hanya usulan; belum tentu masih berlaku, jadi tetap harus disimpan sendiri oleh pengguna.
+        $izinTerakhir = blank($user->nomor_sip) && $user->hospital_id
+            ? $user->izinPraktik()->where('hospital_id', $user->hospital_id)->first()
+            : null;
+
         return view('dashboard.profil', [
             'user' => $user,
             'labelIzin' => $user->label_nomor_izin,
             'modeLengkapi' => $modeLengkapi,
+            'izinTerakhir' => $izinTerakhir,
         ]);
     }
 
@@ -57,6 +64,9 @@ class ProfilController extends Controller
             'nama_lengkap' => trim($validated['nama_lengkap']),
             'nomor_sip'    => filled($validated['nomor_sip'] ?? null) ? trim($validated['nomor_sip']) : null,
         ]);
+
+        // Simpan juga sebagai riwayat izin di RS ini, supaya tidak hilang saat dimutasi.
+        $user->catatIzinPraktik();
 
         // Dari alur lengkapi setelah login: lanjut ke dashboard.
         if ($request->boolean('lanjut')) {

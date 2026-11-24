@@ -257,6 +257,46 @@ class Pengguna extends Authenticatable
     }
 
     /**
+     * Riwayat nomor izin praktik per rumah sakit.
+     */
+    public function izinPraktik(): HasMany
+    {
+        return $this->hasMany(IzinPraktik::class, 'id_pengguna', 'id_pengguna');
+    }
+
+    /**
+     * Nomor izin praktik di rumah sakit tertentu: nomor aktif kalau masih bertugas di sana,
+     * kalau sudah pindah diambil dari riwayat terakhir di RS itu. Tanpa RS (data lama), nomor aktif.
+     */
+    public function nomorIzinDi(?int $hospitalId): ?string
+    {
+        if (! $hospitalId) {
+            return filled($this->nomor_sip) ? $this->nomor_sip : null;
+        }
+
+        if ((int) $this->hospital_id === (int) $hospitalId && filled($this->nomor_sip)) {
+            return $this->nomor_sip;
+        }
+
+        return $this->izinPraktik()->where('hospital_id', $hospitalId)->value('nomor_sip');
+    }
+
+    /**
+     * Simpan nomor izin aktif ke riwayat RS tempat bertugas sekarang.
+     */
+    public function catatIzinPraktik(): void
+    {
+        if (! $this->hospital_id || blank($this->nomor_sip)) {
+            return;
+        }
+
+        IzinPraktik::updateOrCreate(
+            ['id_pengguna' => $this->id_pengguna, 'hospital_id' => $this->hospital_id],
+            ['nomor_sip' => $this->nomor_sip]
+        );
+    }
+
+    /**
      * Tenaga medis aktif yang belum mengisi nomor izin praktik.
      */
     public function perluLengkapiProfil(): bool

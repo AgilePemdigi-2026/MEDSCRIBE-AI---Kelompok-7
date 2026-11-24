@@ -390,7 +390,11 @@ class DokterController extends Controller
             return redirect()->route('dokter.rekam-medis', ['id_antrean' => $kunjungan->id_antrean])->with('error', $msg);
         }
 
-        DB::transaction(function () use ($kunjungan, $user, $request) {
+        DB::transaction(function () use ($kunjungan, $user, $request, $pemeriksaanAwal) {
+            // Nomor izin dibekukan saat final: dokumen tidak ikut berubah kalau profil berubah atau
+            // dokter/perawat dimutasi. Perawat yang sudah pindah RS diambil dari riwayat izinnya di RS ini.
+            $hospitalId = $kunjungan->hospital_id ?? $kunjungan->pasien?->hospital_id;
+
             $kunjungan->finalisasi()->updateOrCreate(
                 ['id_kunjungan' => $kunjungan->id_kunjungan],
                 [
@@ -400,6 +404,8 @@ class DokterController extends Controller
                     'finalized_at' => now(),
                     'finalized_by' => $user->id_pengguna,
                     'catatan_finalisasi' => $request->input('catatan_finalisasi'),
+                    'sip_dokter' => $user->nomorIzinDi($hospitalId),
+                    'sipp_perawat' => $pemeriksaanAwal->perawat?->nomorIzinDi($hospitalId),
                 ]
             );
 
@@ -474,6 +480,12 @@ class DokterController extends Controller
 
         $dokterPemeriksa = $kunjungan->dokter ?? $user;
         $finalizedDoctor = $finalisasi?->finalizedBy ?? $dokterPemeriksa;
+
+        // Nomor izin yang dicetak: salinan saat finalisasi. Rekam medis lama yang belum punya salinan
+        // memakai nomor di RS kunjungan ini (bukan nomor di RS baru kalau orangnya sudah dimutasi).
+        $hospitalKunjungan = $kunjungan->hospital_id ?? $pasien?->hospital_id;
+        $sipDokter = $finalisasi?->sip_dokter ?? $finalizedDoctor?->nomorIzinDi($hospitalKunjungan);
+        $sippPerawat = $finalisasi?->sipp_perawat ?? $pemeriksaanAwal?->perawat?->nomorIzinDi($hospitalKunjungan);
         // finalized_at disimpan dalam zona aplikasi (UTC); label "WIB" butuh konversi ke Asia/Jakarta.
         $waktuFinal = ($finalisasi?->finalized_at ? Carbon::parse($finalisasi->finalized_at, 'UTC') : Carbon::now())
             ->timezone('Asia/Jakarta')->locale('id')->isoFormat('D MMMM Y, HH:mm') . ' WIB';
@@ -516,6 +528,8 @@ class DokterController extends Controller
             'finalisasi',
             'dokterPemeriksa',
             'finalizedDoctor',
+            'sipDokter',
+            'sippPerawat',
             'waktuFinal',
             'tanggalPemeriksaan',
             'idKunjunganCode',

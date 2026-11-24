@@ -235,7 +235,7 @@
 </div>
 
 <x-dialog id="dlgSetujuiMutasi" tone="ok" size="md" title="Setujui mutasi?"
-          description="Akun langsung pindah ke rumah sakit tujuan. No. SIP/SIPP dikosongkan agar diisi ulang untuk tempat praktik baru.">
+          description="Akun langsung pindah ke rumah sakit tujuan. No. SIP/SIPP dikosongkan agar diisi ulang untuk tempat praktik baru; nomor lama tetap tersimpan di riwayat dan rekam medis yang sudah final tidak berubah.">
     <form method="POST" id="formSetujuiMutasi" data-staff-form data-submit-loading class="panel text-sm">
         @csrf
         <p class="text-text-secondary">Tenaga medis</p>

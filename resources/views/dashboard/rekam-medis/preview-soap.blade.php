@@ -60,7 +60,7 @@
                 <div><dt>No. antrean</dt><dd class="doc-code">A-{{ str_pad($antrean->id_antrean, 3, '0', STR_PAD_LEFT) }}</dd></div>
                 <div><dt>Unit</dt><dd>Poliklinik rawat jalan</dd></div>
                 <div><dt>DPJP</dt><dd class="doc-strong">{{ $dokterPemeriksa->nama_lengkap }}</dd></div>
-                <div><dt>Perawat</dt><dd>{{ $perawatTtv?->nama_lengkap ?? '-' }}@if ($perawatTtv?->nomor_sip) <span class="doc-muted">· SIPP {{ $perawatTtv->nomor_sip }}</span>@endif</dd></div>
+                <div><dt>Perawat</dt><dd>{{ $perawatTtv?->nama_lengkap ?? '-' }}@if ($sippPerawat) <span class="doc-muted">· SIPP {{ $sippPerawat }}</span>@endif</dd></div>
             </dl>
         </section>
 
@@ -160,7 +160,7 @@
                 <p>Dokter penanggung jawab pelayanan</p>
                 <div class="doc-ttd-ruang" aria-hidden="true"></div>
                 <p class="doc-strong doc-ttd-nama">{{ $finalizedDoctor->nama_lengkap }}</p>
-                <p class="doc-muted">SIP: {{ $finalizedDoctor->nomor_sip ?: '............................................' }}</p>
+                <p class="doc-muted">SIP: {{ $sipDokter ?: '............................................' }}</p>
             </div>
         </footer>
     </article>

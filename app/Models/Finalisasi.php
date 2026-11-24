@@ -18,6 +18,8 @@ class Finalisasi extends Model
         'finalized_at',
         'finalized_by',
         'catatan_finalisasi',
+        'sip_dokter',
+        'sipp_perawat',
     ];
 
     protected $casts = [
